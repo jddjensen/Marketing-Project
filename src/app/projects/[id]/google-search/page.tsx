@@ -1,5 +1,6 @@
 import { PlatformMediaBoard, type RatioConfig } from "@/app/_components/PlatformMediaBoard";
 import { SearchTermsPanel } from "@/app/_components/SearchTermsPanel";
+import { TrackingLinksPanel } from "@/app/_components/TrackingLinksPanel";
 import { loadProject } from "@/lib/projects";
 
 const GOOGLE_SEARCH_RATIOS: RatioConfig[] = [
@@ -32,6 +33,9 @@ export default async function GoogleSearchPage({
 }) {
   const { id } = await params;
   const project = await loadProject(id);
+  const showTracking =
+    project.trackingLinksLocation === "platform_panel" ||
+    project.trackingLinksLocation === "both";
   return (
     <PlatformMediaBoard
       projectId={id}
@@ -42,6 +46,11 @@ export default async function GoogleSearchPage({
       ratios={GOOGLE_SEARCH_RATIOS}
     >
       <SearchTermsPanel platform="google-search" projectId={id} />
+      {showTracking && (
+        <div className="mt-10">
+          <TrackingLinksPanel projectId={id} projectName={project.name} platform="google-search" />
+        </div>
+      )}
     </PlatformMediaBoard>
   );
 }

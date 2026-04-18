@@ -8,7 +8,11 @@ type ProjectRow = {
   created_at: string;
   updated_at: string;
   archived_at: string | null;
+  tracking_links_location: string | null;
 };
+
+const VALID_LOCATIONS = ["project_tab", "platform_panel", "both"] as const;
+type TrackingLinksLocation = (typeof VALID_LOCATIONS)[number];
 
 function serialize(p: ProjectRow) {
   return {
@@ -18,8 +22,12 @@ function serialize(p: ProjectRow) {
     createdAt: new Date(p.created_at).getTime(),
     updatedAt: new Date(p.updated_at).getTime(),
     archivedAt: p.archived_at ? new Date(p.archived_at).getTime() : null,
+    trackingLinksLocation: (p.tracking_links_location as TrackingLinksLocation) ?? "both",
   };
 }
+
+const PROJECT_COLS =
+  "id, name, description, created_at, updated_at, archived_at, tracking_links_location";
 
 export async function GET(
   _request: NextRequest,
@@ -29,7 +37,7 @@ export async function GET(
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("projects")
-    .select("id, name, description, created_at, updated_at, archived_at")
+    .select(PROJECT_COLS)
     .eq("id", id)
     .maybeSingle();
 
@@ -47,6 +55,7 @@ export async function PATCH(
     name?: unknown;
     description?: unknown;
     archive?: unknown;
+    trackingLinksLocation?: unknown;
   } | null;
   if (!body) return Response.json({ error: "body required" }, { status: 400 });
 
@@ -64,6 +73,12 @@ export async function PATCH(
   if (typeof body.archive === "boolean") {
     patch.archived_at = body.archive ? new Date().toISOString() : null;
   }
+  if (typeof body.trackingLinksLocation === "string") {
+    if (!VALID_LOCATIONS.includes(body.trackingLinksLocation as TrackingLinksLocation)) {
+      return Response.json({ error: "invalid trackingLinksLocation" }, { status: 400 });
+    }
+    patch.tracking_links_location = body.trackingLinksLocation;
+  }
   if (Object.keys(patch).length === 0) {
     return Response.json({ error: "nothing to update" }, { status: 400 });
   }
@@ -73,7 +88,7 @@ export async function PATCH(
     .from("projects")
     .update(patch)
     .eq("id", id)
-    .select("id, name, description, created_at, updated_at, archived_at")
+    .select(PROJECT_COLS)
     .single();
 
   if (error || !data) {

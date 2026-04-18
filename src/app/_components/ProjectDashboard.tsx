@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { TrackingLinksPanel } from "./TrackingLinksPanel";
+
+type TrackingLinksLocation = "project_tab" | "platform_panel" | "both";
 
 type PlatformKey = "meta" | "tiktok" | "youtube" | "google-search" | "signage";
 
@@ -54,12 +57,37 @@ type MediaItem = {
   uploadedAt: number;
 };
 
-export function ProjectDashboard({ projectId }: { projectId: string }) {
+export function ProjectDashboard({
+  projectId,
+  projectName,
+  initialTrackingLinksLocation,
+}: {
+  projectId: string;
+  projectName: string;
+  initialTrackingLinksLocation: TrackingLinksLocation;
+}) {
   const [enabled, setEnabled] = useState<PlatformKey[] | null>(null);
   const [media, setMedia] = useState<MediaItem[] | null>(null);
   const [adding, setAdding] = useState(false);
   const [menuKey, setMenuKey] = useState<PlatformKey | null>(null);
   const [groupBy, setGroupBy] = useState<"platform" | "ratio">("platform");
+  const [trackingLocation, setTrackingLocation] = useState<TrackingLinksLocation>(
+    initialTrackingLinksLocation
+  );
+
+  const updateTrackingLocation = useCallback(
+    async (next: TrackingLinksLocation) => {
+      const prev = trackingLocation;
+      setTrackingLocation(next);
+      const res = await fetch(`/api/projects/${projectId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ trackingLinksLocation: next }),
+      });
+      if (!res.ok) setTrackingLocation(prev);
+    },
+    [projectId, trackingLocation]
+  );
 
   const fetchPlatforms = useCallback(async () => {
     const res = await fetch(`/api/projects/${projectId}/platforms`, { cache: "no-store" });
@@ -170,6 +198,54 @@ export function ProjectDashboard({ projectId }: { projectId: string }) {
         groupBy={groupBy}
         onGroupByChange={setGroupBy}
       />
+
+      <section>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-sm font-medium uppercase tracking-wide text-zinc-500">
+              Tracking links
+            </h2>
+            <p className="text-xs text-zinc-500 mt-1">
+              Choose where UTM builders should live for this project.
+            </p>
+          </div>
+          <div className="flex items-center gap-1 text-xs rounded-md border border-zinc-200 dark:border-zinc-800 p-0.5 bg-white dark:bg-zinc-900">
+            {(
+              [
+                { key: "project_tab" as const, label: "Here only" },
+                { key: "platform_panel" as const, label: "On platforms" },
+                { key: "both" as const, label: "Both" },
+              ]
+            ).map((opt) => (
+              <button
+                key={opt.key}
+                type="button"
+                onClick={() => updateTrackingLocation(opt.key)}
+                className={`px-2.5 py-1 rounded ${
+                  trackingLocation === opt.key
+                    ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
+                    : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {trackingLocation === "platform_panel" ? (
+          <div className="rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 bg-white/40 dark:bg-zinc-900/40 py-6 text-sm text-zinc-500 text-center">
+            Tracking links are shown on each platform page. Switch to <em>Here only</em> or
+            <em> Both</em> to manage them from the project dashboard.
+          </div>
+        ) : (
+          <TrackingLinksPanel
+            projectId={projectId}
+            projectName={projectName}
+            heading="All tracking links"
+          />
+        )}
+      </section>
 
       {adding && (
         <AddPlatformDialog

@@ -13,6 +13,48 @@ type Project = {
   archivedAt: number | null;
 };
 
+type PlatformKey = "meta" | "tiktok" | "youtube" | "google-search" | "signage";
+
+type ChannelMeta = {
+  key: PlatformKey;
+  name: string;
+  desc: string;
+  group: "digital" | "physical";
+};
+
+const CHANNELS: ChannelMeta[] = [
+  { key: "meta", name: "Meta", desc: "Facebook, Instagram, Reels", group: "digital" },
+  { key: "tiktok", name: "TikTok", desc: "In-Feed, TopView, Spark Ads", group: "digital" },
+  { key: "youtube", name: "YouTube", desc: "In-Stream, Shorts, Bumper", group: "digital" },
+  {
+    key: "google-search",
+    name: "Google Search",
+    desc: "Image assets & search terms",
+    group: "digital",
+  },
+  {
+    key: "signage",
+    name: "Physical signage",
+    desc: "Billboards, posters, flyers, banners, A-frames",
+    group: "physical",
+  },
+];
+
+const ALL_KEYS: PlatformKey[] = CHANNELS.map((c) => c.key);
+const DIGITAL_KEYS: PlatformKey[] = CHANNELS.filter((c) => c.group === "digital").map((c) => c.key);
+const PHYSICAL_KEYS: PlatformKey[] = CHANNELS.filter((c) => c.group === "physical").map((c) => c.key);
+
+type PresetKey = "all" | "digital" | "physical" | "custom";
+
+function detectPreset(selected: Set<PlatformKey>): PresetKey {
+  const sameSet = (keys: PlatformKey[]) =>
+    keys.length === selected.size && keys.every((k) => selected.has(k));
+  if (sameSet(ALL_KEYS)) return "all";
+  if (sameSet(DIGITAL_KEYS)) return "digital";
+  if (sameSet(PHYSICAL_KEYS)) return "physical";
+  return "custom";
+}
+
 const GRADIENTS = [
   "from-orange-400 via-pink-400 to-rose-500",
   "from-sky-400 via-indigo-500 to-violet-600",
@@ -59,14 +101,14 @@ export function ProjectsGrid() {
   }, [fetchProjects]);
 
   const onCreate = useCallback(
-    async (name: string) => {
+    async (input: { name: string; description: string | null; platforms: PlatformKey[] }) => {
       setBusy(true);
       setError(null);
       try {
         const res = await fetch("/api/projects", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name }),
+          body: JSON.stringify(input),
         });
         const body = (await res.json()) as { project?: Project; error?: string };
         if (!res.ok || !body.project) throw new Error(body.error ?? "failed to create");
@@ -306,9 +348,31 @@ function CreateDialog({
   busy: boolean;
   error: string | null;
   onClose: () => void;
-  onSubmit: (name: string) => void;
+  onSubmit: (input: { name: string; description: string | null; platforms: PlatformKey[] }) => void;
 }) {
   const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [selected, setSelected] = useState<Set<PlatformKey>>(() => new Set(ALL_KEYS));
+
+  const preset = detectPreset(selected);
+
+  const applyPreset = (p: Exclude<PresetKey, "custom">) => {
+    if (p === "all") setSelected(new Set(ALL_KEYS));
+    else if (p === "digital") setSelected(new Set(DIGITAL_KEYS));
+    else setSelected(new Set(PHYSICAL_KEYS));
+  };
+
+  const toggle = (key: PlatformKey) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const canSubmit = !busy && name.trim().length > 0 && selected.size > 0;
+
   return (
     <div
       role="dialog"
@@ -317,40 +381,149 @@ function CreateDialog({
       onClick={onClose}
     >
       <div
-        className="modal-surface w-full max-w-sm rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-5 shadow-[var(--shadow-lift)]"
+        className="modal-surface w-full max-w-xl rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-[var(--shadow-lift)] max-h-[90vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="font-semibold text-lg">New project</h2>
-        <p className="text-sm text-zinc-500 mt-1">
-          Projects hold all the media, tracking, and search terms for a single campaign.
-        </p>
+        <div className="px-5 pt-5">
+          <h2 className="font-semibold text-lg">New project</h2>
+          <p className="text-sm text-zinc-500 mt-1">
+            A project gathers every piece of collateral for one campaign — from social ads to
+            physical signage. Start broad or narrow; you can expand or contract at any time.
+          </p>
+        </div>
+
         <form
-          className="mt-4 space-y-3"
+          className="flex-1 overflow-y-auto px-5 py-4 space-y-5"
           onSubmit={(e) => {
             e.preventDefault();
-            if (!busy && name.trim()) onSubmit(name.trim());
+            if (!canSubmit) return;
+            onSubmit({
+              name: name.trim(),
+              description: description.trim() ? description.trim() : null,
+              platforms: Array.from(selected),
+            });
           }}
         >
-          <div>
-            <label className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-              Name
-            </label>
-            <input
-              autoFocus
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Q2 Spring Launch"
-              maxLength={120}
-              className="mt-1 w-full rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="sm:col-span-1">
+              <label className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+                Name
+              </label>
+              <input
+                autoFocus
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Q2 Spring Launch"
+                maxLength={120}
+                className="mt-1 w-full rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+                Description <span className="text-zinc-400 normal-case">(optional)</span>
+              </label>
+              <input
+                type="text"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Regional launch targeting Pacific Northwest, April–June"
+                maxLength={240}
+                className="mt-1 w-full rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
           </div>
+
+          <div>
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+                Channels
+              </label>
+              <span className="text-[11px] text-zinc-400">
+                {selected.size} selected
+              </span>
+            </div>
+
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {(
+                [
+                  { key: "all" as const, label: "Full campaign" },
+                  { key: "digital" as const, label: "Digital only" },
+                  { key: "physical" as const, label: "Physical only" },
+                ]
+              ).map((p) => (
+                <button
+                  key={p.key}
+                  type="button"
+                  onClick={() => applyPreset(p.key)}
+                  className={`text-xs rounded-full border px-3 py-1 transition-colors ${
+                    preset === p.key
+                      ? "bg-zinc-900 text-white border-zinc-900 dark:bg-zinc-100 dark:text-zinc-900 dark:border-zinc-100"
+                      : "border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:border-zinc-400 dark:hover:border-zinc-500"
+                  }`}
+                >
+                  {p.label}
+                </button>
+              ))}
+              {preset === "custom" && (
+                <span className="text-xs rounded-full border border-dashed border-zinc-300 dark:border-zinc-700 px-3 py-1 text-zinc-500">
+                  Custom
+                </span>
+              )}
+            </div>
+
+            <div className="mt-3 space-y-4">
+              {(["digital", "physical"] as const).map((group) => {
+                const items = CHANNELS.filter((c) => c.group === group);
+                return (
+                  <div key={group}>
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400 mb-1.5">
+                      {group === "digital" ? "Digital platforms" : "Physical collateral"}
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {items.map((c) => {
+                        const checked = selected.has(c.key);
+                        return (
+                          <label
+                            key={c.key}
+                            className={`flex items-start gap-3 rounded-lg border p-3 cursor-pointer transition-colors ${
+                              checked
+                                ? "border-zinc-900 dark:border-zinc-100 bg-zinc-50 dark:bg-zinc-800/60"
+                                : "border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600"
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              className="mt-0.5 accent-zinc-900 dark:accent-zinc-100"
+                              checked={checked}
+                              onChange={() => toggle(c.key)}
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-medium">{c.name}</div>
+                              <div className="text-xs text-zinc-500 mt-0.5">{c.desc}</div>
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
           {error && (
             <div className="rounded-md border border-red-300 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200 px-3 py-2 text-sm">
               {error}
             </div>
           )}
-          <div className="flex items-center justify-end gap-2 pt-1">
+        </form>
+
+        <div className="flex items-center justify-between gap-2 px-5 py-3 border-t border-zinc-200 dark:border-zinc-800">
+          <span className="text-[11px] text-zinc-500">
+            You can add or remove channels anytime from the project dashboard.
+          </span>
+          <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={onClose}
@@ -359,14 +532,22 @@ function CreateDialog({
               Cancel
             </button>
             <button
-              type="submit"
-              disabled={busy || !name.trim()}
+              type="button"
+              disabled={!canSubmit}
+              onClick={() => {
+                if (!canSubmit) return;
+                onSubmit({
+                  name: name.trim(),
+                  description: description.trim() ? description.trim() : null,
+                  platforms: Array.from(selected),
+                });
+              }}
               className="apple-tap rounded-md bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 px-4 py-2 text-sm font-medium disabled:opacity-50 hover:opacity-90"
             >
-              {busy ? "Creating…" : "Create"}
+              {busy ? "Creating…" : "Create project"}
             </button>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );

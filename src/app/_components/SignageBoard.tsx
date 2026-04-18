@@ -64,9 +64,11 @@ function trim(n: number): string {
 export function SignageBoard({
   projectId,
   projectName,
+  children,
 }: {
   projectId: string;
   projectName: string;
+  children?: React.ReactNode;
 }) {
   const [data, setData] = useState<SignagePayload | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -209,6 +211,7 @@ export function SignageBoard({
             ))}
           </div>
         )}
+        {children}
       </main>
 
       {addingFormat && (

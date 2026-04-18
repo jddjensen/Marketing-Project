@@ -1,4 +1,5 @@
 import { PlatformMediaBoard, type RatioConfig } from "@/app/_components/PlatformMediaBoard";
+import { TrackingLinksPanel } from "@/app/_components/TrackingLinksPanel";
 import { loadProject } from "@/lib/projects";
 
 const TIKTOK_RATIOS: RatioConfig[] = [
@@ -25,6 +26,9 @@ export default async function TikTokPage({
 }) {
   const { id } = await params;
   const project = await loadProject(id);
+  const showTracking =
+    project.trackingLinksLocation === "platform_panel" ||
+    project.trackingLinksLocation === "both";
   return (
     <PlatformMediaBoard
       projectId={id}
@@ -33,6 +37,12 @@ export default async function TikTokPage({
       title="TikTok — Campaign Media"
       subtitle="9:16 is king. Keep videos ≤60s (15–20s recommended) and under 500MB."
       ratios={TIKTOK_RATIOS}
-    />
+    >
+      {showTracking && (
+        <div className="mt-10">
+          <TrackingLinksPanel projectId={id} projectName={project.name} platform="tiktok" />
+        </div>
+      )}
+    </PlatformMediaBoard>
   );
 }

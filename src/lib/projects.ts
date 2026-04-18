@@ -1,18 +1,21 @@
 import { notFound } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
+export type TrackingLinksLocation = "project_tab" | "platform_panel" | "both";
+
 export type ProjectSummary = {
   id: string;
   name: string;
   description: string | null;
   archivedAt: number | null;
+  trackingLinksLocation: TrackingLinksLocation;
 };
 
 export async function loadProject(id: string): Promise<ProjectSummary> {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("projects")
-    .select("id, name, description, archived_at")
+    .select("id, name, description, archived_at, tracking_links_location")
     .eq("id", id)
     .maybeSingle();
   if (error || !data) notFound();
@@ -21,5 +24,7 @@ export async function loadProject(id: string): Promise<ProjectSummary> {
     name: data.name,
     description: data.description,
     archivedAt: data.archived_at ? new Date(data.archived_at).getTime() : null,
+    trackingLinksLocation:
+      (data.tracking_links_location as TrackingLinksLocation) ?? "both",
   };
 }

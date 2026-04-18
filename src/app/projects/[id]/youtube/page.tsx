@@ -1,4 +1,5 @@
 import { PlatformMediaBoard, type RatioConfig } from "@/app/_components/PlatformMediaBoard";
+import { TrackingLinksPanel } from "@/app/_components/TrackingLinksPanel";
 import { loadProject } from "@/lib/projects";
 
 const YOUTUBE_RATIOS: RatioConfig[] = [
@@ -30,6 +31,9 @@ export default async function YouTubePage({
 }) {
   const { id } = await params;
   const project = await loadProject(id);
+  const showTracking =
+    project.trackingLinksLocation === "platform_panel" ||
+    project.trackingLinksLocation === "both";
   return (
     <PlatformMediaBoard
       projectId={id}
@@ -38,6 +42,12 @@ export default async function YouTubePage({
       title="YouTube — Campaign Media"
       subtitle="16:9 for In-Stream; 9:16 for Shorts. Bumpers = 6s, Skippable In-Stream ≤3 min. 1080p recommended."
       ratios={YOUTUBE_RATIOS}
-    />
+    >
+      {showTracking && (
+        <div className="mt-10">
+          <TrackingLinksPanel projectId={id} projectName={project.name} platform="youtube" />
+        </div>
+      )}
+    </PlatformMediaBoard>
   );
 }

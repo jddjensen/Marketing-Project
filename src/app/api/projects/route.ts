@@ -8,7 +8,11 @@ type ProjectRow = {
   created_at: string;
   updated_at: string;
   archived_at: string | null;
+  tracking_links_location: string | null;
 };
+
+const PROJECT_COLS =
+  "id, name, description, created_at, updated_at, archived_at, tracking_links_location";
 
 function serialize(p: ProjectRow) {
   return {
@@ -18,6 +22,7 @@ function serialize(p: ProjectRow) {
     createdAt: new Date(p.created_at).getTime(),
     updatedAt: new Date(p.updated_at).getTime(),
     archivedAt: p.archived_at ? new Date(p.archived_at).getTime() : null,
+    trackingLinksLocation: (p.tracking_links_location as "project_tab" | "platform_panel" | "both") ?? "both",
   };
 }
 
@@ -26,7 +31,7 @@ export async function GET(request: NextRequest) {
   const supabase = await createSupabaseServerClient();
   let query = supabase
     .from("projects")
-    .select("id, name, description, created_at, updated_at, archived_at")
+    .select(PROJECT_COLS)
     .order("updated_at", { ascending: false });
   if (!includeArchived) query = query.is("archived_at", null);
   const { data, error } = await query;
@@ -34,10 +39,14 @@ export async function GET(request: NextRequest) {
   return Response.json({ projects: (data ?? []).map(serialize) });
 }
 
+const VALID_PLATFORMS = ["meta", "tiktok", "youtube", "google-search", "signage"] as const;
+type ValidPlatform = (typeof VALID_PLATFORMS)[number];
+
 export async function POST(request: NextRequest) {
   const body = (await request.json().catch(() => null)) as {
     name?: unknown;
     description?: unknown;
+    platforms?: unknown;
   } | null;
 
   if (!body || typeof body.name !== "string") {
@@ -50,6 +59,17 @@ export async function POST(request: NextRequest) {
   const description =
     typeof body.description === "string" ? body.description.trim() || null : null;
 
+  const validSet = new Set<string>(VALID_PLATFORMS);
+  let platforms: ValidPlatform[];
+  if (Array.isArray(body.platforms)) {
+    const filtered = body.platforms.filter(
+      (p): p is ValidPlatform => typeof p === "string" && validSet.has(p)
+    );
+    platforms = Array.from(new Set(filtered));
+  } else {
+    platforms = [...VALID_PLATFORMS];
+  }
+
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -58,19 +78,21 @@ export async function POST(request: NextRequest) {
   const { data, error } = await supabase
     .from("projects")
     .insert({ name, description, created_by: user?.id ?? null })
-    .select("id, name, description, created_at, updated_at, archived_at")
+    .select(PROJECT_COLS)
     .single();
 
   if (error || !data) {
     return Response.json({ error: error?.message ?? "failed to create" }, { status: 500 });
   }
 
-  const defaultPlatforms = ["meta", "tiktok", "youtube", "google-search", "signage"].map((platform) => ({
-    project_id: data.id,
-    platform,
-    added_by: user?.id ?? null,
-  }));
-  await supabase.from("project_platforms").insert(defaultPlatforms);
+  if (platforms.length > 0) {
+    const rows = platforms.map((platform) => ({
+      project_id: data.id,
+      platform,
+      added_by: user?.id ?? null,
+    }));
+    await supabase.from("project_platforms").insert(rows);
+  }
 
   return Response.json({ project: serialize(data) });
 }

@@ -1,4 +1,5 @@
 import { SignageBoard } from "@/app/_components/SignageBoard";
+import { TrackingLinksPanel } from "@/app/_components/TrackingLinksPanel";
 import { loadProject } from "@/lib/projects";
 
 export default async function SignagePage({
@@ -8,5 +9,16 @@ export default async function SignagePage({
 }) {
   const { id } = await params;
   const project = await loadProject(id);
-  return <SignageBoard projectId={id} projectName={project.name} />;
+  const showTracking =
+    project.trackingLinksLocation === "platform_panel" ||
+    project.trackingLinksLocation === "both";
+  return (
+    <SignageBoard projectId={id} projectName={project.name}>
+      {showTracking && (
+        <div className="mt-10">
+          <TrackingLinksPanel projectId={id} projectName={project.name} platform="signage" />
+        </div>
+      )}
+    </SignageBoard>
+  );
 }

@@ -1,4 +1,5 @@
 import { PlatformMediaBoard, type RatioConfig } from "@/app/_components/PlatformMediaBoard";
+import { TrackingLinksPanel } from "@/app/_components/TrackingLinksPanel";
 import { loadProject } from "@/lib/projects";
 
 const META_RATIOS: RatioConfig[] = [
@@ -14,6 +15,9 @@ export default async function MetaPage({
 }) {
   const { id } = await params;
   const project = await loadProject(id);
+  const showTracking =
+    project.trackingLinksLocation === "platform_panel" ||
+    project.trackingLinksLocation === "both";
   return (
     <PlatformMediaBoard
       projectId={id}
@@ -23,6 +27,12 @@ export default async function MetaPage({
       subtitle="Upload and review creative by aspect ratio. Add a destination URL per creative to track clicks."
       ratios={META_RATIOS}
       trackingEnabled
-    />
+    >
+      {showTracking && (
+        <div className="mt-10">
+          <TrackingLinksPanel projectId={id} projectName={project.name} platform="meta" />
+        </div>
+      )}
+    </PlatformMediaBoard>
   );
 }

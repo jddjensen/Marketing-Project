@@ -30,7 +30,11 @@ export default async function ProjectPage({
           <UserMenu />
         </div>
       </header>
-      <ProjectDashboard projectId={id} />
+      <ProjectDashboard
+        projectId={id}
+        projectName={project.name}
+        initialTrackingLinksLocation={project.trackingLinksLocation}
+      />
     </div>
   );
 }
