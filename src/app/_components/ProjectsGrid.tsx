@@ -131,7 +131,7 @@ export function ProjectsGrid() {
         <button
           type="button"
           onClick={() => setCreating(true)}
-          className="rounded-lg bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 px-3 py-1.5 text-sm font-medium hover:opacity-90"
+          className="apple-tap rounded-lg bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 px-3 py-1.5 text-sm font-medium hover:opacity-90"
         >
           + New project
         </button>
@@ -158,7 +158,7 @@ export function ProjectsGrid() {
             <button
               type="button"
               onClick={() => setCreating(true)}
-              className="rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 bg-white/40 dark:bg-zinc-900/40 hover:border-zinc-400 dark:hover:border-zinc-600 transition-colors flex flex-col items-center justify-center aspect-[4/3] text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+              className="apple-tap rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 bg-white/40 dark:bg-zinc-900/40 hover:border-zinc-400 dark:hover:border-zinc-600 flex flex-col items-center justify-center aspect-[4/3] text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
             >
               <span className="text-3xl mb-2">+</span>
               <span className="text-sm font-medium">New project</span>
@@ -232,7 +232,7 @@ function ProjectCard({
     <div className="relative group">
       <Link
         href={`/projects/${project.id}`}
-        className="block rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-zinc-400 dark:hover:border-zinc-600 transition-colors"
+        className="apple-lift block rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-zinc-400 dark:hover:border-zinc-600 shadow-[var(--shadow-soft)]"
       >
         <div
           className={`aspect-[4/3] bg-gradient-to-br ${hashGradient(project.id)} p-4 flex flex-col justify-end`}
@@ -313,11 +313,11 @@ function CreateDialog({
     <div
       role="dialog"
       aria-modal="true"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+      className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-sm rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-5 shadow-xl"
+        className="modal-surface w-full max-w-sm rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-5 shadow-[var(--shadow-lift)]"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="font-semibold text-lg">New project</h2>
@@ -361,7 +361,7 @@ function CreateDialog({
             <button
               type="submit"
               disabled={busy || !name.trim()}
-              className="rounded-md bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 px-4 py-2 text-sm font-medium disabled:opacity-50 hover:opacity-90"
+              className="apple-tap rounded-md bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 px-4 py-2 text-sm font-medium disabled:opacity-50 hover:opacity-90"
             >
               {busy ? "Creating…" : "Create"}
             </button>
@@ -383,7 +383,7 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
       <button
         type="button"
         onClick={onCreate}
-        className="mt-4 rounded-lg bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 px-4 py-2 text-sm font-medium hover:opacity-90"
+        className="apple-tap mt-4 apple-tap rounded-lg bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 px-4 py-2 text-sm font-medium hover:opacity-90"
       >
         + New project
       </button>

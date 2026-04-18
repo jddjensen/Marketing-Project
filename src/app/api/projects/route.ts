@@ -64,5 +64,13 @@ export async function POST(request: NextRequest) {
   if (error || !data) {
     return Response.json({ error: error?.message ?? "failed to create" }, { status: 500 });
   }
+
+  const defaultPlatforms = ["meta", "tiktok", "youtube", "google-search", "signage"].map((platform) => ({
+    project_id: data.id,
+    platform,
+    added_by: user?.id ?? null,
+  }));
+  await supabase.from("project_platforms").insert(defaultPlatforms);
+
   return Response.json({ project: serialize(data) });
 }

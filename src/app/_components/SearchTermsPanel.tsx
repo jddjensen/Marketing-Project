@@ -121,7 +121,7 @@ export function SearchTermsPanel({ platform, projectId }: { platform: string; pr
         <button
           type="submit"
           disabled={submitting || input.trim().length === 0}
-          className="self-start rounded-lg bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 px-4 py-2 text-sm font-medium disabled:opacity-50 hover:opacity-90"
+          className="self-start apple-tap rounded-lg bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 px-4 py-2 text-sm font-medium disabled:opacity-50 hover:opacity-90"
         >
           {submitting ? "Adding…" : "Add"}
         </button>

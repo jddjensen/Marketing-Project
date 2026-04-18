@@ -57,7 +57,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
         </div>
         <form
           onSubmit={submit}
-          className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-6 space-y-4"
+          className="modal-surface rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-6 space-y-4 shadow-[var(--shadow-soft)]"
         >
           <div>
             <label className="text-xs font-medium uppercase tracking-wide text-zinc-500">Email</label>
@@ -98,7 +98,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
           <button
             type="submit"
             disabled={submitting}
-            className="w-full rounded-md bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 px-4 py-2 text-sm font-medium disabled:opacity-60 hover:opacity-90"
+            className="w-full apple-tap rounded-md bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 px-4 py-2 text-sm font-medium disabled:opacity-60 hover:opacity-90"
           >
             {submitting ? "…" : cta}
           </button>

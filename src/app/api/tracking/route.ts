@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import crypto from "crypto";
 
-const VALID_PLATFORMS = new Set(["meta", "tiktok", "youtube", "google-search"]);
+const VALID_PLATFORMS = new Set(["meta", "tiktok", "youtube", "google-search", "signage"]);
 
 function parseScope(request: NextRequest) {
   const platform = request.nextUrl.searchParams.get("platform");
