@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 
 type Term = { id: string; value: string; addedAt: number };
 
-export function SearchTermsPanel({ platform }: { platform: string }) {
+export function SearchTermsPanel({ platform, projectId }: { platform: string; projectId: string }) {
   const [terms, setTerms] = useState<Term[]>([]);
   const [loading, setLoading] = useState(true);
   const [input, setInput] = useState("");
@@ -13,11 +13,14 @@ export function SearchTermsPanel({ platform }: { platform: string }) {
   const [notice, setNotice] = useState<string | null>(null);
 
   const fetchTerms = useCallback(async () => {
-    const res = await fetch(`/api/terms?platform=${platform}`, { cache: "no-store" });
+    const res = await fetch(
+      `/api/terms?platform=${platform}&projectId=${projectId}`,
+      { cache: "no-store" }
+    );
     const data = (await res.json()) as { terms?: Term[] };
     setTerms(data.terms ?? []);
     setLoading(false);
-  }, [platform]);
+  }, [platform, projectId]);
 
   useEffect(() => {
     fetchTerms();
@@ -35,7 +38,7 @@ export function SearchTermsPanel({ platform }: { platform: string }) {
       setError(null);
       setNotice(null);
       try {
-        const res = await fetch(`/api/terms?platform=${platform}`, {
+        const res = await fetch(`/api/terms?platform=${platform}&projectId=${projectId}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ values }),
@@ -61,15 +64,16 @@ export function SearchTermsPanel({ platform }: { platform: string }) {
         setSubmitting(false);
       }
     },
-    [fetchTerms, platform]
+    [fetchTerms, platform, projectId]
   );
 
   const removeTerm = useCallback(
     async (id: string) => {
       setError(null);
-      const res = await fetch(`/api/terms?platform=${platform}&id=${encodeURIComponent(id)}`, {
-        method: "DELETE",
-      });
+      const res = await fetch(
+        `/api/terms?platform=${platform}&projectId=${projectId}&id=${encodeURIComponent(id)}`,
+        { method: "DELETE" }
+      );
       if (!res.ok) {
         const body = (await res.json().catch(() => ({}))) as { error?: string };
         setError(body.error ?? "failed to remove");
@@ -77,7 +81,7 @@ export function SearchTermsPanel({ platform }: { platform: string }) {
       }
       setTerms((prev) => prev.filter((t) => t.id !== id));
     },
-    [platform]
+    [platform, projectId]
   );
 
   return (

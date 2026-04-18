@@ -1,21 +1,36 @@
 import { NextRequest } from "next/server";
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import crypto from "crypto";
 
 const VALID_PLATFORMS = new Set(["meta", "tiktok", "youtube", "google-search"]);
 const RATIO_PATTERN = /^[0-9]+(\.[0-9]+)?x[0-9]+(\.[0-9]+)?$/;
 const VALID_MIME = /^(image|video)\//;
 const MAX_BYTES = 500 * 1024 * 1024;
+const BUCKET = "creatives";
+
+function extFromName(name: string): string {
+  const i = name.lastIndexOf(".");
+  return i >= 0 ? name.slice(i) : "";
+}
 
 export async function POST(request: NextRequest) {
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return Response.json({ error: "unauthorized" }, { status: 401 });
+
   const formData = await request.formData();
   const file = formData.get("file");
   const ratio = formData.get("ratio");
   const platform = formData.get("platform");
+  const projectId = formData.get("projectId");
 
   if (!(file instanceof File)) {
     return Response.json({ error: "file is required" }, { status: 400 });
+  }
+  if (typeof projectId !== "string" || projectId.length === 0) {
+    return Response.json({ error: "projectId required" }, { status: 400 });
   }
   if (typeof platform !== "string" || !VALID_PLATFORMS.has(platform)) {
     return Response.json({ error: "invalid platform" }, { status: 400 });
@@ -30,19 +45,51 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: "file too large (max 500MB)" }, { status: 400 });
   }
 
-  const ext = path.extname(file.name) || "";
+  const kind = file.type.startsWith("image/") ? "image" : "video";
+  const ext = extFromName(file.name);
   const safeName = `${Date.now()}-${crypto.randomBytes(6).toString("hex")}${ext}`;
-  const dir = path.join(process.cwd(), "public", "uploads", platform, ratio);
-  await mkdir(dir, { recursive: true });
+  const storagePath = `${projectId}/${platform}/${ratio}/${safeName}`;
 
-  const buffer = Buffer.from(await file.arrayBuffer());
-  await writeFile(path.join(dir, safeName), buffer);
+  const bytes = Buffer.from(await file.arrayBuffer());
+  const { error: uploadError } = await supabase.storage
+    .from(BUCKET)
+    .upload(storagePath, bytes, { contentType: file.type, upsert: false });
+  if (uploadError) {
+    return Response.json({ error: uploadError.message }, { status: 500 });
+  }
+
+  const { data: inserted, error: insertError } = await supabase
+    .from("media")
+    .insert({
+      project_id: projectId,
+      platform,
+      ratio,
+      storage_path: storagePath,
+      original_name: file.name,
+      mime_type: file.type,
+      size_bytes: file.size,
+      kind,
+      uploaded_by: user.id,
+    })
+    .select("id, platform, ratio, storage_path, original_name, kind, uploaded_at")
+    .single();
+
+  if (insertError || !inserted) {
+    await supabase.storage.from(BUCKET).remove([storagePath]);
+    return Response.json(
+      { error: insertError?.message ?? "failed to save media record" },
+      { status: 500 }
+    );
+  }
+
+  const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(storagePath);
 
   return Response.json({
-    url: `/uploads/${platform}/${ratio}/${safeName}`,
-    name: safeName,
-    type: file.type,
-    ratio,
-    platform,
+    id: inserted.id,
+    url: pub.publicUrl,
+    name: inserted.original_name,
+    kind: inserted.kind,
+    ratio: inserted.ratio,
+    platform: inserted.platform,
   });
 }

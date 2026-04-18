@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { UserMenu } from "./UserMenu";
 
 export type Ratio = string;
 
@@ -14,6 +15,7 @@ export type RatioConfig = {
 };
 
 type MediaItem = {
+  id: string;
   url: string;
   name: string;
   kind: "image" | "video";
@@ -26,13 +28,15 @@ type MediaMap = Record<Ratio, MediaItem[]>;
 type TrackingItem = {
   id: string;
   platform: string;
-  mediaKey: string;
+  mediaId: string;
   url: string;
   clicks: number;
   createdAt: number;
 };
 
 export function PlatformMediaBoard({
+  projectId,
+  projectName,
   platform,
   title,
   subtitle,
@@ -40,6 +44,8 @@ export function PlatformMediaBoard({
   trackingEnabled = false,
   children,
 }: {
+  projectId: string;
+  projectName: string;
   platform: string;
   title: string;
   subtitle: string;
@@ -54,21 +60,27 @@ export function PlatformMediaBoard({
   const [tracking, setTracking] = useState<Record<string, TrackingItem>>({});
 
   const fetchMedia = useCallback(async () => {
-    const res = await fetch(`/api/media?platform=${platform}`, { cache: "no-store" });
+    const res = await fetch(
+      `/api/media?platform=${platform}&projectId=${projectId}`,
+      { cache: "no-store" }
+    );
     const data = (await res.json()) as MediaMap;
     setMedia(data);
     setLoading(false);
-  }, [platform]);
+  }, [platform, projectId]);
 
   const fetchTracking = useCallback(async () => {
     if (!trackingEnabled) return;
-    const res = await fetch(`/api/tracking?platform=${platform}`, { cache: "no-store" });
+    const res = await fetch(
+      `/api/tracking?platform=${platform}&projectId=${projectId}`,
+      { cache: "no-store" }
+    );
     if (!res.ok) return;
     const data = (await res.json()) as { items: TrackingItem[] };
     const map: Record<string, TrackingItem> = {};
-    for (const item of data.items) map[item.mediaKey] = item;
+    for (const item of data.items) map[item.mediaId] = item;
     setTracking(map);
-  }, [platform, trackingEnabled]);
+  }, [platform, projectId, trackingEnabled]);
 
   useEffect(() => {
     fetchMedia();
@@ -84,6 +96,7 @@ export function PlatformMediaBoard({
         fd.append("file", file);
         fd.append("ratio", ratio);
         fd.append("platform", platform);
+        fd.append("projectId", projectId);
         const res = await fetch("/api/upload", { method: "POST", body: fd });
         if (!res.ok) {
           const body = (await res.json().catch(() => ({}))) as { error?: string };
@@ -96,40 +109,40 @@ export function PlatformMediaBoard({
         setUploading(null);
       }
     },
-    [fetchMedia, platform]
+    [fetchMedia, platform, projectId]
   );
 
   const saveTracking = useCallback(
-    async (mediaKey: string, url: string) => {
-      const res = await fetch(`/api/tracking?platform=${platform}`, {
+    async (mediaId: string, url: string) => {
+      const res = await fetch(`/api/tracking?platform=${platform}&projectId=${projectId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mediaKey, url }),
+        body: JSON.stringify({ mediaId, url }),
       });
       if (!res.ok) {
         const body = (await res.json().catch(() => ({}))) as { error?: string };
         throw new Error(body.error ?? "failed to save url");
       }
       const body = (await res.json()) as { item: TrackingItem };
-      setTracking((prev) => ({ ...prev, [mediaKey]: body.item }));
+      setTracking((prev) => ({ ...prev, [mediaId]: body.item }));
     },
-    [platform]
+    [platform, projectId]
   );
 
   const removeTracking = useCallback(
-    async (mediaKey: string) => {
+    async (mediaId: string) => {
       const res = await fetch(
-        `/api/tracking?platform=${platform}&mediaKey=${encodeURIComponent(mediaKey)}`,
+        `/api/tracking?platform=${platform}&projectId=${projectId}&mediaId=${encodeURIComponent(mediaId)}`,
         { method: "DELETE" }
       );
       if (!res.ok) return;
       setTracking((prev) => {
         const next = { ...prev };
-        delete next[mediaKey];
+        delete next[mediaId];
         return next;
       });
     },
-    [platform]
+    [platform, projectId]
   );
 
   return (
@@ -137,21 +150,27 @@ export function PlatformMediaBoard({
       <header className="border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
         <div className="max-w-7xl mx-auto px-6 py-5 flex items-center justify-between">
           <div>
-            <Link href="/" className="text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100">
-              ← Campaigns
+            <Link
+              href={`/projects/${projectId}`}
+              className="text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+            >
+              ← {projectName}
             </Link>
             <h1 className="text-2xl font-semibold mt-1">{title}</h1>
             <p className="text-sm text-zinc-500 mt-1">{subtitle}</p>
           </div>
-          {trackingEnabled && (
-            <button
-              type="button"
-              onClick={fetchTracking}
-              className="text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 border border-zinc-200 dark:border-zinc-800 rounded-md px-2 py-1"
-            >
-              Refresh clicks
-            </button>
-          )}
+          <div className="flex items-center gap-3">
+            {trackingEnabled && (
+              <button
+                type="button"
+                onClick={fetchTracking}
+                className="text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 border border-zinc-200 dark:border-zinc-800 rounded-md px-2 py-1"
+              >
+                Refresh clicks
+              </button>
+            )}
+            <UserMenu />
+          </div>
         </div>
       </header>
 
@@ -280,11 +299,11 @@ function RatioColumn({
         ) : (
           items.map((item) => (
             <MediaTile
-              key={item.url}
+              key={item.id}
               item={item}
               aspect={config.aspect}
               trackingEnabled={trackingEnabled}
-              tracking={tracking[item.url]}
+              tracking={tracking[item.id]}
               onSaveTracking={onSaveTracking}
               onRemoveTracking={onRemoveTracking}
             />
@@ -307,8 +326,8 @@ function MediaTile({
   aspect: string;
   trackingEnabled: boolean;
   tracking: TrackingItem | undefined;
-  onSaveTracking: (mediaKey: string, url: string) => Promise<void>;
-  onRemoveTracking: (mediaKey: string) => Promise<void>;
+  onSaveTracking: (mediaId: string, url: string) => Promise<void>;
+  onRemoveTracking: (mediaId: string) => Promise<void>;
 }) {
   return (
     <figure className="group flex flex-col gap-2">
@@ -327,7 +346,7 @@ function MediaTile({
       </figcaption>
       {trackingEnabled && (
         <TrackingControls
-          mediaKey={item.url}
+          mediaId={item.id}
           tracking={tracking}
           onSave={onSaveTracking}
           onRemove={onRemoveTracking}
@@ -338,15 +357,15 @@ function MediaTile({
 }
 
 function TrackingControls({
-  mediaKey,
+  mediaId,
   tracking,
   onSave,
   onRemove,
 }: {
-  mediaKey: string;
+  mediaId: string;
   tracking: TrackingItem | undefined;
-  onSave: (mediaKey: string, url: string) => Promise<void>;
-  onRemove: (mediaKey: string) => Promise<void>;
+  onSave: (mediaId: string, url: string) => Promise<void>;
+  onRemove: (mediaId: string) => Promise<void>;
 }) {
   const [editing, setEditing] = useState(!tracking);
   const [url, setUrl] = useState(tracking?.url ?? "");
@@ -363,7 +382,7 @@ function TrackingControls({
     setErr(null);
     setBusy(true);
     try {
-      await onSave(mediaKey, url.trim());
+      await onSave(mediaId, url.trim());
       setEditing(false);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "failed to save");
@@ -471,7 +490,7 @@ function TrackingControls({
         </button>
         <button
           type="button"
-          onClick={() => onRemove(mediaKey)}
+          onClick={() => onRemove(mediaId)}
           className="text-zinc-500 hover:text-red-600 dark:hover:text-red-400"
         >
           Remove
