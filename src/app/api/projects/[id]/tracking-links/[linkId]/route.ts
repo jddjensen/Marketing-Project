@@ -15,12 +15,14 @@ type LinkRow = {
   utm_campaign: string | null;
   utm_term: string | null;
   utm_content: string | null;
+  qr_enabled: boolean;
+  qr_generated_at: string | null;
   created_at: string;
   updated_at: string;
 };
 
 const LINK_COLS =
-  "id, project_id, url, label, platform, utm_source, utm_medium, utm_campaign, utm_term, utm_content, created_at, updated_at";
+  "id, project_id, url, label, platform, utm_source, utm_medium, utm_campaign, utm_term, utm_content, qr_enabled, qr_generated_at, created_at, updated_at";
 
 function serialize(r: LinkRow) {
   return {
@@ -34,6 +36,8 @@ function serialize(r: LinkRow) {
     utmCampaign: r.utm_campaign,
     utmTerm: r.utm_term,
     utmContent: r.utm_content,
+    qrEnabled: r.qr_enabled,
+    qrGeneratedAt: r.qr_generated_at ? new Date(r.qr_generated_at).getTime() : null,
     createdAt: new Date(r.created_at).getTime(),
     updatedAt: new Date(r.updated_at).getTime(),
   };
@@ -61,6 +65,7 @@ export async function PATCH(
     utmCampaign?: unknown;
     utmTerm?: unknown;
     utmContent?: unknown;
+    qrEnabled?: unknown;
   } | null;
   if (!body) return Response.json({ error: "body required" }, { status: 400 });
 
@@ -96,6 +101,11 @@ export async function PATCH(
   for (const [apiKey, dbKey] of fields) {
     const v = normalizeOptionalString(body[apiKey]);
     if (v !== undefined) patch[dbKey] = v;
+  }
+
+  if (typeof body.qrEnabled === "boolean") {
+    patch.qr_enabled = body.qrEnabled;
+    patch.qr_generated_at = body.qrEnabled ? new Date().toISOString() : null;
   }
 
   if (Object.keys(patch).length === 0) {
