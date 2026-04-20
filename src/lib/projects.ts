@@ -19,7 +19,7 @@ export async function loadProject(id: string): Promise<ProjectSummary> {
   const { data, error } = await supabase
     .from("projects")
     .select(
-      "id, name, description, archived_at, tracking_links_location, ga4_property_id, brief_objective, brief_audience, brief_offer, brief_cta, brief_kpi_targets, brief_launch_start_date, brief_launch_end_date, brief_owner, brief_budget, brief_success_definition"
+      "id, name, description, archived_at, tracking_links_location, ga4_property_id, brief_objective, brief_audience, brief_offer, brief_cta, brief_kpi_targets, brief_launch_start_date, brief_launch_end_date, brief_owner, brief_budget, brief_success_definition, brief_event, brief_exhibit"
     )
     .eq("id", id)
     .maybeSingle();

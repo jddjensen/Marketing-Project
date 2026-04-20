@@ -21,6 +21,8 @@ type ProjectRow = {
   brief_owner: string | null;
   brief_budget: string | number | null;
   brief_success_definition: string | null;
+  brief_event: string | null;
+  brief_exhibit: string | null;
 };
 
 const VALID_LOCATIONS = ["project_tab", "platform_panel", "both"] as const;
@@ -41,7 +43,7 @@ function serialize(p: ProjectRow) {
 }
 
 const PROJECT_COLS =
-  "id, name, description, created_at, updated_at, archived_at, tracking_links_location, ga4_property_id, brief_objective, brief_audience, brief_offer, brief_cta, brief_kpi_targets, brief_launch_start_date, brief_launch_end_date, brief_owner, brief_budget, brief_success_definition";
+  "id, name, description, created_at, updated_at, archived_at, tracking_links_location, ga4_property_id, brief_objective, brief_audience, brief_offer, brief_cta, brief_kpi_targets, brief_launch_start_date, brief_launch_end_date, brief_owner, brief_budget, brief_success_definition, brief_event, brief_exhibit";
 
 function normalizeOptionalText(
   value: unknown,
@@ -142,6 +144,8 @@ export async function PATCH(
       owner?: unknown;
       budget?: unknown;
       successDefinition?: unknown;
+      event?: unknown;
+      exhibit?: unknown;
     } | null;
   } | null;
   if (!body) return Response.json({ error: "body required" }, { status: 400 });
@@ -253,6 +257,20 @@ export async function PATCH(
     if (successDefinition.value !== undefined) {
       patch.brief_success_definition = successDefinition.value;
     }
+
+    const event = normalizeOptionalText(brief.event, {
+      field: "event",
+      maxLength: 120,
+    });
+    if (event.error) return Response.json({ error: event.error }, { status: 400 });
+    if (event.value !== undefined) patch.brief_event = event.value;
+
+    const exhibit = normalizeOptionalText(brief.exhibit, {
+      field: "exhibit",
+      maxLength: 120,
+    });
+    if (exhibit.error) return Response.json({ error: exhibit.error }, { status: 400 });
+    if (exhibit.value !== undefined) patch.brief_exhibit = exhibit.value;
 
     const nextStart =
       launchStartDate.value !== undefined

@@ -9,6 +9,8 @@ export type CampaignBrief = {
   owner: string | null;
   budget: number | null;
   successDefinition: string | null;
+  event: string | null;
+  exhibit: string | null;
 };
 
 type CampaignBriefSource = {
@@ -22,6 +24,8 @@ type CampaignBriefSource = {
   brief_owner: string | null;
   brief_budget: string | number | null;
   brief_success_definition: string | null;
+  brief_event: string | null;
+  brief_exhibit: string | null;
 };
 
 export const EMPTY_CAMPAIGN_BRIEF: CampaignBrief = {
@@ -35,6 +39,8 @@ export const EMPTY_CAMPAIGN_BRIEF: CampaignBrief = {
   owner: null,
   budget: null,
   successDefinition: null,
+  event: null,
+  exhibit: null,
 };
 
 function parseBudget(value: string | number | null) {
@@ -55,5 +61,29 @@ export function serializeCampaignBrief(source: CampaignBriefSource): CampaignBri
     owner: source.brief_owner,
     budget: parseBudget(source.brief_budget),
     successDefinition: source.brief_success_definition,
+    event: source.brief_event,
+    exhibit: source.brief_exhibit,
   };
+}
+
+export const SEASON_KEYS = ["winter", "spring", "summer", "fall"] as const;
+export type SeasonKey = (typeof SEASON_KEYS)[number];
+
+export const SEASON_LABELS: Record<SeasonKey, string> = {
+  winter: "Winter",
+  spring: "Spring",
+  summer: "Summer",
+  fall: "Fall",
+};
+
+// Meteorological seasons (northern hemisphere): Dec–Feb winter, Mar–May spring,
+// Jun–Aug summer, Sep–Nov fall. Input is an ISO yyyy-mm-dd string.
+export function seasonForDate(isoDate: string | null): SeasonKey | null {
+  if (!isoDate || !/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return null;
+  const month = Number(isoDate.slice(5, 7));
+  if (!Number.isFinite(month) || month < 1 || month > 12) return null;
+  if (month === 12 || month <= 2) return "winter";
+  if (month <= 5) return "spring";
+  if (month <= 8) return "summer";
+  return "fall";
 }

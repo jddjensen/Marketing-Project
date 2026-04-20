@@ -14,6 +14,8 @@ type CampaignBriefDraft = {
   owner: string;
   budget: string;
   successDefinition: string;
+  event: string;
+  exhibit: string;
 };
 
 function toDraft(brief: CampaignBrief): CampaignBriefDraft {
@@ -28,6 +30,8 @@ function toDraft(brief: CampaignBrief): CampaignBriefDraft {
     owner: brief.owner ?? "",
     budget: brief.budget === null ? "" : String(brief.budget),
     successDefinition: brief.successDefinition ?? "",
+    event: brief.event ?? "",
+    exhibit: brief.exhibit ?? "",
   };
 }
 
@@ -42,7 +46,9 @@ function hasDraftChanges(a: CampaignBriefDraft, b: CampaignBriefDraft) {
     a.launchEndDate !== b.launchEndDate ||
     a.owner !== b.owner ||
     a.budget !== b.budget ||
-    a.successDefinition !== b.successDefinition
+    a.successDefinition !== b.successDefinition ||
+    a.event !== b.event ||
+    a.exhibit !== b.exhibit
   );
 }
 
@@ -98,6 +104,8 @@ export function CampaignBriefPanel({
           owner: draft.owner,
           budget: draft.budget,
           successDefinition: draft.successDefinition,
+          event: draft.event,
+          exhibit: draft.exhibit,
         },
       }),
     });
@@ -242,6 +250,20 @@ export function CampaignBriefPanel({
               type="date"
               value={draft.launchEndDate}
               onChange={(value) => updateField("launchEndDate", value)}
+            />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Field
+              label="Event"
+              value={draft.event}
+              onChange={(value) => updateField("event", value)}
+              placeholder="Spring Break, Shark Week, Gala"
+            />
+            <Field
+              label="Exhibit"
+              value={draft.exhibit}
+              onChange={(value) => updateField("exhibit", value)}
+              placeholder="Penguin Encounter, Kelp Forest"
             />
           </div>
         </div>
