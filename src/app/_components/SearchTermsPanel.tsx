@@ -23,7 +23,11 @@ export function SearchTermsPanel({ platform, projectId }: { platform: string; pr
   }, [platform, projectId]);
 
   useEffect(() => {
-    fetchTerms();
+    async function loadTerms() {
+      await fetchTerms();
+    }
+
+    void loadTerms();
   }, [fetchTerms]);
 
   const addTerms = useCallback(

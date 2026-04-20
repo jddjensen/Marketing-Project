@@ -1,7 +1,21 @@
 import { NextRequest } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-const VALID_PLATFORMS = ["meta", "tiktok", "youtube", "google-search", "signage"] as const;
+const VALID_PLATFORMS = [
+  "meta",
+  "tiktok",
+  "youtube",
+  "google-search",
+  "website",
+  "email",
+  "sms",
+  "internal-messaging",
+  "digital-signage",
+  "ott",
+  "pr",
+  "signage",
+  "flyers",
+] as const;
 type ValidPlatform = (typeof VALID_PLATFORMS)[number];
 
 type LinkRow = {

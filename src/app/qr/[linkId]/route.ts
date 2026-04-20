@@ -39,6 +39,7 @@ export async function GET(
 
   const target = buildUtmUrl(
     {
+      id: data.id,
       url: data.url,
       platform: data.platform as PlatformKey | null,
       utmSource: data.utm_source,

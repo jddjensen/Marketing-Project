@@ -10,11 +10,19 @@ import {
 } from "@/lib/utm";
 
 const PLATFORM_LABEL: Record<PlatformKey, string> = {
+  website: "Website",
+  email: "Email",
+  sms: "SMS",
+  "internal-messaging": "Internal Messaging",
+  "digital-signage": "Digital Signage",
+  ott: "OTT",
+  pr: "PR",
   meta: "Meta",
   tiktok: "TikTok",
   youtube: "YouTube",
   "google-search": "Google Search",
-  signage: "Signage",
+  signage: "Physical Signage",
+  flyers: "Flyers",
 };
 
 type TrackingLink = {
@@ -34,6 +42,26 @@ type TrackingLink = {
   updatedAt: number;
 };
 
+type AnalyticsSettings = {
+  ga4PropertyId: string | null;
+  status: "ready" | "property_missing" | "credentials_missing";
+  credentialsConfigured: boolean;
+};
+
+type AnalyticsSummary = {
+  sessions: number;
+  engagedSessions: number;
+  views: number;
+  keyEvents: number;
+  trend: Array<{
+    date: string;
+    sessions: number;
+    views: number;
+    keyEvents: number;
+  }>;
+  lastSyncedAt: number;
+};
+
 export function TrackingLinksPanel({
   projectId,
   projectName,
@@ -46,25 +74,41 @@ export function TrackingLinksPanel({
   heading?: string;
 }) {
   const [links, setLinks] = useState<TrackingLink[] | null>(null);
+  const [analytics, setAnalytics] = useState<AnalyticsSettings | null>(null);
+  const [ga4PropertyDraft, setGa4PropertyDraft] = useState("");
+  const [savingAnalytics, setSavingAnalytics] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [qrFor, setQrFor] = useState<{ id: string; label: string; url: string } | null>(null);
 
-  const fetchLinks = useCallback(async () => {
-    const res = await fetch(`/api/projects/${projectId}/tracking-links`, { cache: "no-store" });
-    const body = (await res.json()) as { links?: TrackingLink[]; error?: string };
-    if (!res.ok) {
-      setError(body.error ?? "failed to load");
-      setLinks([]);
-      return;
-    }
-    setLinks(body.links ?? []);
-  }, [projectId]);
-
   useEffect(() => {
-    fetchLinks();
-  }, [fetchLinks]);
+    let active = true;
+
+    async function loadLinks() {
+      const res = await fetch(`/api/projects/${projectId}/tracking-links`, { cache: "no-store" });
+      const body = (await res.json()) as {
+        links?: TrackingLink[];
+        analytics?: AnalyticsSettings;
+        error?: string;
+      };
+      if (!active) return;
+      if (!res.ok) {
+        setError(body.error ?? "failed to load");
+        setLinks([]);
+        return;
+      }
+      setLinks(body.links ?? []);
+      setAnalytics(body.analytics ?? null);
+      setGa4PropertyDraft(body.analytics?.ga4PropertyId ?? "");
+    }
+
+    void loadLinks();
+
+    return () => {
+      active = false;
+    };
+  }, [projectId]);
 
   const visible = useMemo(() => {
     if (!links) return [];
@@ -143,6 +187,45 @@ export function TrackingLinksPanel({
     }
   }, []);
 
+  const saveGa4Property = useCallback(async () => {
+    const trimmed = ga4PropertyDraft.trim();
+    if (trimmed && !/^[0-9]{5,20}$/.test(trimmed)) {
+      setError("GA4 property ID must be numeric.");
+      return;
+    }
+
+    setSavingAnalytics(true);
+    setError(null);
+    const res = await fetch(`/api/projects/${projectId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ga4PropertyId: trimmed || null }),
+    });
+    const body = (await res.json().catch(() => null)) as
+      | { error?: string; project?: { ga4PropertyId?: string | null } }
+      | null;
+
+    setSavingAnalytics(false);
+    if (!res.ok) {
+      setError(body?.error ?? "failed to save Google Analytics settings");
+      return;
+    }
+
+    setAnalytics((prev) => {
+      const credentialsConfigured = prev?.credentialsConfigured ?? false;
+      const ga4PropertyId = body?.project?.ga4PropertyId ?? (trimmed || null);
+      return {
+        ga4PropertyId,
+        credentialsConfigured,
+        status: credentialsConfigured
+          ? ga4PropertyId
+            ? "ready"
+            : "property_missing"
+          : "credentials_missing",
+      };
+    });
+  }, [ga4PropertyDraft, projectId]);
+
   return (
     <section>
       <div className="flex items-center justify-between mb-4">
@@ -152,8 +235,8 @@ export function TrackingLinksPanel({
           </h2>
           <p className="text-xs text-zinc-500 mt-1">
             {platform
-              ? `UTM-tagged URLs for ${PLATFORM_LABEL[platform]}. Copy and paste into the platform.`
-              : "Build UTM-tagged destination URLs for every platform. Copy each row to paste into the ad platform."}
+              ? `UTM-tagged URLs for ${PLATFORM_LABEL[platform]}. Copy and paste into the channel.`
+              : "Build UTM-tagged destination URLs for every channel. Copy each row to paste wherever that communication lives."}
           </p>
         </div>
         <button
@@ -171,6 +254,14 @@ export function TrackingLinksPanel({
         </div>
       )}
 
+      <GoogleAnalyticsSettingsCard
+        settings={analytics}
+        propertyId={ga4PropertyDraft}
+        onPropertyIdChange={setGa4PropertyDraft}
+        onSave={saveGa4Property}
+        saving={savingAnalytics}
+      />
+
       {links === null ? (
         <div className="text-sm text-zinc-500">Loading…</div>
       ) : visible.length === 0 && !adding ? (
@@ -183,6 +274,7 @@ export function TrackingLinksPanel({
               link={link}
               projectId={projectId}
               projectName={projectName}
+              analytics={analytics}
               pinnedPlatform={platform}
               onChange={(patch) => updateLink(link.id, patch)}
               onDelete={() => deleteLink(link.id)}
@@ -223,6 +315,7 @@ function LinkRow({
   link,
   projectId,
   projectName,
+  analytics,
   pinnedPlatform,
   onChange,
   onDelete,
@@ -233,6 +326,7 @@ function LinkRow({
   link: TrackingLink;
   projectId: string;
   projectName: string;
+  analytics: AnalyticsSettings | null;
   pinnedPlatform?: PlatformKey;
   onChange: (patch: Partial<TrackingLink>) => void;
   onDelete: () => void;
@@ -240,9 +334,11 @@ function LinkRow({
   copied: boolean;
   onShowQr: (redirectUrl: string) => void;
 }) {
-  const built = buildUtmUrl(link, projectName);
+  const built = buildUtmUrl({ ...link, id: link.id }, projectName);
   const defaults = link.platform ? PLATFORM_DEFAULTS[link.platform] : null;
-  const isSignage = (pinnedPlatform ?? link.platform) === "signage";
+  const isOffline = ["signage", "flyers", "digital-signage"].includes(
+    (pinnedPlatform ?? link.platform) ?? ""
+  );
   const qrRedirectUrl =
     typeof window !== "undefined" ? `${window.location.origin}/qr/${link.id}` : `/qr/${link.id}`;
 
@@ -268,12 +364,20 @@ function LinkRow({
             }
             className="rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-2 py-2 text-sm"
           >
-            <option value="">All platforms</option>
+            <option value="">All channels</option>
+            <option value="website">Website</option>
+            <option value="email">Email</option>
+            <option value="sms">SMS</option>
+            <option value="internal-messaging">Internal Messaging</option>
+            <option value="digital-signage">Digital Signage</option>
+            <option value="ott">OTT</option>
+            <option value="pr">PR</option>
             <option value="meta">Meta</option>
             <option value="tiktok">TikTok</option>
             <option value="youtube">YouTube</option>
             <option value="google-search">Google Search</option>
-            <option value="signage">Signage</option>
+            <option value="signage">Physical Signage</option>
+            <option value="flyers">Flyers</option>
           </select>
         )}
         <button
@@ -335,7 +439,7 @@ function LinkRow({
         <div className="flex-1 min-w-0 text-xs font-mono text-zinc-700 dark:text-zinc-300 truncate" title={built}>
           {built || <span className="italic text-zinc-400">Enter a URL to build your tracking link</span>}
         </div>
-        {isSignage && !link.qrEnabled && (
+        {isOffline && !link.qrEnabled && (
           <button
             type="button"
             disabled={!built}
@@ -356,7 +460,7 @@ function LinkRow({
         </button>
       </div>
 
-      {isSignage && link.qrEnabled && (
+      {isOffline && link.qrEnabled && (
         <QrBlock
           projectId={projectId}
           linkId={link.id}
@@ -365,6 +469,14 @@ function LinkRow({
           generatedAt={link.qrGeneratedAt}
           onRemove={() => onChange({ qrEnabled: false })}
           onOpenPreview={() => onShowQr(qrRedirectUrl)}
+        />
+      )}
+
+      {analytics?.status === "ready" && analytics.ga4PropertyId && (
+        <GoogleAnalyticsBlock
+          projectId={projectId}
+          linkId={link.id}
+          createdAt={link.createdAt}
         />
       )}
     </div>
@@ -419,28 +531,39 @@ function QrBlock({
     };
   }, [redirectUrl]);
 
-  const fetchSummary = useCallback(async () => {
-    const res = await fetch(
-      `/api/projects/${projectId}/tracking-links/${linkId}/scans`,
-      { cache: "no-store" }
-    );
-    if (!res.ok) return;
-    const body = (await res.json()) as ScanSummary;
-    setSummary(body);
-  }, [projectId, linkId]);
-
   useEffect(() => {
-    fetchSummary();
-    const iv = window.setInterval(fetchSummary, 5000);
+    let active = true;
+
+    async function loadSummary() {
+      const res = await fetch(
+        `/api/projects/${projectId}/tracking-links/${linkId}/scans`,
+        { cache: "no-store" }
+      );
+      if (!res.ok || !active) return;
+      const body = (await res.json()) as ScanSummary;
+      if (!active) return;
+      setSummary(body);
+    }
+
+    const kickoff = window.setTimeout(() => {
+      void loadSummary();
+    }, 0);
+    const iv = window.setInterval(() => {
+      void loadSummary();
+    }, 5000);
     const onVis = () => {
-      if (document.visibilityState === "visible") fetchSummary();
+      if (document.visibilityState === "visible") {
+        void loadSummary();
+      }
     };
     document.addEventListener("visibilitychange", onVis);
     return () => {
+      active = false;
+      window.clearTimeout(kickoff);
       window.clearInterval(iv);
       document.removeEventListener("visibilitychange", onVis);
     };
-  }, [fetchSummary]);
+  }, [projectId, linkId]);
 
   const copyRedirect = async () => {
     try {
@@ -536,6 +659,255 @@ function ScanStats({
   );
 }
 
+function GoogleAnalyticsSettingsCard({
+  settings,
+  propertyId,
+  onPropertyIdChange,
+  onSave,
+  saving,
+}: {
+  settings: AnalyticsSettings | null;
+  propertyId: string;
+  onPropertyIdChange: (value: string) => void;
+  onSave: () => void;
+  saving: boolean;
+}) {
+  const trimmed = propertyId.trim();
+  const savedValue = settings?.ga4PropertyId ?? "";
+  const hasChanges = trimmed !== savedValue;
+  const valid = trimmed.length === 0 || /^[0-9]{5,20}$/.test(trimmed);
+
+  let toneClass =
+    "border-zinc-200 bg-zinc-50 text-zinc-700 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300";
+  let statusLabel = "Loading Google Analytics settings…";
+  let helpText =
+    "Save the GA4 property ID for this project and each generated link will carry a hidden mt_link_id so row-level dashboards can query GA4 later.";
+
+  if (settings?.status === "ready") {
+    toneClass =
+      "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200";
+    statusLabel = "GA4 dashboards are active for this project.";
+    helpText =
+      "Each generated URL now includes a hidden mt_link_id so the mini dashboard under each row can isolate sessions, views, and key events from link creation forward.";
+  } else if (settings?.status === "property_missing") {
+    toneClass =
+      "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200";
+    statusLabel = "Add a GA4 property ID to turn on link dashboards.";
+  } else if (settings?.status === "credentials_missing") {
+    toneClass =
+      "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200";
+    statusLabel = "Server-side Google credentials still need to be configured.";
+    helpText =
+      "Once GOOGLE_SERVICE_ACCOUNT_JSON or the service-account email/private-key env vars are set, saving a GA4 property ID here will activate the dashboards.";
+  }
+
+  return (
+    <div className="mb-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 space-y-3">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h3 className="text-sm font-medium uppercase tracking-wide text-zinc-500">
+            Google Analytics 4
+          </h3>
+          <p className="text-xs text-zinc-500 mt-1">{helpText}</p>
+        </div>
+        <div className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-medium ${toneClass}`}>
+          {statusLabel}
+        </div>
+      </div>
+
+      <form
+        className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!valid || saving || !hasChanges) return;
+          void onSave();
+        }}
+      >
+        <label className="block">
+          <span className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+            GA4 Property ID
+          </span>
+          <input
+            type="text"
+            inputMode="numeric"
+            value={propertyId}
+            onChange={(e) => onPropertyIdChange(e.target.value.replace(/[^\d]/g, ""))}
+            placeholder="e.g. 123456789"
+            className="mt-1 w-full rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </label>
+        <div className="flex items-end gap-2">
+          <button
+            type="submit"
+            disabled={!valid || saving || !hasChanges}
+            className="apple-tap rounded-md bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 px-4 py-2 text-sm font-medium disabled:opacity-50 hover:opacity-90"
+          >
+            {saving ? "Saving…" : trimmed ? "Save property" : "Clear property"}
+          </button>
+        </div>
+      </form>
+
+      {!valid && (
+        <div className="text-xs text-red-600 dark:text-red-400">
+          GA4 property IDs are numeric only.
+        </div>
+      )}
+    </div>
+  );
+}
+
+function GoogleAnalyticsBlock({
+  projectId,
+  linkId,
+  createdAt,
+}: {
+  projectId: string;
+  linkId: string;
+  createdAt: number;
+}) {
+  const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const loadSummary = useCallback(
+    async (refresh = false) => {
+      if (refresh) setRefreshing(true);
+      else setLoading(true);
+      setError(null);
+
+      const suffix = refresh ? "?refresh=1" : "";
+      const res = await fetch(
+        `/api/projects/${projectId}/tracking-links/${linkId}/analytics${suffix}`,
+        { cache: "no-store" }
+      );
+      const body = (await res.json().catch(() => null)) as
+        | { summary?: AnalyticsSummary | null; error?: string }
+        | null;
+
+      if (!res.ok) {
+        setError(body?.error ?? "failed to load Google Analytics data");
+        setLoading(false);
+        setRefreshing(false);
+        return;
+      }
+
+      setSummary(body?.summary ?? null);
+      setLoading(false);
+      setRefreshing(false);
+    },
+    [projectId, linkId]
+  );
+
+  useEffect(() => {
+    let active = true;
+
+    async function initialLoad() {
+      const res = await fetch(`/api/projects/${projectId}/tracking-links/${linkId}/analytics`, {
+        cache: "no-store",
+      });
+      const body = (await res.json().catch(() => null)) as
+        | { summary?: AnalyticsSummary | null; error?: string }
+        | null;
+
+      if (!active) return;
+      if (!res.ok) {
+        setError(body?.error ?? "failed to load Google Analytics data");
+        setLoading(false);
+        return;
+      }
+
+      setSummary(body?.summary ?? null);
+      setLoading(false);
+    }
+
+    void initialLoad();
+
+    return () => {
+      active = false;
+    };
+  }, [linkId, projectId]);
+
+  const maxSessions = Math.max(...(summary?.trend.map((point) => point.sessions) ?? [0]), 1);
+
+  return (
+    <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 p-3 space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <div className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+            Google Analytics 4
+          </div>
+          <div className="text-[11px] text-zinc-500">
+            From {new Date(createdAt).toLocaleDateString()} forward
+            {summary?.lastSyncedAt ? ` · synced ${relativeTime(summary.lastSyncedAt)}` : ""}
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => void loadSummary(true)}
+          disabled={loading || refreshing}
+          className="shrink-0 rounded-md border border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-200 text-xs font-medium px-3 py-1.5 disabled:opacity-40 hover:border-zinc-500 dark:hover:border-zinc-500"
+        >
+          {refreshing ? "Refreshing…" : "Refresh"}
+        </button>
+      </div>
+
+      {error ? (
+        <div className="rounded-md border border-red-300 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200 px-3 py-2 text-sm">
+          {error}
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+            <Stat label="Sessions" value={loading ? "…" : String(summary?.sessions ?? 0)} />
+            <Stat
+              label="Engaged"
+              value={loading ? "…" : String(summary?.engagedSessions ?? 0)}
+            />
+            <Stat label="Views" value={loading ? "…" : String(summary?.views ?? 0)} />
+            <Stat
+              label="Key events"
+              value={loading ? "…" : String(summary?.keyEvents ?? 0)}
+            />
+          </div>
+
+          <div className="rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-2.5">
+            <div className="text-[11px] uppercase tracking-wide text-zinc-500 mb-2">
+              Sessions trend
+            </div>
+            {loading ? (
+              <div className="h-16 grid place-items-center text-xs text-zinc-500">Loading…</div>
+            ) : summary?.trend.length ? (
+              <>
+                <div className="h-16 flex items-end gap-1">
+                  {summary.trend.map((point) => (
+                    <div
+                      key={point.date}
+                      className="flex-1 rounded-t-sm bg-sky-500/80 dark:bg-sky-400/80 min-h-1"
+                      style={{
+                        height: `${Math.max(8, Math.round((point.sessions / maxSessions) * 100))}%`,
+                      }}
+                      title={`${point.date}: ${point.sessions} sessions`}
+                    />
+                  ))}
+                </div>
+                <div className="mt-2 flex items-center justify-between gap-2 text-[11px] text-zinc-500">
+                  <span>{formatTrendDate(summary.trend[0]?.date)}</span>
+                  <span>{formatTrendDate(summary.trend.at(-1)?.date)}</span>
+                </div>
+              </>
+            ) : (
+              <div className="text-xs text-zinc-500">
+                No GA4 sessions have been attributed to this link yet.
+              </div>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-md border border-zinc-200 dark:border-zinc-800 py-1.5">
@@ -557,6 +929,13 @@ function relativeTime(ts: number): string {
   const d = Math.floor(h / 24);
   if (d < 30) return `${d}d ago`;
   return new Date(ts).toLocaleDateString();
+}
+
+function formatTrendDate(value: string | undefined) {
+  if (!value) return "";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return parsed.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
 function UtmField({
@@ -825,19 +1204,27 @@ function AddLinkDialog({
           {!pinnedPlatform && (
             <div>
               <label className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-                Platform
+                Channel
               </label>
               <select
                 value={platform}
                 onChange={(e) => setPlatform(e.target.value as PlatformKey | "")}
                 className="mt-1 w-full rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 px-3 py-2 text-sm"
               >
-                <option value="">All platforms</option>
+                <option value="">All channels</option>
+                <option value="website">Website</option>
+                <option value="email">Email</option>
+                <option value="sms">SMS</option>
+                <option value="internal-messaging">Internal Messaging</option>
+                <option value="digital-signage">Digital Signage</option>
+                <option value="ott">OTT</option>
+                <option value="pr">PR</option>
                 <option value="meta">Meta</option>
                 <option value="tiktok">TikTok</option>
                 <option value="youtube">YouTube</option>
                 <option value="google-search">Google Search</option>
-                <option value="signage">Signage</option>
+                <option value="signage">Physical Signage</option>
+                <option value="flyers">Flyers</option>
               </select>
             </div>
           )}

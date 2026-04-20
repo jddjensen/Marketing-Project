@@ -1,7 +1,22 @@
 import { NextRequest } from "next/server";
+import { buildGoogleAnalyticsProjectSettings } from "@/lib/googleAnalytics";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-const VALID_PLATFORMS = ["meta", "tiktok", "youtube", "google-search", "signage"] as const;
+const VALID_PLATFORMS = [
+  "meta",
+  "tiktok",
+  "youtube",
+  "google-search",
+  "website",
+  "email",
+  "sms",
+  "internal-messaging",
+  "digital-signage",
+  "ott",
+  "pr",
+  "signage",
+  "flyers",
+] as const;
 type ValidPlatform = (typeof VALID_PLATFORMS)[number];
 
 type LinkRow = {
@@ -49,13 +64,22 @@ export async function GET(
 ) {
   const { id } = await ctx.params;
   const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("project_tracking_links")
-    .select(LINK_COLS)
-    .eq("project_id", id)
-    .order("created_at", { ascending: true });
+  const [{ data, error }, { data: project, error: projectError }] = await Promise.all([
+    supabase
+      .from("project_tracking_links")
+      .select(LINK_COLS)
+      .eq("project_id", id)
+      .order("created_at", { ascending: true }),
+    supabase.from("projects").select("ga4_property_id").eq("id", id).maybeSingle(),
+  ]);
+
   if (error) return Response.json({ error: error.message }, { status: 500 });
-  return Response.json({ links: (data ?? []).map((r) => serialize(r as LinkRow)) });
+  if (projectError) return Response.json({ error: projectError.message }, { status: 500 });
+
+  return Response.json({
+    links: (data ?? []).map((r) => serialize(r as LinkRow)),
+    analytics: buildGoogleAnalyticsProjectSettings(project?.ga4_property_id ?? null),
+  });
 }
 
 function normalizeOptionalString(v: unknown): string | null | undefined {

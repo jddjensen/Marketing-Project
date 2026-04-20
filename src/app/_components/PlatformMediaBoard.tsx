@@ -83,8 +83,11 @@ export function PlatformMediaBoard({
   }, [platform, projectId, trackingEnabled]);
 
   useEffect(() => {
-    fetchMedia();
-    fetchTracking();
+    async function loadBoard() {
+      await Promise.all([fetchMedia(), fetchTracking()]);
+    }
+
+    void loadBoard();
   }, [fetchMedia, fetchTracking]);
 
   const handleUpload = useCallback(

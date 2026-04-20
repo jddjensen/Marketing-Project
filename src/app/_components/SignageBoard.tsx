@@ -3,8 +3,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { UserMenu } from "./UserMenu";
-
-type Unit = "in" | "ft" | "cm" | "m" | "px";
+import {
+  formatDimensions,
+  type SignageBlueprint,
+  SIGNAGE_PRESETS,
+  trimDimension,
+  type Unit,
+} from "@/lib/signage";
 
 type SignageFormat = {
   id: string;
@@ -30,36 +35,21 @@ type SignagePayload = {
   mediaByFormat: Record<string, MediaItem[]>;
 };
 
-export type Preset = {
-  key: string;
+type AddFormatInput = {
   label: string;
   width: number;
   height: number;
   unit: Unit;
+  presetKey: string | null;
 };
 
-export const SIGNAGE_PRESETS: Preset[] = [
-  { key: "billboard-bulletin", label: "Billboard — Bulletin", width: 48, height: 14, unit: "ft" },
-  { key: "billboard-30sheet", label: "Billboard — 30-Sheet", width: 22.75, height: 10.5, unit: "ft" },
-  { key: "digital-billboard", label: "Digital Billboard", width: 1920, height: 1080, unit: "px" },
-  { key: "bus-shelter", label: "Bus Shelter", width: 4, height: 6, unit: "ft" },
-  { key: "aframe", label: "A-Frame Sidewalk Sign", width: 24, height: 36, unit: "in" },
-  { key: "hframe-small", label: "H-Frame (small)", width: 24, height: 24, unit: "in" },
-  { key: "hframe-standard", label: "H-Frame (standard)", width: 18, height: 24, unit: "in" },
-  { key: "yard-sign", label: "Yard Sign", width: 18, height: 24, unit: "in" },
-  { key: "poster-small", label: "Poster — Small (11×17)", width: 11, height: 17, unit: "in" },
-  { key: "poster-standard", label: "Poster — Standard (18×24)", width: 18, height: 24, unit: "in" },
-  { key: "poster-large", label: "Poster — Large (24×36)", width: 24, height: 36, unit: "in" },
-  { key: "window-cling", label: "Window Cling", width: 18, height: 24, unit: "in" },
-];
-
-function formatDimensions(f: SignageFormat): string {
-  return `${trim(f.width)}×${trim(f.height)} ${f.unit}`;
-}
-
-function trim(n: number): string {
-  return Number.isInteger(n) ? String(n) : String(Number(n.toFixed(3)));
-}
+const PRESET_CATEGORIES = [
+  { key: "billboard", label: "Billboards" },
+  { key: "street", label: "Street & outdoor" },
+  { key: "poster", label: "Posters" },
+  { key: "retail", label: "Retail" },
+  { key: "other", label: "Other" },
+] as const;
 
 export function SignageBoard({
   projectId,
@@ -71,6 +61,7 @@ export function SignageBoard({
   children?: React.ReactNode;
 }) {
   const [data, setData] = useState<SignagePayload | null>(null);
+  const [blueprints, setBlueprints] = useState<SignageBlueprint[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [uploadingId, setUploadingId] = useState<string | null>(null);
   const [addingFormat, setAddingFormat] = useState(false);
@@ -86,12 +77,53 @@ export function SignageBoard({
     setData({ formats: body.formats ?? [], mediaByFormat: body.mediaByFormat ?? {} });
   }, [projectId]);
 
+  const fetchBlueprints = useCallback(async () => {
+    const res = await fetch("/api/signage-blueprints", { cache: "no-store" });
+    if (!res.ok) {
+      setBlueprints([]);
+      return;
+    }
+    const body = (await res.json()) as { blueprints?: SignageBlueprint[] };
+    setBlueprints(body.blueprints ?? []);
+  }, []);
+
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    let active = true;
+
+    async function loadFormats() {
+      const res = await fetch(`/api/projects/${projectId}/signage-formats`, { cache: "no-store" });
+      if (!active) return;
+      if (!res.ok) {
+        setData({ formats: [], mediaByFormat: {} });
+        return;
+      }
+      const body = (await res.json()) as SignagePayload;
+      if (!active) return;
+      setData({ formats: body.formats ?? [], mediaByFormat: body.mediaByFormat ?? {} });
+    }
+
+    async function loadBlueprints() {
+      const res = await fetch("/api/signage-blueprints", { cache: "no-store" });
+      if (!active) return;
+      if (!res.ok) {
+        setBlueprints([]);
+        return;
+      }
+      const body = (await res.json()) as { blueprints?: SignageBlueprint[] };
+      if (!active) return;
+      setBlueprints(body.blueprints ?? []);
+    }
+
+    void loadFormats();
+    void loadBlueprints();
+
+    return () => {
+      active = false;
+    };
+  }, [projectId]);
 
   const addFormat = useCallback(
-    async (input: { label: string; width: number; height: number; unit: Unit; presetKey: string | null }) => {
+    async (input: AddFormatInput) => {
       const res = await fetch(`/api/projects/${projectId}/signage-formats`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -106,18 +138,27 @@ export function SignageBoard({
     [projectId, fetchData]
   );
 
+  const saveBlueprint = useCallback(async (input: Omit<SignageBlueprint, "id" | "createdAt">) => {
+    const res = await fetch("/api/signage-blueprints", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    });
+    if (!res.ok) {
+      const body = (await res.json().catch(() => ({}))) as { error?: string };
+      throw new Error(body.error ?? "failed to save blueprint");
+    }
+    await fetchBlueprints();
+  }, [fetchBlueprints]);
+
   const deleteFormat = useCallback(
     async (formatId: string, label: string) => {
-      if (
-        !window.confirm(
-          `Delete "${label}" and all media uploaded for it? This can't be undone.`
-        )
-      )
+      if (!window.confirm(`Delete "${label}" and all media uploaded for it? This can't be undone.`)) {
         return;
-      const res = await fetch(
-        `/api/projects/${projectId}/signage-formats/${formatId}`,
-        { method: "DELETE" }
-      );
+      }
+      const res = await fetch(`/api/projects/${projectId}/signage-formats/${formatId}`, {
+        method: "DELETE",
+      });
       if (res.ok) await fetchData();
     },
     [projectId, fetchData]
@@ -133,7 +174,7 @@ export function SignageBoard({
           fd.append("file", file);
           fd.append("platform", "signage");
           fd.append("projectId", projectId);
-          fd.append("ratio", `${trim(format.width)}x${trim(format.height)}`);
+          fd.append("ratio", `${trimDimension(format.width)}x${trimDimension(format.height)}`);
           fd.append("signageFormatId", format.id);
           const res = await fetch("/api/upload", { method: "POST", body: fd });
           if (!res.ok) {
@@ -164,8 +205,8 @@ export function SignageBoard({
             </Link>
             <h1 className="text-2xl font-semibold mt-1">Physical Signage — Campaign Media</h1>
             <p className="text-sm text-zinc-500 mt-1">
-              Define the formats you&apos;re producing — billboards, A-frames, posters, custom — and
-              upload creative at each size.
+              Build out physical formats for this campaign, including highway billboards, posters,
+              A-frames, and saved custom blueprints you can reuse on future projects.
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -190,6 +231,29 @@ export function SignageBoard({
       )}
 
       <main className="max-w-7xl mx-auto px-6 py-8">
+        <section className="mb-8 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
+                Billboard defaults
+              </h2>
+              <p className="text-sm text-zinc-500 mt-1 max-w-3xl">
+                14&apos; × 48&apos; is the safest default. You&apos;ll also find common 10&apos; × 40&apos;,
+                10&apos;6&quot; × 36&apos;, 12&apos; × 24&apos;, and spectacular billboard sizes in the preset picker,
+                plus digital billboard presets that follow the same overall dimensions.
+              </p>
+              <p className="text-xs text-zinc-500 mt-2">
+                Aquarium physical signage placements covered here include parking lot signage,
+                H-frames, little H-frames, A-frames, bathroom signs, construction banners,
+                fabric evergreen, and ship banners.
+              </p>
+            </div>
+            <div className="text-xs text-zinc-500 rounded-lg bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 px-3 py-2">
+              {blueprints.length} saved blueprint{blueprints.length === 1 ? "" : "s"}
+            </div>
+          </div>
+        </section>
+
         {data === null ? (
           <div className="text-sm text-zinc-500">Loading…</div>
         ) : data.formats.length === 0 ? (
@@ -216,11 +280,13 @@ export function SignageBoard({
 
       {addingFormat && (
         <AddFormatDialog
+          blueprints={blueprints}
           onClose={() => setAddingFormat(false)}
           onAdd={async (input) => {
             await addFormat(input);
             setAddingFormat(false);
           }}
+          onSaveBlueprint={saveBlueprint}
         />
       )}
     </div>
@@ -256,7 +322,7 @@ function FormatColumn({
     return () => document.removeEventListener("mousedown", h);
   }, [menuOpen, onCloseMenu]);
 
-  const aspect = `aspect-[${trim(format.width)}/${trim(format.height)}]`;
+  const aspect = `aspect-[${trimDimension(format.width)}/${trimDimension(format.height)}]`;
 
   return (
     <section className="flex flex-col bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden">
@@ -370,8 +436,8 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
     <div className="rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 bg-white/40 dark:bg-zinc-900/40 py-16 flex flex-col items-center text-center">
       <div className="text-lg font-semibold">No signage formats yet</div>
       <p className="text-sm text-zinc-500 mt-1 max-w-md">
-        Add a format to describe what you&apos;re producing — a 48×14 ft billboard, a 24×36 in
-        A-frame, or any custom size — then upload creative at that dimension.
+        Add a format to describe what you&apos;re producing, from a 14&apos; × 48&apos; highway billboard
+        to a 24 × 36 in A-frame or a saved custom blueprint, then upload creative at that size.
       </p>
       <button
         type="button"
@@ -385,54 +451,79 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
 }
 
 function AddFormatDialog({
+  blueprints,
   onClose,
   onAdd,
+  onSaveBlueprint,
 }: {
+  blueprints: SignageBlueprint[];
   onClose: () => void;
-  onAdd: (input: {
-    label: string;
-    width: number;
-    height: number;
-    unit: Unit;
-    presetKey: string | null;
-  }) => Promise<void>;
+  onAdd: (input: AddFormatInput) => Promise<void>;
+  onSaveBlueprint: (input: Omit<SignageBlueprint, "id" | "createdAt">) => Promise<void>;
 }) {
-  const [mode, setMode] = useState<"preset" | "custom">("preset");
-  const [selectedPreset, setSelectedPreset] = useState<string>("");
+  const [mode, setMode] = useState<"preset" | "blueprint" | "custom">("preset");
+  const [selectedPreset, setSelectedPreset] = useState<string>("billboard-highway-default");
+  const [selectedBlueprintId, setSelectedBlueprintId] = useState("");
   const [labelOverride, setLabelOverride] = useState("");
   const [customLabel, setCustomLabel] = useState("");
   const [customWidth, setCustomWidth] = useState<string>("");
   const [customHeight, setCustomHeight] = useState<string>("");
   const [customUnit, setCustomUnit] = useState<Unit>("in");
+  const [saveAsBlueprint, setSaveAsBlueprint] = useState(false);
+  const [blueprintLabel, setBlueprintLabel] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  const preset = SIGNAGE_PRESETS.find((p) => p.key === selectedPreset);
+  const preset = SIGNAGE_PRESETS.find((item) => item.key === selectedPreset);
+  const activeBlueprintId = blueprints.some((item) => item.id === selectedBlueprintId)
+    ? selectedBlueprintId
+    : (blueprints[0]?.id ?? "");
+  const blueprint = blueprints.find((item) => item.id === activeBlueprintId);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setErr(null);
     setBusy(true);
+
     try {
       if (mode === "preset") {
         if (!preset) throw new Error("pick a preset");
-        const label = labelOverride.trim() || preset.label;
         await onAdd({
-          label,
+          label: labelOverride.trim() || preset.label,
           width: preset.width,
           height: preset.height,
           unit: preset.unit,
           presetKey: preset.key,
         });
-      } else {
-        const label = customLabel.trim();
-        const width = Number(customWidth);
-        const height = Number(customHeight);
-        if (!label) throw new Error("label is required");
-        if (!Number.isFinite(width) || width <= 0) throw new Error("width must be > 0");
-        if (!Number.isFinite(height) || height <= 0) throw new Error("height must be > 0");
-        await onAdd({ label, width, height, unit: customUnit, presetKey: null });
+        return;
       }
+
+      if (mode === "blueprint") {
+        if (!blueprint) throw new Error("pick a blueprint");
+        await onAdd({
+          label: labelOverride.trim() || blueprint.label,
+          width: blueprint.width,
+          height: blueprint.height,
+          unit: blueprint.unit,
+          presetKey: `blueprint:${blueprint.id}`,
+        });
+        return;
+      }
+
+      const label = customLabel.trim();
+      const width = Number(customWidth);
+      const height = Number(customHeight);
+
+      if (!label) throw new Error("label is required");
+      if (!Number.isFinite(width) || width <= 0) throw new Error("width must be > 0");
+      if (!Number.isFinite(height) || height <= 0) throw new Error("height must be > 0");
+
+      if (saveAsBlueprint) {
+        const savedLabel = blueprintLabel.trim() || label;
+        await onSaveBlueprint({ label: savedLabel, width, height, unit: customUnit });
+      }
+
+      await onAdd({ label, width, height, unit: customUnit, presetKey: null });
     } catch (e) {
       setErr(e instanceof Error ? e.message : "failed to add");
     } finally {
@@ -448,55 +539,93 @@ function AddFormatDialog({
       onClick={onClose}
     >
       <div
-        className="modal-surface w-full max-w-lg rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-5 shadow-[var(--shadow-lift)] max-h-[90vh] overflow-y-auto"
+        className="modal-surface w-full max-w-3xl rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-5 shadow-[var(--shadow-lift)] max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="font-semibold text-lg">Add signage format</h2>
         <p className="text-sm text-zinc-500 mt-1">
-          Pick a preset or enter custom dimensions.
+          Start from a billboard preset, reuse a saved blueprint, or define a custom physical size.
         </p>
 
-        <div className="mt-4 flex items-center gap-1 text-xs rounded-md border border-zinc-200 dark:border-zinc-800 p-0.5 bg-white dark:bg-zinc-900 w-fit">
-          {(["preset", "custom"] as const).map((m) => (
+        <div className="mt-4 flex flex-wrap items-center gap-1 text-xs rounded-md border border-zinc-200 dark:border-zinc-800 p-0.5 bg-white dark:bg-zinc-900 w-fit">
+          {(["preset", "blueprint", "custom"] as const).map((value) => (
             <button
-              key={m}
+              key={value}
               type="button"
-              onClick={() => setMode(m)}
+              onClick={() => setMode(value)}
               className={`px-3 py-1.5 rounded ${
-                mode === m
+                mode === value
                   ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
                   : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
               }`}
             >
-              {m === "preset" ? "Preset" : "Custom"}
+              {value === "preset" ? "Preset" : value === "blueprint" ? "Blueprint" : "Custom"}
             </button>
           ))}
         </div>
 
-        <form onSubmit={submit} className="mt-4 space-y-3">
-          {mode === "preset" ? (
+        <form onSubmit={submit} className="mt-4 space-y-4">
+          {mode === "preset" && (
             <>
-              <div>
-                <label className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-                  Format
-                </label>
-                <select
-                  value={selectedPreset}
-                  onChange={(e) => setSelectedPreset(e.target.value)}
-                  className="mt-1 w-full rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Select a preset…</option>
-                  {SIGNAGE_PRESETS.map((p) => (
-                    <option key={p.key} value={p.key}>
-                      {p.label} — {trim(p.width)}×{trim(p.height)} {p.unit}
-                    </option>
-                  ))}
-                </select>
+              <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-950/40 p-4">
+                <div className="text-sm font-medium">Recommended billboard starter</div>
+                <p className="text-xs text-zinc-500 mt-1">
+                  Highway billboard 14&apos; × 48&apos; is preselected because it&apos;s the safest default for
+                  design specs.
+                </p>
               </div>
+
+              <div className="space-y-4">
+                {PRESET_CATEGORIES.map((category) => {
+                  const items = SIGNAGE_PRESETS.filter((preset) => preset.category === category.key);
+                  if (items.length === 0) return null;
+
+                  return (
+                    <div key={category.key}>
+                      <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400 mb-2">
+                        {category.label}
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {items.map((item) => {
+                          const selected = selectedPreset === item.key;
+                          return (
+                            <button
+                              key={item.key}
+                              type="button"
+                              onClick={() => setSelectedPreset(item.key)}
+                              className={`rounded-lg border p-3 text-left transition-colors ${
+                                selected
+                                  ? "border-zinc-900 dark:border-zinc-100 bg-zinc-50 dark:bg-zinc-800/60"
+                                  : "border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600"
+                              }`}
+                            >
+                              <div className="flex items-start justify-between gap-3">
+                                <div>
+                                  <div className="text-sm font-medium">{item.label}</div>
+                                  <div className="text-xs text-zinc-500 mt-0.5">
+                                    {formatDimensions(item)}
+                                  </div>
+                                </div>
+                                <span className="text-xs text-zinc-400">
+                                  {selected ? "Selected" : "Use"}
+                                </span>
+                              </div>
+                              {item.note && (
+                                <p className="text-xs text-zinc-500 mt-2 leading-relaxed">{item.note}</p>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
               {preset && (
                 <div>
                   <label className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-                    Label (optional)
+                    Label override
                   </label>
                   <input
                     type="text"
@@ -506,17 +635,77 @@ function AddFormatDialog({
                     placeholder={preset.label}
                     className="mt-1 w-full rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
-                  <p className="text-[11px] text-zinc-500 mt-1">
-                    e.g. &quot;Times Square billboard&quot; — defaults to &quot;{preset.label}&quot;.
-                  </p>
                 </div>
               )}
             </>
-          ) : (
+          )}
+
+          {mode === "blueprint" && (
+            <>
+              {blueprints.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 bg-zinc-50/70 dark:bg-zinc-950/40 py-10 px-4 text-center">
+                  <div className="font-medium">No saved blueprints yet</div>
+                  <p className="text-sm text-zinc-500 mt-1">
+                    Create a custom size and enable “Save as blueprint” to reuse it in future projects.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {blueprints.map((item) => {
+                      const selected = activeBlueprintId === item.id;
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => setSelectedBlueprintId(item.id)}
+                          className={`rounded-lg border p-3 text-left transition-colors ${
+                            selected
+                              ? "border-zinc-900 dark:border-zinc-100 bg-zinc-50 dark:bg-zinc-800/60"
+                              : "border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <div className="text-sm font-medium">{item.label}</div>
+                              <div className="text-xs text-zinc-500 mt-0.5">
+                                {formatDimensions(item)}
+                              </div>
+                            </div>
+                            <span className="text-xs text-zinc-400">
+                              {selected ? "Selected" : "Use"}
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {blueprint && (
+                    <div>
+                      <label className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+                        Label override
+                      </label>
+                      <input
+                        type="text"
+                        maxLength={120}
+                        value={labelOverride}
+                        onChange={(e) => setLabelOverride(e.target.value)}
+                        placeholder={blueprint.label}
+                        className="mt-1 w-full rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  )}
+                </>
+              )}
+            </>
+          )}
+
+          {mode === "custom" && (
             <>
               <div>
                 <label className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-                  Label
+                  Format name
                 </label>
                 <input
                   type="text"
@@ -524,10 +713,11 @@ function AddFormatDialog({
                   maxLength={120}
                   value={customLabel}
                   onChange={(e) => setCustomLabel(e.target.value)}
-                  placeholder="e.g. Subway wall graphic"
+                  placeholder="e.g. Downtown wallscape"
                   className="mt-1 w-full rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
+
               <div className="grid grid-cols-3 gap-2">
                 <div>
                   <label className="text-xs font-medium uppercase tracking-wide text-zinc-500">
@@ -574,6 +764,39 @@ function AddFormatDialog({
                   </select>
                 </div>
               </div>
+
+              <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 p-4">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={saveAsBlueprint}
+                    onChange={(e) => setSaveAsBlueprint(e.target.checked)}
+                    className="mt-0.5 accent-zinc-900 dark:accent-zinc-100"
+                  />
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium">Save as reusable blueprint</div>
+                    <p className="text-xs text-zinc-500 mt-0.5">
+                      Store this size and name so it shows up in the blueprint tab for future projects.
+                    </p>
+                  </div>
+                </label>
+
+                {saveAsBlueprint && (
+                  <div className="mt-3">
+                    <label className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+                      Blueprint name
+                    </label>
+                    <input
+                      type="text"
+                      maxLength={120}
+                      value={blueprintLabel}
+                      onChange={(e) => setBlueprintLabel(e.target.value)}
+                      placeholder="Defaults to the format name above"
+                      className="mt-1 w-full rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                )}
+              </div>
             </>
           )}
 
@@ -593,10 +816,14 @@ function AddFormatDialog({
             </button>
             <button
               type="submit"
-              disabled={busy || (mode === "preset" && !preset)}
+              disabled={
+                busy ||
+                (mode === "preset" && !preset) ||
+                (mode === "blueprint" && blueprints.length > 0 && !blueprint)
+              }
               className="apple-tap rounded-md bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 px-4 py-2 text-sm font-medium disabled:opacity-50 hover:opacity-90"
             >
-              {busy ? "Adding…" : "Add format"}
+              {busy ? "Saving…" : "Add format"}
             </button>
           </div>
         </form>

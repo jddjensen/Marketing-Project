@@ -1,7 +1,21 @@
 import { NextRequest } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-const VALID_PLATFORMS = new Set(["meta", "tiktok", "youtube", "google-search", "signage"]);
+const VALID_PLATFORMS = new Set([
+  "meta",
+  "tiktok",
+  "youtube",
+  "google-search",
+  "website",
+  "email",
+  "sms",
+  "internal-messaging",
+  "digital-signage",
+  "ott",
+  "pr",
+  "signage",
+  "flyers",
+]);
 const BUCKET = "creatives";
 
 export async function GET(request: NextRequest) {

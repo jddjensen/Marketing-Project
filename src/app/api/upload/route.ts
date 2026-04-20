@@ -2,8 +2,22 @@ import { NextRequest } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import crypto from "crypto";
 
-const VALID_PLATFORMS = new Set(["meta", "tiktok", "youtube", "google-search", "signage"]);
-const RATIO_PATTERN = /^[0-9]+(\.[0-9]+)?x[0-9]+(\.[0-9]+)?$/;
+const VALID_PLATFORMS = new Set([
+  "meta",
+  "tiktok",
+  "youtube",
+  "google-search",
+  "website",
+  "email",
+  "sms",
+  "internal-messaging",
+  "digital-signage",
+  "ott",
+  "pr",
+  "signage",
+  "flyers",
+]);
+const SLOT_PATTERN = /^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$/;
 const VALID_MIME = /^(image|video)\//;
 const MAX_BYTES = 500 * 1024 * 1024;
 const BUCKET = "creatives";
@@ -36,8 +50,8 @@ export async function POST(request: NextRequest) {
   if (typeof platform !== "string" || !VALID_PLATFORMS.has(platform)) {
     return Response.json({ error: "invalid platform" }, { status: 400 });
   }
-  if (typeof ratio !== "string" || !RATIO_PATTERN.test(ratio)) {
-    return Response.json({ error: "invalid ratio" }, { status: 400 });
+  if (typeof ratio !== "string" || !SLOT_PATTERN.test(ratio)) {
+    return Response.json({ error: "invalid slot key" }, { status: 400 });
   }
   if (!VALID_MIME.test(file.type)) {
     return Response.json({ error: "only images or videos allowed" }, { status: 400 });

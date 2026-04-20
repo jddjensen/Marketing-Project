@@ -3,10 +3,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { TrackingLinksPanel } from "./TrackingLinksPanel";
+import { aspectClassForAsset, formatAssetLabel } from "@/lib/channelAssets";
+import type { PlatformKey } from "@/lib/utm";
 
 type TrackingLinksLocation = "project_tab" | "platform_panel" | "both";
-
-type PlatformKey = "meta" | "tiktok" | "youtube" | "google-search" | "signage";
 
 type PlatformMeta = {
   key: PlatformKey;
@@ -15,36 +15,71 @@ type PlatformMeta = {
 };
 
 const ALL_PLATFORMS: PlatformMeta[] = [
+  { key: "website", name: "Website", desc: "Hero slider, pop up, landing page, blog" },
+  { key: "email", name: "Email", desc: "Campaign and flow sends" },
+  { key: "sms", name: "SMS", desc: "Campaign and flow messaging" },
+  {
+    key: "internal-messaging",
+    name: "Internal Messaging",
+    desc: "Team Talk and Front Desk FAQ",
+  },
+  {
+    key: "digital-signage",
+    name: "Digital Signage",
+    desc: "Admission, Info Desk, On Campus screens",
+  },
+  { key: "ott", name: "OTT", desc: "Office and streaming network placements" },
+  { key: "pr", name: "PR", desc: "YouTube, influencers, regional and national" },
+  {
+    key: "signage",
+    name: "Physical Signage",
+    desc: "Parking lot, H-frames, A-frame, bathroom, banners, evergreen",
+  },
+  {
+    key: "flyers",
+    name: "Flyers",
+    desc: "Letter, half-sheet, tabloid, handouts",
+  },
   { key: "meta", name: "Meta", desc: "Facebook, Instagram, Reels" },
   { key: "tiktok", name: "TikTok", desc: "In-Feed, TopView, Spark Ads" },
   { key: "youtube", name: "YouTube", desc: "In-Stream, Shorts, Bumper" },
   { key: "google-search", name: "Google Search", desc: "Image assets & search terms" },
-  { key: "signage", name: "Physical Signage", desc: "Billboards, posters, A-frames, custom" },
 ];
 
 const PLATFORM_LABEL: Record<PlatformKey, string> = {
+  website: "Website",
+  email: "Email",
+  sms: "SMS",
+  "internal-messaging": "Internal Messaging",
+  "digital-signage": "Digital Signage",
+  ott: "OTT",
+  pr: "PR",
   meta: "Meta",
   tiktok: "TikTok",
   youtube: "YouTube",
   "google-search": "Google Search",
-  signage: "Signage",
+  signage: "Physical Signage",
+  flyers: "Flyers",
 };
 
 const PLATFORM_ORDER: PlatformKey[] = [
+  "website",
+  "email",
+  "sms",
+  "internal-messaging",
+  "digital-signage",
+  "ott",
+  "pr",
+  "signage",
+  "flyers",
   "meta",
   "tiktok",
   "youtube",
   "google-search",
-  "signage",
 ];
 
 function aspectClass(ratio: string): string {
-  if (ratio === "1x1") return "aspect-square";
-  if (ratio === "9x16") return "aspect-[9/16]";
-  if (ratio === "16x9") return "aspect-video";
-  const m = ratio.match(/^(\d+(?:\.\d+)?)x(\d+(?:\.\d+)?)$/);
-  if (m) return `aspect-[${m[1]}/${m[2]}]`;
-  return "aspect-square";
+  return aspectClassForAsset(ratio);
 }
 
 type MediaItem = {
@@ -97,16 +132,32 @@ export function ProjectDashboard({
     setEnabled((body.platforms ?? []).map((p) => p.platform));
   }, [projectId]);
 
-  const fetchMedia = useCallback(async () => {
-    const res = await fetch(`/api/projects/${projectId}/media`, { cache: "no-store" });
-    const body = (await res.json()) as { items?: MediaItem[] };
-    setMedia(body.items ?? []);
-  }, [projectId]);
-
   useEffect(() => {
-    fetchPlatforms();
-    fetchMedia();
-  }, [fetchPlatforms, fetchMedia]);
+    let active = true;
+
+    async function loadPlatforms() {
+      const res = await fetch(`/api/projects/${projectId}/platforms`, { cache: "no-store" });
+      const body = (await res.json()) as {
+        platforms?: Array<{ platform: PlatformKey; addedAt: number }>;
+      };
+      if (!active) return;
+      setEnabled((body.platforms ?? []).map((p) => p.platform));
+    }
+
+    async function loadMedia() {
+      const res = await fetch(`/api/projects/${projectId}/media`, { cache: "no-store" });
+      const body = (await res.json()) as { items?: MediaItem[] };
+      if (!active) return;
+      setMedia(body.items ?? []);
+    }
+
+    void loadPlatforms();
+    void loadMedia();
+
+    return () => {
+      active = false;
+    };
+  }, [projectId]);
 
   const addPlatform = useCallback(
     async (key: PlatformKey) => {
@@ -148,14 +199,14 @@ export function ProjectDashboard({
     <main className="max-w-7xl mx-auto px-6 py-10 space-y-10">
       <section>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-medium uppercase tracking-wide text-zinc-500">Platforms</h2>
+          <h2 className="text-sm font-medium uppercase tracking-wide text-zinc-500">Channels</h2>
           {availableToAdd.length > 0 && enabledMeta.length > 0 && (
             <button
               type="button"
               onClick={() => setAdding(true)}
               className="text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 border border-zinc-200 dark:border-zinc-800 rounded-md px-2 py-1"
             >
-              + Add platform
+              + Add channel
             </button>
           )}
         </div>
@@ -184,7 +235,7 @@ export function ProjectDashboard({
                 className="apple-tap rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 bg-white/40 dark:bg-zinc-900/40 hover:border-zinc-400 dark:hover:border-zinc-600 flex flex-col items-center justify-center p-5 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
               >
                 <span className="text-2xl mb-1">+</span>
-                <span className="text-sm font-medium">Add platform</span>
+                <span className="text-sm font-medium">Add channel</span>
               </button>
             )}
           </div>
@@ -211,12 +262,12 @@ export function ProjectDashboard({
           </div>
           <div className="flex items-center gap-1 text-xs rounded-md border border-zinc-200 dark:border-zinc-800 p-0.5 bg-white dark:bg-zinc-900">
             {(
-              [
-                { key: "project_tab" as const, label: "Here only" },
-                { key: "platform_panel" as const, label: "On platforms" },
-                { key: "both" as const, label: "Both" },
-              ]
-            ).map((opt) => (
+                [
+                  { key: "project_tab" as const, label: "Here only" },
+                  { key: "platform_panel" as const, label: "On channels" },
+                  { key: "both" as const, label: "Both" },
+                ]
+              ).map((opt) => (
               <button
                 key={opt.key}
                 type="button"
@@ -235,7 +286,7 @@ export function ProjectDashboard({
 
         {trackingLocation === "platform_panel" ? (
           <div className="rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 bg-white/40 dark:bg-zinc-900/40 py-6 text-sm text-zinc-500 text-center">
-            Tracking links are shown on each platform page. Switch to <em>Here only</em> or
+            Tracking links are shown on each channel page. Switch to <em>Here only</em> or
             <em> Both</em> to manage them from the project dashboard.
           </div>
         ) : (
@@ -317,7 +368,7 @@ function PlatformCard({
             Remove from project
           </button>
           <div className="px-3 pt-1 pb-1.5 text-[11px] text-zinc-500 border-t border-zinc-100 dark:border-zinc-800">
-            Removing hides this platform. Uploaded media is kept.
+            Removing hides this channel. Uploaded media is kept.
           </div>
         </div>
       )}
@@ -328,16 +379,16 @@ function PlatformCard({
 function EmptyPlatforms({ onAdd }: { onAdd: () => void }) {
   return (
     <div className="rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 bg-white/40 dark:bg-zinc-900/40 py-12 flex flex-col items-center text-center">
-      <div className="font-semibold">No platforms yet</div>
+      <div className="font-semibold">No channels yet</div>
       <p className="text-sm text-zinc-500 mt-1 max-w-sm">
-        Add the ad platforms you&apos;re running for this campaign to start uploading creatives.
+        Add the communication channels you&apos;re using for this campaign to start uploading creatives.
       </p>
       <button
         type="button"
         onClick={onAdd}
         className="apple-tap mt-4 apple-tap rounded-lg bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 px-4 py-2 text-sm font-medium hover:opacity-90"
       >
-        + Add a platform
+        + Add a channel
       </button>
     </div>
   );
@@ -363,8 +414,8 @@ function AddPlatformDialog({
         className="modal-surface w-full max-w-md rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-5 shadow-[var(--shadow-lift)]"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="font-semibold text-lg">Add platform</h2>
-        <p className="text-sm text-zinc-500 mt-1">Pick a platform to enable for this project.</p>
+        <h2 className="font-semibold text-lg">Add channel</h2>
+        <p className="text-sm text-zinc-500 mt-1">Pick a channel to enable for this project.</p>
         <div className="mt-4 space-y-2">
           {options.map((p) => (
             <button
@@ -426,7 +477,7 @@ function CampaignMedia({
     }
     return Array.from(map.entries())
       .sort(([a], [b]) => a.localeCompare(b))
-      .map(([k, items]) => ({ key: k, label: `${k.replace("x", ":")}`, items }));
+      .map(([k, items]) => ({ key: k, label: formatAssetLabel(k), items }));
   }, [media, enabled, groupBy]);
 
   const totalVisible = groups.reduce((sum, g) => sum + g.items.length, 0);
@@ -439,7 +490,7 @@ function CampaignMedia({
             Campaign creative
           </h2>
           <p className="text-xs text-zinc-500 mt-1">
-            Everything uploaded across platforms for this project — at a glance.
+            Everything uploaded across channels for this project — at a glance.
           </p>
         </div>
         <div className="flex items-center gap-1 text-xs rounded-md border border-zinc-200 dark:border-zinc-800 p-0.5 bg-white dark:bg-zinc-900">
@@ -454,7 +505,7 @@ function CampaignMedia({
                   : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
               }`}
             >
-              {opt === "platform" ? "By platform" : "By ratio"}
+              {opt === "platform" ? "By channel" : "By slot"}
             </button>
           ))}
         </div>
@@ -464,7 +515,7 @@ function CampaignMedia({
         <div className="text-sm text-zinc-500">Loading…</div>
       ) : totalVisible === 0 ? (
         <div className="rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 bg-white/40 dark:bg-zinc-900/40 py-10 text-sm text-zinc-500 text-center">
-          No creatives yet. Upload media from a platform board to see it here.
+          No creatives yet. Upload media from a channel board to see it here.
         </div>
       ) : (
         <div className="space-y-6">
@@ -501,12 +552,12 @@ function CreativeTile({
   groupBy: "platform" | "ratio";
 }) {
   const aspect = aspectClass(item.ratio);
-  const secondary = groupBy === "platform" ? item.ratio.replace("x", ":") : PLATFORM_LABEL[item.platform];
+  const secondary = groupBy === "platform" ? formatAssetLabel(item.ratio) : PLATFORM_LABEL[item.platform];
   return (
     <Link
       href={`/projects/${projectId}/${item.platform}`}
       className="block group"
-      title={`${PLATFORM_LABEL[item.platform]} · ${item.ratio.replace("x", ":")} · ${item.name}`}
+      title={`${PLATFORM_LABEL[item.platform]} · ${formatAssetLabel(item.ratio)} · ${item.name}`}
     >
       <div
         className={`${aspect} w-full rounded-lg overflow-hidden bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 group-hover:border-zinc-400 dark:group-hover:border-zinc-600`}

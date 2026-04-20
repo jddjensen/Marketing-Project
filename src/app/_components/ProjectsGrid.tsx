@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import type { PlatformKey } from "@/lib/utm";
 
 type Project = {
   id: string;
@@ -13,36 +14,96 @@ type Project = {
   archivedAt: number | null;
 };
 
-type PlatformKey = "meta" | "tiktok" | "youtube" | "google-search" | "signage";
+type ChannelGroup =
+  | "paid-media"
+  | "website"
+  | "email"
+  | "sms"
+  | "internal-messaging"
+  | "digital-signage"
+  | "ott"
+  | "pr"
+  | "physical-signage"
+  | "print";
 
 type ChannelMeta = {
   key: PlatformKey;
   name: string;
   desc: string;
-  group: "digital" | "physical";
+  group: ChannelGroup;
 };
 
 const CHANNELS: ChannelMeta[] = [
-  { key: "meta", name: "Meta", desc: "Facebook, Instagram, Reels", group: "digital" },
-  { key: "tiktok", name: "TikTok", desc: "In-Feed, TopView, Spark Ads", group: "digital" },
-  { key: "youtube", name: "YouTube", desc: "In-Stream, Shorts, Bumper", group: "digital" },
+  { key: "website", name: "Website", desc: "Hero slider, pop up, landing page, blog", group: "website" },
+  { key: "email", name: "Email", desc: "Campaign and flow sends", group: "email" },
+  { key: "sms", name: "SMS", desc: "Campaign and flow messaging", group: "sms" },
+  {
+    key: "internal-messaging",
+    name: "Internal Messaging",
+    desc: "Team Talk and Front Desk FAQ",
+    group: "internal-messaging",
+  },
+  {
+    key: "digital-signage",
+    name: "Digital Signage",
+    desc: "Admission, Info Desk, On Campus screens",
+    group: "digital-signage",
+  },
+  { key: "ott", name: "OTT", desc: "Office and streaming network placements", group: "ott" },
+  { key: "pr", name: "PR", desc: "YouTube, influencers, regional and national", group: "pr" },
+  { key: "meta", name: "Meta", desc: "Facebook, Instagram, Reels", group: "paid-media" },
+  { key: "tiktok", name: "TikTok", desc: "In-Feed, TopView, Spark Ads", group: "paid-media" },
+  { key: "youtube", name: "YouTube", desc: "In-Stream, Shorts, Bumper", group: "paid-media" },
   {
     key: "google-search",
     name: "Google Search",
     desc: "Image assets & search terms",
-    group: "digital",
+    group: "paid-media",
   },
   {
     key: "signage",
-    name: "Physical signage",
-    desc: "Billboards, posters, flyers, banners, A-frames",
-    group: "physical",
+    name: "Physical Signage",
+    desc: "Parking lot, H-frames, A-frame, bathroom, banners, evergreen",
+    group: "physical-signage",
+  },
+  {
+    key: "flyers",
+    name: "Flyers",
+    desc: "Letter flyers, half-sheets, one-pagers, handouts",
+    group: "print",
   },
 ];
 
+const GROUP_ORDER: ChannelGroup[] = [
+  "website",
+  "email",
+  "sms",
+  "internal-messaging",
+  "digital-signage",
+  "ott",
+  "pr",
+  "paid-media",
+  "physical-signage",
+  "print",
+];
+
+const GROUP_LABEL: Record<ChannelGroup, string> = {
+  website: "Website",
+  email: "Email",
+  sms: "SMS",
+  "internal-messaging": "Internal Messaging",
+  "digital-signage": "Digital Signage",
+  ott: "OTT",
+  pr: "PR",
+  "paid-media": "Paid Media",
+  "physical-signage": "Physical Signage",
+  print: "Print",
+};
+
 const ALL_KEYS: PlatformKey[] = CHANNELS.map((c) => c.key);
-const DIGITAL_KEYS: PlatformKey[] = CHANNELS.filter((c) => c.group === "digital").map((c) => c.key);
-const PHYSICAL_KEYS: PlatformKey[] = CHANNELS.filter((c) => c.group === "physical").map((c) => c.key);
+const PHYSICAL_GROUPS = new Set<ChannelGroup>(["physical-signage", "print"]);
+const DIGITAL_KEYS: PlatformKey[] = CHANNELS.filter((c) => !PHYSICAL_GROUPS.has(c.group)).map((c) => c.key);
+const PHYSICAL_KEYS: PlatformKey[] = CHANNELS.filter((c) => PHYSICAL_GROUPS.has(c.group)).map((c) => c.key);
 
 type PresetKey = "all" | "digital" | "physical" | "custom";
 
@@ -97,8 +158,22 @@ export function ProjectsGrid() {
   }, [showArchived]);
 
   useEffect(() => {
-    fetchProjects();
-  }, [fetchProjects]);
+    let active = true;
+
+    async function loadProjects() {
+      const qs = showArchived ? "?includeArchived=1" : "";
+      const res = await fetch(`/api/projects${qs}`, { cache: "no-store" });
+      const body = (await res.json()) as { projects?: Project[] };
+      if (!active) return;
+      setProjects(body.projects ?? []);
+    }
+
+    void loadProjects();
+
+    return () => {
+      active = false;
+    };
+  }, [showArchived]);
 
   const onCreate = useCallback(
     async (input: { name: string; description: string | null; platforms: PlatformKey[] }) => {
@@ -387,8 +462,8 @@ function CreateDialog({
         <div className="px-5 pt-5">
           <h2 className="font-semibold text-lg">New project</h2>
           <p className="text-sm text-zinc-500 mt-1">
-            A project gathers every piece of collateral for one campaign — from social ads to
-            physical signage. Start broad or narrow; you can expand or contract at any time.
+            A project gathers every communication channel in one place, from website and email to
+            digital signage, OTT, PR, physical signage, and flyers.
           </p>
         </div>
 
@@ -447,8 +522,8 @@ function CreateDialog({
             <div className="mt-2 flex flex-wrap gap-1.5">
               {(
                 [
-                  { key: "all" as const, label: "Full campaign" },
-                  { key: "digital" as const, label: "Digital only" },
+                  { key: "all" as const, label: "Full inventory" },
+                  { key: "digital" as const, label: "Non-physical" },
                   { key: "physical" as const, label: "Physical only" },
                 ]
               ).map((p) => (
@@ -473,12 +548,13 @@ function CreateDialog({
             </div>
 
             <div className="mt-3 space-y-4">
-              {(["digital", "physical"] as const).map((group) => {
+              {GROUP_ORDER.map((group) => {
                 const items = CHANNELS.filter((c) => c.group === group);
+                if (items.length === 0) return null;
                 return (
                   <div key={group}>
                     <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400 mb-1.5">
-                      {group === "digital" ? "Digital platforms" : "Physical collateral"}
+                      {GROUP_LABEL[group]}
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {items.map((c) => {
@@ -558,8 +634,8 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
     <div className="rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 bg-white/40 dark:bg-zinc-900/40 py-16 flex flex-col items-center text-center">
       <div className="text-lg font-semibold">No projects yet</div>
       <p className="text-sm text-zinc-500 mt-1 max-w-sm">
-        Create your first project to start uploading creatives, tracking clicks, and managing
-        search terms.
+        Create your first project to start organizing channels, uploading creatives, tracking
+        clicks, and managing search terms.
       </p>
       <button
         type="button"

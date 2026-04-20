@@ -9,6 +9,7 @@ type ProjectRow = {
   updated_at: string;
   archived_at: string | null;
   tracking_links_location: string | null;
+  ga4_property_id: string | null;
 };
 
 const VALID_LOCATIONS = ["project_tab", "platform_panel", "both"] as const;
@@ -23,11 +24,12 @@ function serialize(p: ProjectRow) {
     updatedAt: new Date(p.updated_at).getTime(),
     archivedAt: p.archived_at ? new Date(p.archived_at).getTime() : null,
     trackingLinksLocation: (p.tracking_links_location as TrackingLinksLocation) ?? "both",
+    ga4PropertyId: p.ga4_property_id,
   };
 }
 
 const PROJECT_COLS =
-  "id, name, description, created_at, updated_at, archived_at, tracking_links_location";
+  "id, name, description, created_at, updated_at, archived_at, tracking_links_location, ga4_property_id";
 
 export async function GET(
   _request: NextRequest,
@@ -56,6 +58,7 @@ export async function PATCH(
     description?: unknown;
     archive?: unknown;
     trackingLinksLocation?: unknown;
+    ga4PropertyId?: unknown;
   } | null;
   if (!body) return Response.json({ error: "body required" }, { status: 400 });
 
@@ -78,6 +81,15 @@ export async function PATCH(
       return Response.json({ error: "invalid trackingLinksLocation" }, { status: 400 });
     }
     patch.tracking_links_location = body.trackingLinksLocation;
+  }
+  if (body.ga4PropertyId === null || body.ga4PropertyId === "") {
+    patch.ga4_property_id = null;
+  } else if (typeof body.ga4PropertyId === "string") {
+    const ga4PropertyId = body.ga4PropertyId.trim();
+    if (!/^[0-9]{5,20}$/.test(ga4PropertyId)) {
+      return Response.json({ error: "ga4PropertyId must be numeric" }, { status: 400 });
+    }
+    patch.ga4_property_id = ga4PropertyId;
   }
   if (Object.keys(patch).length === 0) {
     return Response.json({ error: "nothing to update" }, { status: 400 });
