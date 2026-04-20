@@ -1,12 +1,7 @@
-import { PlatformMediaBoard, type RatioConfig } from "@/app/_components/PlatformMediaBoard";
+import { PlatformMediaBoard } from "@/app/_components/PlatformMediaBoard";
 import { TrackingLinksPanel } from "@/app/_components/TrackingLinksPanel";
+import { CHANNEL_BY_KEY } from "@/lib/channels";
 import { loadProject } from "@/lib/projects";
-
-const META_RATIOS: RatioConfig[] = [
-  { key: "1x1", label: "1:1 Square", aspect: "aspect-square", hint: "Feed post" },
-  { key: "9x16", label: "9:16 Vertical", aspect: "aspect-[9/16]", hint: "Reels / Stories" },
-  { key: "16x9", label: "16:9 Horizontal", aspect: "aspect-video", hint: "In-stream video" },
-];
 
 export default async function MetaPage({
   params,
@@ -15,6 +10,7 @@ export default async function MetaPage({
 }) {
   const { id } = await params;
   const project = await loadProject(id);
+  const channel = CHANNEL_BY_KEY.meta;
   const showTracking =
     project.trackingLinksLocation === "platform_panel" ||
     project.trackingLinksLocation === "both";
@@ -23,10 +19,10 @@ export default async function MetaPage({
       projectId={id}
       projectName={project.name}
       platform="meta"
-      title="Meta — Campaign Media"
-      subtitle="Upload and review creative by aspect ratio. Add a destination URL per creative to track clicks."
-      ratios={META_RATIOS}
-      trackingEnabled
+      title={channel.boardTitle ?? "Meta — Campaign Media"}
+      subtitle={channel.boardSubtitle ?? channel.desc}
+      ratios={channel.slots ?? []}
+      trackingEnabled={channel.trackingEnabled}
     >
       {showTracking && (
         <div className="mt-10">

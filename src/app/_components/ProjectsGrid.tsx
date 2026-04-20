@@ -3,6 +3,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import {
+  CHANNELS,
+  CHANNEL_CATEGORY_LABELS,
+  CHANNEL_CATEGORY_ORDER,
+  NON_PHYSICAL_CHANNEL_KEYS,
+  PHYSICAL_CHANNEL_KEYS,
+} from "@/lib/channels";
 import type { PlatformKey } from "@/lib/utm";
 
 type Project = {
@@ -14,96 +21,9 @@ type Project = {
   archivedAt: number | null;
 };
 
-type ChannelGroup =
-  | "paid-media"
-  | "website"
-  | "email"
-  | "sms"
-  | "internal-messaging"
-  | "digital-signage"
-  | "ott"
-  | "pr"
-  | "physical-signage"
-  | "print";
-
-type ChannelMeta = {
-  key: PlatformKey;
-  name: string;
-  desc: string;
-  group: ChannelGroup;
-};
-
-const CHANNELS: ChannelMeta[] = [
-  { key: "website", name: "Website", desc: "Hero slider, pop up, landing page, blog", group: "website" },
-  { key: "email", name: "Email", desc: "Campaign and flow sends", group: "email" },
-  { key: "sms", name: "SMS", desc: "Campaign and flow messaging", group: "sms" },
-  {
-    key: "internal-messaging",
-    name: "Internal Messaging",
-    desc: "Team Talk and Front Desk FAQ",
-    group: "internal-messaging",
-  },
-  {
-    key: "digital-signage",
-    name: "Digital Signage",
-    desc: "Admission, Info Desk, On Campus screens",
-    group: "digital-signage",
-  },
-  { key: "ott", name: "OTT", desc: "Office and streaming network placements", group: "ott" },
-  { key: "pr", name: "PR", desc: "YouTube, influencers, regional and national", group: "pr" },
-  { key: "meta", name: "Meta", desc: "Facebook, Instagram, Reels", group: "paid-media" },
-  { key: "tiktok", name: "TikTok", desc: "In-Feed, TopView, Spark Ads", group: "paid-media" },
-  { key: "youtube", name: "YouTube", desc: "In-Stream, Shorts, Bumper", group: "paid-media" },
-  {
-    key: "google-search",
-    name: "Google Search",
-    desc: "Image assets & search terms",
-    group: "paid-media",
-  },
-  {
-    key: "signage",
-    name: "Physical Signage",
-    desc: "Parking lot, H-frames, A-frame, bathroom, banners, evergreen",
-    group: "physical-signage",
-  },
-  {
-    key: "flyers",
-    name: "Flyers",
-    desc: "Letter flyers, half-sheets, one-pagers, handouts",
-    group: "print",
-  },
-];
-
-const GROUP_ORDER: ChannelGroup[] = [
-  "website",
-  "email",
-  "sms",
-  "internal-messaging",
-  "digital-signage",
-  "ott",
-  "pr",
-  "paid-media",
-  "physical-signage",
-  "print",
-];
-
-const GROUP_LABEL: Record<ChannelGroup, string> = {
-  website: "Website",
-  email: "Email",
-  sms: "SMS",
-  "internal-messaging": "Internal Messaging",
-  "digital-signage": "Digital Signage",
-  ott: "OTT",
-  pr: "PR",
-  "paid-media": "Paid Media",
-  "physical-signage": "Physical Signage",
-  print: "Print",
-};
-
 const ALL_KEYS: PlatformKey[] = CHANNELS.map((c) => c.key);
-const PHYSICAL_GROUPS = new Set<ChannelGroup>(["physical-signage", "print"]);
-const DIGITAL_KEYS: PlatformKey[] = CHANNELS.filter((c) => !PHYSICAL_GROUPS.has(c.group)).map((c) => c.key);
-const PHYSICAL_KEYS: PlatformKey[] = CHANNELS.filter((c) => PHYSICAL_GROUPS.has(c.group)).map((c) => c.key);
+const DIGITAL_KEYS: PlatformKey[] = [...NON_PHYSICAL_CHANNEL_KEYS];
+const PHYSICAL_KEYS: PlatformKey[] = [...PHYSICAL_CHANNEL_KEYS];
 
 type PresetKey = "all" | "digital" | "physical" | "custom";
 
@@ -427,7 +347,7 @@ function CreateDialog({
 }) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [selected, setSelected] = useState<Set<PlatformKey>>(() => new Set(ALL_KEYS));
+  const [selected, setSelected] = useState<Set<PlatformKey>>(() => new Set());
 
   const preset = detectPreset(selected);
 
@@ -462,8 +382,8 @@ function CreateDialog({
         <div className="px-5 pt-5">
           <h2 className="font-semibold text-lg">New project</h2>
           <p className="text-sm text-zinc-500 mt-1">
-            A project gathers every communication channel in one place, from website and email to
-            digital signage, OTT, PR, physical signage, and flyers.
+            A project gathers every top-level channel in one place. Channels like Website and Meta
+            each hold their own placements and size slots inside the channel board.
           </p>
         </div>
 
@@ -522,8 +442,8 @@ function CreateDialog({
             <div className="mt-2 flex flex-wrap gap-1.5">
               {(
                 [
-                  { key: "all" as const, label: "Full inventory" },
-                  { key: "digital" as const, label: "Non-physical" },
+                  { key: "all" as const, label: "Select all" },
+                  { key: "digital" as const, label: "Digital" },
                   { key: "physical" as const, label: "Physical only" },
                 ]
               ).map((p) => (
@@ -548,13 +468,13 @@ function CreateDialog({
             </div>
 
             <div className="mt-3 space-y-4">
-              {GROUP_ORDER.map((group) => {
-                const items = CHANNELS.filter((c) => c.group === group);
+              {CHANNEL_CATEGORY_ORDER.map((group) => {
+                const items = CHANNELS.filter((c) => c.category === group);
                 if (items.length === 0) return null;
                 return (
                   <div key={group}>
                     <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400 mb-1.5">
-                      {GROUP_LABEL[group]}
+                      {CHANNEL_CATEGORY_LABELS[group]}
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {items.map((c) => {

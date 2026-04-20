@@ -1,22 +1,9 @@
 import { NextRequest } from "next/server";
+import { CHANNEL_KEYS } from "@/lib/channels";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import crypto from "crypto";
 
-const VALID_PLATFORMS = new Set([
-  "meta",
-  "tiktok",
-  "youtube",
-  "google-search",
-  "website",
-  "email",
-  "sms",
-  "internal-messaging",
-  "digital-signage",
-  "ott",
-  "pr",
-  "signage",
-  "flyers",
-]);
+const VALID_PLATFORMS = new Set<string>(CHANNEL_KEYS);
 const SLOT_PATTERN = /^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$/;
 const VALID_MIME = /^(image|video)\//;
 const MAX_BYTES = 500 * 1024 * 1024;

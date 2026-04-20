@@ -2,81 +2,22 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { CampaignBriefPanel } from "./CampaignBriefPanel";
 import { TrackingLinksPanel } from "./TrackingLinksPanel";
 import { aspectClassForAsset, formatAssetLabel } from "@/lib/channelAssets";
+import {
+  CHANNELS,
+  CHANNEL_BY_KEY,
+  CHANNEL_CATEGORY_LABELS,
+  CHANNEL_CATEGORY_ORDER,
+  CHANNEL_LABELS,
+  CHANNEL_ORDER,
+  type ChannelMeta,
+} from "@/lib/channels";
+import type { CampaignBrief } from "@/lib/campaignBrief";
 import type { PlatformKey } from "@/lib/utm";
 
 type TrackingLinksLocation = "project_tab" | "platform_panel" | "both";
-
-type PlatformMeta = {
-  key: PlatformKey;
-  name: string;
-  desc: string;
-};
-
-const ALL_PLATFORMS: PlatformMeta[] = [
-  { key: "website", name: "Website", desc: "Hero slider, pop up, landing page, blog" },
-  { key: "email", name: "Email", desc: "Campaign and flow sends" },
-  { key: "sms", name: "SMS", desc: "Campaign and flow messaging" },
-  {
-    key: "internal-messaging",
-    name: "Internal Messaging",
-    desc: "Team Talk and Front Desk FAQ",
-  },
-  {
-    key: "digital-signage",
-    name: "Digital Signage",
-    desc: "Admission, Info Desk, On Campus screens",
-  },
-  { key: "ott", name: "OTT", desc: "Office and streaming network placements" },
-  { key: "pr", name: "PR", desc: "YouTube, influencers, regional and national" },
-  {
-    key: "signage",
-    name: "Physical Signage",
-    desc: "Parking lot, H-frames, A-frame, bathroom, banners, evergreen",
-  },
-  {
-    key: "flyers",
-    name: "Flyers",
-    desc: "Letter, half-sheet, tabloid, handouts",
-  },
-  { key: "meta", name: "Meta", desc: "Facebook, Instagram, Reels" },
-  { key: "tiktok", name: "TikTok", desc: "In-Feed, TopView, Spark Ads" },
-  { key: "youtube", name: "YouTube", desc: "In-Stream, Shorts, Bumper" },
-  { key: "google-search", name: "Google Search", desc: "Image assets & search terms" },
-];
-
-const PLATFORM_LABEL: Record<PlatformKey, string> = {
-  website: "Website",
-  email: "Email",
-  sms: "SMS",
-  "internal-messaging": "Internal Messaging",
-  "digital-signage": "Digital Signage",
-  ott: "OTT",
-  pr: "PR",
-  meta: "Meta",
-  tiktok: "TikTok",
-  youtube: "YouTube",
-  "google-search": "Google Search",
-  signage: "Physical Signage",
-  flyers: "Flyers",
-};
-
-const PLATFORM_ORDER: PlatformKey[] = [
-  "website",
-  "email",
-  "sms",
-  "internal-messaging",
-  "digital-signage",
-  "ott",
-  "pr",
-  "signage",
-  "flyers",
-  "meta",
-  "tiktok",
-  "youtube",
-  "google-search",
-];
 
 function aspectClass(ratio: string): string {
   return aspectClassForAsset(ratio);
@@ -96,10 +37,12 @@ export function ProjectDashboard({
   projectId,
   projectName,
   initialTrackingLinksLocation,
+  initialCampaignBrief,
 }: {
   projectId: string;
   projectName: string;
   initialTrackingLinksLocation: TrackingLinksLocation;
+  initialCampaignBrief: CampaignBrief;
 }) {
   const [enabled, setEnabled] = useState<PlatformKey[] | null>(null);
   const [media, setMedia] = useState<MediaItem[] | null>(null);
@@ -186,17 +129,19 @@ export function ProjectDashboard({
   const enabledMeta = useMemo(() => {
     if (!enabled) return [];
     const set = new Set(enabled);
-    return ALL_PLATFORMS.filter((p) => set.has(p.key));
+    return CHANNELS.filter((p) => set.has(p.key));
   }, [enabled]);
 
   const availableToAdd = useMemo(() => {
     if (!enabled) return [];
     const set = new Set(enabled);
-    return ALL_PLATFORMS.filter((p) => !set.has(p.key));
+    return CHANNELS.filter((p) => !set.has(p.key));
   }, [enabled]);
 
   return (
     <main className="max-w-7xl mx-auto px-6 py-10 space-y-10">
+      <CampaignBriefPanel projectId={projectId} initialBrief={initialCampaignBrief} />
+
       <section>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-medium uppercase tracking-wide text-zinc-500">Channels</h2>
@@ -317,7 +262,7 @@ function PlatformCard({
   onCloseMenu,
   onRemove,
 }: {
-  platform: PlatformMeta;
+  platform: ChannelMeta;
   projectId: string;
   menuOpen: boolean;
   onOpenMenu: () => void;
@@ -342,7 +287,7 @@ function PlatformCard({
       </Link>
       <button
         type="button"
-        aria-label="Platform menu"
+        aria-label="Channel menu"
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
@@ -399,7 +344,7 @@ function AddPlatformDialog({
   onClose,
   onAdd,
 }: {
-  options: PlatformMeta[];
+  options: ChannelMeta[];
   onClose: () => void;
   onAdd: (key: PlatformKey) => void;
 }) {
@@ -415,22 +360,37 @@ function AddPlatformDialog({
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="font-semibold text-lg">Add channel</h2>
-        <p className="text-sm text-zinc-500 mt-1">Pick a channel to enable for this project.</p>
-        <div className="mt-4 space-y-2">
-          {options.map((p) => (
-            <button
-              key={p.key}
-              type="button"
-              onClick={() => onAdd(p.key)}
-              className="w-full flex items-start gap-3 rounded-lg border border-zinc-200 dark:border-zinc-800 p-3 text-left hover:border-zinc-400 dark:hover:border-zinc-600"
-            >
-              <div className="flex-1">
-                <div className="font-medium text-sm">{p.name}</div>
-                <div className="text-xs text-zinc-500 mt-0.5">{p.desc}</div>
+        <p className="text-sm text-zinc-500 mt-1">
+          Pick a top-level channel to enable for this project. Placements and size slots stay nested inside the channel.
+        </p>
+        <div className="mt-4 space-y-4">
+          {CHANNEL_CATEGORY_ORDER.map((group) => {
+            const items = options.filter((option) => option.category === group);
+            if (items.length === 0) return null;
+            return (
+              <div key={group}>
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400 mb-1.5">
+                  {CHANNEL_CATEGORY_LABELS[group]}
+                </div>
+                <div className="space-y-2">
+                  {items.map((p) => (
+                    <button
+                      key={p.key}
+                      type="button"
+                      onClick={() => onAdd(p.key)}
+                      className="w-full flex items-start gap-3 rounded-lg border border-zinc-200 dark:border-zinc-800 p-3 text-left hover:border-zinc-400 dark:hover:border-zinc-600"
+                    >
+                      <div className="flex-1">
+                        <div className="font-medium text-sm">{p.name}</div>
+                        <div className="text-xs text-zinc-500 mt-0.5">{p.desc}</div>
+                      </div>
+                      <span className="text-xs text-zinc-400">Add</span>
+                    </button>
+                  ))}
+                </div>
               </div>
-              <span className="text-xs text-zinc-400">Add</span>
-            </button>
-          ))}
+            );
+          })}
         </div>
         <div className="flex items-center justify-end pt-4">
           <button
@@ -471,9 +431,9 @@ function CampaignMedia({
       map.set(key, arr);
     }
     if (groupBy === "platform") {
-      return PLATFORM_ORDER
+      return CHANNEL_ORDER
         .filter((k) => map.has(k))
-        .map((k) => ({ key: k, label: PLATFORM_LABEL[k], items: map.get(k)! }));
+        .map((k) => ({ key: k, label: CHANNEL_LABELS[k], items: map.get(k)! }));
     }
     return Array.from(map.entries())
       .sort(([a], [b]) => a.localeCompare(b))
@@ -552,12 +512,13 @@ function CreativeTile({
   groupBy: "platform" | "ratio";
 }) {
   const aspect = aspectClass(item.ratio);
-  const secondary = groupBy === "platform" ? formatAssetLabel(item.ratio) : PLATFORM_LABEL[item.platform];
+  const channelLabel = CHANNEL_LABELS[item.platform] ?? CHANNEL_BY_KEY[item.platform]?.name ?? item.platform;
+  const secondary = groupBy === "platform" ? formatAssetLabel(item.ratio) : channelLabel;
   return (
     <Link
       href={`/projects/${projectId}/${item.platform}`}
       className="block group"
-      title={`${PLATFORM_LABEL[item.platform]} · ${formatAssetLabel(item.ratio)} · ${item.name}`}
+      title={`${channelLabel} · ${formatAssetLabel(item.ratio)} · ${item.name}`}
     >
       <div
         className={`${aspect} w-full rounded-lg overflow-hidden bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 group-hover:border-zinc-400 dark:group-hover:border-zinc-600`}
@@ -570,7 +531,7 @@ function CreativeTile({
         )}
       </div>
       <div className="mt-1 flex items-center justify-between text-[11px] text-zinc-500">
-        <span className="truncate">{PLATFORM_LABEL[item.platform]}</span>
+        <span className="truncate">{channelLabel}</span>
         <span className="shrink-0 ml-2">{secondary}</span>
       </div>
     </Link>

@@ -1,21 +1,8 @@
 import { NextRequest } from "next/server";
+import { CHANNEL_KEYS } from "@/lib/channels";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-const VALID_PLATFORMS = new Set([
-  "meta",
-  "tiktok",
-  "youtube",
-  "google-search",
-  "website",
-  "email",
-  "sms",
-  "internal-messaging",
-  "digital-signage",
-  "ott",
-  "pr",
-  "signage",
-  "flyers",
-]);
+const VALID_PLATFORMS = new Set<string>(CHANNEL_KEYS);
 const BUCKET = "creatives";
 
 export async function GET(request: NextRequest) {

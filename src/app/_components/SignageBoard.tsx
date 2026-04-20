@@ -243,9 +243,10 @@ export function SignageBoard({
                 plus digital billboard presets that follow the same overall dimensions.
               </p>
               <p className="text-xs text-zinc-500 mt-2">
-                Aquarium physical signage placements covered here include parking lot signage,
-                H-frames, little H-frames, A-frames, bathroom signs, construction banners,
-                fabric evergreen, and ship banners.
+                Physical Signage is treated as one top-level channel here, with placements like
+                parking lot signage, H-frames, little H-frames, A-frames, bathroom signs,
+                construction banners, fabric evergreen, ship banners, and billboard blueprints
+                grouped inside it.
               </p>
             </div>
             <div className="text-xs text-zinc-500 rounded-lg bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 px-3 py-2">

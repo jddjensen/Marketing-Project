@@ -34,6 +34,7 @@ export default async function ProjectPage({
         projectId={id}
         projectName={project.name}
         initialTrackingLinksLocation={project.trackingLinksLocation}
+        initialCampaignBrief={project.campaignBrief}
       />
     </div>
   );

@@ -2,28 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
+import { CHANNEL_LABELS, CHANNEL_ORDER } from "@/lib/channels";
 import {
   buildUtmUrl,
   PLATFORM_DEFAULTS,
   slugify,
   type PlatformKey,
 } from "@/lib/utm";
-
-const PLATFORM_LABEL: Record<PlatformKey, string> = {
-  website: "Website",
-  email: "Email",
-  sms: "SMS",
-  "internal-messaging": "Internal Messaging",
-  "digital-signage": "Digital Signage",
-  ott: "OTT",
-  pr: "PR",
-  meta: "Meta",
-  tiktok: "TikTok",
-  youtube: "YouTube",
-  "google-search": "Google Search",
-  signage: "Physical Signage",
-  flyers: "Flyers",
-};
 
 type TrackingLink = {
   id: string;
@@ -231,11 +216,11 @@ export function TrackingLinksPanel({
       <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="text-sm font-medium uppercase tracking-wide text-zinc-500">
-            {heading ?? (platform ? `${PLATFORM_LABEL[platform]} tracking links` : "Tracking links")}
+            {heading ?? (platform ? `${CHANNEL_LABELS[platform]} tracking links` : "Tracking links")}
           </h2>
           <p className="text-xs text-zinc-500 mt-1">
             {platform
-              ? `UTM-tagged URLs for ${PLATFORM_LABEL[platform]}. Copy and paste into the channel.`
+              ? `UTM-tagged URLs for ${CHANNEL_LABELS[platform]}. Copy and paste into the channel.`
               : "Build UTM-tagged destination URLs for every channel. Copy each row to paste wherever that communication lives."}
           </p>
         </div>
@@ -365,19 +350,11 @@ function LinkRow({
             className="rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-2 py-2 text-sm"
           >
             <option value="">All channels</option>
-            <option value="website">Website</option>
-            <option value="email">Email</option>
-            <option value="sms">SMS</option>
-            <option value="internal-messaging">Internal Messaging</option>
-            <option value="digital-signage">Digital Signage</option>
-            <option value="ott">OTT</option>
-            <option value="pr">PR</option>
-            <option value="meta">Meta</option>
-            <option value="tiktok">TikTok</option>
-            <option value="youtube">YouTube</option>
-            <option value="google-search">Google Search</option>
-            <option value="signage">Physical Signage</option>
-            <option value="flyers">Flyers</option>
+            {CHANNEL_ORDER.map((channelKey) => (
+              <option key={channelKey} value={channelKey}>
+                {CHANNEL_LABELS[channelKey]}
+              </option>
+            ))}
           </select>
         )}
         <button
@@ -980,7 +957,7 @@ function EmptyState({
       <div className="font-semibold">No tracking links yet</div>
       <p className="text-sm text-zinc-500 mt-1 max-w-sm">
         {platform
-          ? `Add a landing page to generate a UTM-tagged link for ${PLATFORM_LABEL[platform]}.`
+          ? `Add a landing page to generate a UTM-tagged link for ${CHANNEL_LABELS[platform]}.`
           : "Add a landing page and we’ll build a UTM-tagged URL you can copy into each platform."}
       </p>
       <button
@@ -1212,19 +1189,11 @@ function AddLinkDialog({
                 className="mt-1 w-full rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 px-3 py-2 text-sm"
               >
                 <option value="">All channels</option>
-                <option value="website">Website</option>
-                <option value="email">Email</option>
-                <option value="sms">SMS</option>
-                <option value="internal-messaging">Internal Messaging</option>
-                <option value="digital-signage">Digital Signage</option>
-                <option value="ott">OTT</option>
-                <option value="pr">PR</option>
-                <option value="meta">Meta</option>
-                <option value="tiktok">TikTok</option>
-                <option value="youtube">YouTube</option>
-                <option value="google-search">Google Search</option>
-                <option value="signage">Physical Signage</option>
-                <option value="flyers">Flyers</option>
+                {CHANNEL_ORDER.map((channelKey) => (
+                  <option key={channelKey} value={channelKey}>
+                    {CHANNEL_LABELS[channelKey]}
+                  </option>
+                ))}
               </select>
             </div>
           )}
