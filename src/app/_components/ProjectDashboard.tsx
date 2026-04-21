@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { CampaignBriefPanel } from "./CampaignBriefPanel";
+import { PerformanceDashboardPanel } from "./PerformanceDashboardPanel";
 import { TrackingLinksPanel } from "./TrackingLinksPanel";
 import { aspectClassForAsset, formatAssetLabel } from "@/lib/channelAssets";
 import {
@@ -141,6 +142,7 @@ export function ProjectDashboard({
   return (
     <main className="max-w-7xl mx-auto px-6 py-10 space-y-10">
       <CampaignBriefPanel projectId={projectId} initialBrief={initialCampaignBrief} />
+      <PerformanceDashboardPanel projectId={projectId} />
 
       <section>
         <div className="flex items-center justify-between mb-4">

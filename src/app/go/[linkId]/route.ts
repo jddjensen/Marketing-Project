@@ -11,7 +11,6 @@ type Row = {
   utm_campaign: string | null;
   utm_term: string | null;
   utm_content: string | null;
-  qr_enabled: boolean;
   project_name: string | null;
 };
 
@@ -26,11 +25,9 @@ export async function GET(
     .rpc("resolve_public_tracking_link", { link_uuid: linkId })
     .single<Row>();
 
-  if (!data || !data.qr_enabled) {
+  if (!data) {
     return new Response("Not found", { status: 404 });
   }
-
-  const campaignFallback = data.project_name ?? "";
 
   const target = buildUtmUrl(
     {
@@ -43,7 +40,7 @@ export async function GET(
       utmTerm: data.utm_term,
       utmContent: data.utm_content,
     },
-    campaignFallback
+    data.project_name ?? ""
   );
 
   if (!target) return new Response("Not found", { status: 404 });
@@ -52,7 +49,7 @@ export async function GET(
   const ref = (request.headers.get("referer") ?? "").slice(0, 500) || null;
 
   await supabase
-    .from("project_tracking_link_scans")
+    .from("project_tracking_link_clicks")
     .insert({ link_id: linkId, user_agent: ua, referrer: ref });
 
   return Response.redirect(target, 302);

@@ -52,6 +52,28 @@ export type GoogleAnalyticsLinkSummary = {
   lastSyncedAt: number;
 };
 
+export type GoogleAnalyticsProjectLinkMetrics = {
+  sessions: number;
+  engagedSessions: number;
+  views: number;
+  keyEvents: number;
+  transactions: number;
+  purchaseRevenue: number;
+};
+
+export type GoogleAnalyticsProjectPerformanceSummary = {
+  totals: GoogleAnalyticsProjectLinkMetrics;
+  byLink: Record<string, GoogleAnalyticsProjectLinkMetrics>;
+  trend: Array<{
+    date: string;
+    sessions: number;
+    keyEvents: number;
+    transactions: number;
+    purchaseRevenue: number;
+  }>;
+  lastSyncedAt: number;
+};
+
 class GoogleAnalyticsError extends Error {
   status: number;
 
@@ -66,6 +88,10 @@ let accessTokenCache: { token: string; expiresAt: number } | null = null;
 const summaryCache = new Map<
   string,
   { expiresAt: number; value: GoogleAnalyticsLinkSummary }
+>();
+const projectPerformanceCache = new Map<
+  string,
+  { expiresAt: number; value: GoogleAnalyticsProjectPerformanceSummary }
 >();
 
 function base64Url(value: string | Buffer) {
@@ -219,6 +245,17 @@ function parseGoogleDate(value: string | undefined) {
   return `${value.slice(0, 4)}-${value.slice(4, 6)}-${value.slice(6, 8)}`;
 }
 
+function emptyProjectMetrics(): GoogleAnalyticsProjectLinkMetrics {
+  return {
+    sessions: 0,
+    engagedSessions: 0,
+    views: 0,
+    keyEvents: 0,
+    transactions: 0,
+    purchaseRevenue: 0,
+  };
+}
+
 function buildLandingPageFilter(linkId: string) {
   return {
     filter: {
@@ -229,6 +266,29 @@ function buildLandingPageFilter(linkId: string) {
       },
     },
   };
+}
+
+function buildTrackingLinksFilter(linkIds: string[]) {
+  if (linkIds.length === 1) {
+    return buildLandingPageFilter(linkIds[0]);
+  }
+
+  return {
+    orGroup: {
+      expressions: linkIds.map((linkId) => buildLandingPageFilter(linkId)),
+    },
+  };
+}
+
+function extractLinkIdFromLandingPage(value: string | undefined) {
+  if (!value) return null;
+  try {
+    const url = new URL(value, "https://tracking.local");
+    return url.searchParams.get("mt_link_id");
+  } catch {
+    const match = value.match(/[?&]mt_link_id=([^&#]+)/);
+    return match?.[1] ? decodeURIComponent(match[1]) : null;
+  }
 }
 
 export async function getGoogleAnalyticsLinkSummary(args: {
@@ -288,6 +348,117 @@ export async function getGoogleAnalyticsLinkSummary(args: {
   };
 
   summaryCache.set(cacheKey, {
+    value,
+    expiresAt: Date.now() + SUMMARY_CACHE_TTL_MS,
+  });
+
+  return value;
+}
+
+export async function getGoogleAnalyticsProjectPerformance(args: {
+  propertyId: string;
+  linkIds: string[];
+  createdAt: number;
+  refresh?: boolean;
+}) {
+  const uniqueLinkIds = Array.from(new Set(args.linkIds)).sort();
+  const startDate = toDateInput(args.createdAt);
+  const trendStartDate = toDateInput(
+    Math.max(args.createdAt, Date.now() - 13 * 24 * 60 * 60 * 1000)
+  );
+  const cacheKey = `${args.propertyId}:${startDate}:${uniqueLinkIds.join(",")}`;
+
+  if (!args.refresh) {
+    const cached = projectPerformanceCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.value;
+    }
+  }
+
+  if (uniqueLinkIds.length === 0) {
+    const empty: GoogleAnalyticsProjectPerformanceSummary = {
+      totals: emptyProjectMetrics(),
+      byLink: {},
+      trend: [],
+      lastSyncedAt: Date.now(),
+    };
+    projectPerformanceCache.set(cacheKey, {
+      value: empty,
+      expiresAt: Date.now() + SUMMARY_CACHE_TTL_MS,
+    });
+    return empty;
+  }
+
+  const metrics = [
+    { name: "sessions" },
+    { name: "engagedSessions" },
+    { name: "screenPageViews" },
+    { name: "keyEvents" },
+    { name: "transactions" },
+    { name: "purchaseRevenue" },
+  ];
+
+  const filter = buildTrackingLinksFilter(uniqueLinkIds);
+  const [byLinkReport, trendReport] = await Promise.all([
+    runGoogleAnalyticsReport(args.propertyId, {
+      dateRanges: [{ startDate, endDate: "today" }],
+      dimensions: [{ name: "landingPagePlusQueryString" }],
+      metrics,
+      dimensionFilter: filter,
+      limit: Math.max(100, uniqueLinkIds.length * 10),
+    }),
+    runGoogleAnalyticsReport(args.propertyId, {
+      dateRanges: [{ startDate: trendStartDate, endDate: "today" }],
+      dimensions: [{ name: "date" }],
+      metrics,
+      dimensionFilter: filter,
+      orderBys: [{ dimension: { dimensionName: "date" } }],
+      limit: 14,
+    }),
+  ]);
+
+  const allowed = new Set(uniqueLinkIds);
+  const byLink: Record<string, GoogleAnalyticsProjectLinkMetrics> = {};
+
+  for (const row of byLinkReport.rows ?? []) {
+    const linkId = extractLinkIdFromLandingPage(row.dimensionValues?.[0]?.value);
+    if (!linkId || !allowed.has(linkId)) continue;
+    const current = byLink[linkId] ?? emptyProjectMetrics();
+    current.sessions += parseMetric(row, 0);
+    current.engagedSessions += parseMetric(row, 1);
+    current.views += parseMetric(row, 2);
+    current.keyEvents += parseMetric(row, 3);
+    current.transactions += parseMetric(row, 4);
+    current.purchaseRevenue += parseMetric(row, 5);
+    byLink[linkId] = current;
+  }
+
+  const totals = Object.values(byLink).reduce<GoogleAnalyticsProjectLinkMetrics>(
+    (acc, row) => ({
+      sessions: acc.sessions + row.sessions,
+      engagedSessions: acc.engagedSessions + row.engagedSessions,
+      views: acc.views + row.views,
+      keyEvents: acc.keyEvents + row.keyEvents,
+      transactions: acc.transactions + row.transactions,
+      purchaseRevenue: acc.purchaseRevenue + row.purchaseRevenue,
+    }),
+    emptyProjectMetrics()
+  );
+
+  const value: GoogleAnalyticsProjectPerformanceSummary = {
+    totals,
+    byLink,
+    trend: (trendReport.rows ?? []).map((row) => ({
+      date: parseGoogleDate(row.dimensionValues?.[0]?.value),
+      sessions: parseMetric(row, 0),
+      keyEvents: parseMetric(row, 3),
+      transactions: parseMetric(row, 4),
+      purchaseRevenue: parseMetric(row, 5),
+    })),
+    lastSyncedAt: Date.now(),
+  };
+
+  projectPerformanceCache.set(cacheKey, {
     value,
     expiresAt: Date.now() + SUMMARY_CACHE_TTL_MS,
   });

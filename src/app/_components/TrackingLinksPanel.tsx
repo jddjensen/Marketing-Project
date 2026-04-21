@@ -160,12 +160,12 @@ export function TrackingLinksPanel({
     [projectId]
   );
 
-  const copy = useCallback(async (id: string, text: string) => {
+  const copy = useCallback(async (token: string, text: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      setCopiedId(id);
+      setCopiedId(token);
       setTimeout(() => {
-        setCopiedId((cur) => (cur === id ? null : cur));
+        setCopiedId((cur) => (cur === token ? null : cur));
       }, 1400);
     } catch {
       /* ignore */
@@ -220,8 +220,8 @@ export function TrackingLinksPanel({
           </h2>
           <p className="text-xs text-zinc-500 mt-1">
             {platform
-              ? `UTM-tagged URLs for ${CHANNEL_LABELS[platform]}. Copy and paste into the channel.`
-              : "Build UTM-tagged destination URLs for every channel. Copy each row to paste wherever that communication lives."}
+              ? `UTM-tagged URLs for ${CHANNEL_LABELS[platform]}. Use the tracked link copy action when you want click reporting in the unified dashboard.`
+              : "Build UTM-tagged destination URLs for every channel. Use tracked links for digital placements and QR codes for print/offline placements so performance rolls up in one place."}
           </p>
         </div>
         <button
@@ -263,8 +263,8 @@ export function TrackingLinksPanel({
               pinnedPlatform={platform}
               onChange={(patch) => updateLink(link.id, patch)}
               onDelete={() => deleteLink(link.id)}
-              onCopy={(text) => copy(link.id, text)}
-              copied={copiedId === link.id}
+              onCopy={(token, text) => copy(token, text)}
+              copiedId={copiedId}
               onShowQr={(redirectUrl) =>
                 setQrFor({
                   id: link.id,
@@ -305,7 +305,7 @@ function LinkRow({
   onChange,
   onDelete,
   onCopy,
-  copied,
+  copiedId,
   onShowQr,
 }: {
   link: TrackingLink;
@@ -315,8 +315,8 @@ function LinkRow({
   pinnedPlatform?: PlatformKey;
   onChange: (patch: Partial<TrackingLink>) => void;
   onDelete: () => void;
-  onCopy: (text: string) => void;
-  copied: boolean;
+  onCopy: (token: string, text: string) => void;
+  copiedId: string | null;
   onShowQr: (redirectUrl: string) => void;
 }) {
   const built = buildUtmUrl({ ...link, id: link.id }, projectName);
@@ -326,6 +326,8 @@ function LinkRow({
   );
   const qrRedirectUrl =
     typeof window !== "undefined" ? `${window.location.origin}/qr/${link.id}` : `/qr/${link.id}`;
+  const trackedRedirectUrl =
+    typeof window !== "undefined" ? `${window.location.origin}/go/${link.id}` : `/go/${link.id}`;
 
   return (
     <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 space-y-3">
@@ -430,11 +432,22 @@ function LinkRow({
         <button
           type="button"
           disabled={!built}
-          onClick={() => onCopy(built)}
+          onClick={() => onCopy(`${link.id}:tracked`, trackedRedirectUrl)}
           className="shrink-0 rounded-md bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 text-xs font-medium px-3 py-1.5 disabled:opacity-40 hover:opacity-90"
         >
-          {copied ? "Copied" : "Copy"}
+          {copiedId === `${link.id}:tracked` ? "Copied" : "Copy tracked link"}
         </button>
+        <button
+          type="button"
+          disabled={!built}
+          onClick={() => onCopy(`${link.id}:destination`, built)}
+          className="shrink-0 rounded-md border border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-200 text-xs font-medium px-3 py-1.5 disabled:opacity-40 hover:border-zinc-500 dark:hover:border-zinc-500"
+        >
+          {copiedId === `${link.id}:destination` ? "Copied" : "Copy destination"}
+        </button>
+      </div>
+      <div className="text-[11px] text-zinc-500 -mt-1">
+        Tracked clicks use <span className="font-mono">/go/{link.id}</span>; the landing page still receives the full UTM-tagged destination.
       </div>
 
       {isOffline && link.qrEnabled && (
