@@ -5,6 +5,8 @@ import { seasonForDate, type SeasonKey } from "@/lib/campaignBrief";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { PlatformKey } from "@/lib/utm";
 
+export const dynamic = "force-dynamic";
+
 type CalendarEntry = {
   id: string;
   name: string;
