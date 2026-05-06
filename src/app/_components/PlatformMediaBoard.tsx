@@ -417,7 +417,7 @@ function TrackingControls({
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             placeholder="https://example.com/landing"
-            className="flex-1 rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="input-tactile flex-1 text-xs"
           />
           <button
             type="button"

@@ -58,9 +58,10 @@ export function buildUtmUrl(link: UtmLinkShape, campaignFallback: string): strin
     try {
       base = new URL(`https://${raw}`);
     } catch {
-      return raw;
+      return "";
     }
   }
+  if (base.protocol !== "http:" && base.protocol !== "https:") return "";
   const params = base.searchParams;
   if (link.id) params.set("mt_link_id", link.id);
   const defaults = link.platform ? PLATFORM_DEFAULTS[link.platform] : null;

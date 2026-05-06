@@ -5,9 +5,15 @@
   --foreground: #171717;
   --surface: #ffffff;
   --surface-translucent: rgba(255, 255, 255, 0.72);
+  --surface-sunken: #f4f4f5;
   --border: rgba(0, 0, 0, 0.08);
+  --border-strong: rgba(0, 0, 0, 0.18);
+  --accent: #2563eb;
+  --accent-soft: rgba(37, 99, 235, 0.14);
   --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.06);
   --shadow-lift: 0 2px 6px rgba(0, 0, 0, 0.06), 0 20px 40px rgba(0, 0, 0, 0.12);
+  --shadow-inset: inset 0 0 0 1px rgba(0, 0, 0, 0.05);
+  --shadow-segmented: 0 1px 1px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.08);
   --ease-apple: cubic-bezier(0.32, 0.72, 0, 1);
   --ease-apple-soft: cubic-bezier(0.25, 0.1, 0.25, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -32,9 +38,15 @@
     --foreground: #ededed;
     --surface: #111111;
     --surface-translucent: rgba(17, 17, 17, 0.72);
+    --surface-sunken: #18181b;
     --border: rgba(255, 255, 255, 0.08);
+    --border-strong: rgba(255, 255, 255, 0.22);
+    --accent: #60a5fa;
+    --accent-soft: rgba(96, 165, 250, 0.18);
     --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.5);
     --shadow-lift: 0 2px 6px rgba(0, 0, 0, 0.5), 0 20px 40px rgba(0, 0, 0, 0.6);
+    --shadow-inset: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+    --shadow-segmented: 0 1px 1px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.6);
   }
 }
 
@@ -91,6 +103,230 @@ body {
 .apple-lift:active {
   transform: translateY(0) scale(0.99);
   transition-duration: var(--dur-fast);
+}
+
+/* -------- Tactile selectables -------- */
+
+/* Shared focus ring — accent color, no harsh outline */
+.focus-ring:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--accent);
+}
+
+/* Text inputs / textareas */
+.input-tactile {
+  appearance: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 14px;
+  color: var(--foreground);
+  transition: border-color var(--dur-fast) var(--ease-apple),
+    box-shadow var(--dur-fast) var(--ease-apple),
+    background-color var(--dur-fast) var(--ease-apple);
+}
+.input-tactile::placeholder {
+  color: rgba(113, 113, 122, 0.7);
+}
+.input-tactile:hover:not(:focus):not(:disabled) {
+  border-color: var(--border-strong);
+}
+.input-tactile:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.input-tactile:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Native <select> dressed up with custom chevron */
+.select-tactile {
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--surface);
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none'><path d='M3 4.5L6 7.5L9 4.5' stroke='%2371717a' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 12px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 32px 8px 12px;
+  font-size: 14px;
+  color: var(--foreground);
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease-apple),
+    box-shadow var(--dur-fast) var(--ease-apple),
+    background-color var(--dur-fast) var(--ease-apple),
+    transform var(--dur-fast) var(--ease-apple);
+}
+@media (prefers-color-scheme: dark) {
+  .select-tactile {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none'><path d='M3 4.5L6 7.5L9 4.5' stroke='%23a1a1aa' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  }
+}
+.select-tactile:hover:not(:focus):not(:disabled) {
+  border-color: var(--border-strong);
+}
+.select-tactile:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.select-tactile:active:not(:disabled) {
+  transform: scale(0.985);
+}
+.select-tactile:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Pill toggle (single-choice or multi-select chip) */
+.pill-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  line-height: 1;
+  font-weight: 500;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: rgb(82, 82, 91);
+  padding: 6px 12px;
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+  transition: background-color var(--dur-fast) var(--ease-apple),
+    color var(--dur-fast) var(--ease-apple),
+    border-color var(--dur-fast) var(--ease-apple),
+    transform var(--dur-fast) var(--ease-apple),
+    box-shadow var(--dur-fast) var(--ease-apple);
+}
+@media (prefers-color-scheme: dark) {
+  .pill-toggle {
+    color: rgb(212, 212, 216);
+  }
+}
+.pill-toggle:hover:not([data-active="true"]):not(:disabled) {
+  border-color: var(--border-strong);
+  color: var(--foreground);
+}
+.pill-toggle:active:not(:disabled) {
+  transform: scale(0.96);
+}
+.pill-toggle:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-soft);
+  border-color: var(--accent);
+}
+.pill-toggle[data-active="true"] {
+  background: var(--foreground);
+  color: var(--background);
+  border-color: var(--foreground);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+/* Segmented control container + options */
+.segmented {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow-inset);
+}
+.segmented-option {
+  position: relative;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  padding: 7px 12px;
+  border-radius: 7px;
+  color: rgb(113, 113, 122);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+  transition: background-color var(--dur-fast) var(--ease-apple),
+    color var(--dur-fast) var(--ease-apple),
+    box-shadow var(--dur-base) var(--ease-apple),
+    transform var(--dur-fast) var(--ease-apple);
+}
+.segmented-option:hover:not([data-active="true"]):not(:disabled) {
+  color: var(--foreground);
+}
+.segmented-option:active:not([data-active="true"]):not(:disabled) {
+  transform: scale(0.97);
+}
+.segmented-option:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.segmented-option[data-active="true"] {
+  background: var(--surface);
+  color: var(--foreground);
+  box-shadow: var(--shadow-segmented);
+}
+
+/* Tactile checkbox — replaces accent-* */
+.check-tactile {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid var(--border-strong);
+  border-radius: 4px;
+  background: var(--surface);
+  cursor: pointer;
+  position: relative;
+  flex-shrink: 0;
+  transition: background-color var(--dur-fast) var(--ease-apple),
+    border-color var(--dur-fast) var(--ease-apple),
+    box-shadow var(--dur-fast) var(--ease-apple),
+    transform var(--dur-fast) var(--ease-apple);
+}
+.check-tactile:hover:not(:checked):not(:disabled) {
+  border-color: var(--accent);
+}
+.check-tactile:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.check-tactile:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.check-tactile:checked::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none'><path d='M3.5 8.5L6.5 11.5L12.5 5' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  animation: check-pop 220ms var(--ease-spring);
+}
+.check-tactile:active:not(:disabled) {
+  transform: scale(0.92);
+}
+.check-tactile:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+@keyframes check-pop {
+  from {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 /* -------- View transitions -------- */

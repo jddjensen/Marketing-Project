@@ -120,7 +120,7 @@ export function SearchTermsPanel({ platform, projectId }: { platform: string; pr
           }}
           placeholder='e.g. "running shoes", best marathon trainers, nike pegasus'
           rows={2}
-          className="flex-1 resize-none rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="input-tactile flex-1 resize-none"
         />
         <button
           type="submit"

@@ -7,7 +7,8 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   const isAuthApi = pathname.startsWith("/api/auth/");
-  const isClickRedirect = pathname.startsWith("/c/");
+  const isClickRedirect =
+    pathname.startsWith("/c/") || pathname.startsWith("/go/") || pathname.startsWith("/qr/");
   if (isAuthApi || isClickRedirect || PUBLIC_PATHS.has(pathname)) {
     return NextResponse.next();
   }

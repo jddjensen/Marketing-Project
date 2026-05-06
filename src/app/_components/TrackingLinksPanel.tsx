@@ -341,7 +341,7 @@ function LinkRow({
             const v = e.target.value.trim();
             if (v !== (link.label ?? "")) onChange({ label: v || null });
           }}
-          className="rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="input-tactile"
         />
         {!pinnedPlatform && (
           <select
@@ -349,7 +349,8 @@ function LinkRow({
             onChange={(e) =>
               onChange({ platform: e.target.value === "" ? null : (e.target.value as PlatformKey) })
             }
-            className="rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-2 py-2 text-sm"
+            className="select-tactile text-sm"
+            aria-label="Channel"
           >
             <option value="">All channels</option>
             {CHANNEL_ORDER.map((channelKey) => (
@@ -378,7 +379,7 @@ function LinkRow({
           const v = e.target.value.trim();
           if (v && v !== link.url) onChange({ url: v });
         }}
-        className="w-full rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="input-tactile w-full"
       />
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -723,7 +724,7 @@ function GoogleAnalyticsSettingsCard({
             value={propertyId}
             onChange={(e) => onPropertyIdChange(e.target.value.replace(/[^\d]/g, ""))}
             placeholder="e.g. 123456789"
-            className="mt-1 w-full rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="input-tactile mt-1 w-full"
           />
         </label>
         <div className="flex items-end gap-2">
@@ -952,7 +953,7 @@ function UtmField({
           const v = e.target.value.trim();
           if (v !== defaultValue) onCommit(v);
         }}
-        className="mt-0.5 w-full rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="input-tactile mt-0.5 w-full"
       />
     </label>
   );
@@ -1175,7 +1176,7 @@ function AddLinkDialog({
               onChange={(e) => setUrl(e.target.value)}
               placeholder="https://example.com/landing"
               maxLength={2048}
-              className="mt-1 w-full rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="input-tactile mt-1 w-full"
             />
           </div>
           <div>
@@ -1188,7 +1189,7 @@ function AddLinkDialog({
               onChange={(e) => setLabel(e.target.value)}
               placeholder="Homepage"
               maxLength={120}
-              className="mt-1 w-full rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="input-tactile mt-1 w-full"
             />
           </div>
           {!pinnedPlatform && (
@@ -1199,7 +1200,7 @@ function AddLinkDialog({
               <select
                 value={platform}
                 onChange={(e) => setPlatform(e.target.value as PlatformKey | "")}
-                className="mt-1 w-full rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 px-3 py-2 text-sm"
+                className="select-tactile mt-1 w-full"
               >
                 <option value="">All channels</option>
                 {CHANNEL_ORDER.map((channelKey) => (

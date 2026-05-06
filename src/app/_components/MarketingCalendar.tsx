@@ -265,12 +265,12 @@ export function MarketingCalendar({
           </p>
         </div>
         <div className="flex items-center gap-2 text-sm">
-          <label className="flex items-center gap-1.5 text-xs text-zinc-500">
+          <label className="flex items-center gap-2 text-xs text-zinc-500 cursor-pointer select-none">
             <input
               type="checkbox"
               checked={includeArchived}
               onChange={(e) => setIncludeArchived(e.target.checked)}
-              className="accent-zinc-900 dark:accent-zinc-100"
+              className="check-tactile"
             />
             Include archived
           </label>
@@ -293,11 +293,9 @@ export function MarketingCalendar({
                   key={key}
                   type="button"
                   onClick={() => setGroupBy(key)}
-                  className={`text-xs rounded-full border px-3 py-1 transition-colors ${
-                    active
-                      ? "bg-zinc-900 text-white border-zinc-900 dark:bg-zinc-100 dark:text-zinc-900 dark:border-zinc-100"
-                      : "border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:border-zinc-400 dark:hover:border-zinc-500"
-                  }`}
+                  className="pill-toggle"
+                  data-active={active ? "true" : "false"}
+                  aria-pressed={active ? "true" : "false"}
                 >
                   {GROUP_LABEL[key]}
                 </button>
@@ -310,7 +308,7 @@ export function MarketingCalendar({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search project, event, exhibit"
-              className="w-56 rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="input-tactile w-56"
             />
             {activeFilterCount > 0 && (
               <button
@@ -451,11 +449,9 @@ function FilterPills<T extends string>({
                 key={item.key}
                 type="button"
                 onClick={() => onToggle(item.key)}
-                className={`text-[11px] rounded-full border px-2.5 py-1 transition-colors ${
-                  active
-                    ? "bg-zinc-900 text-white border-zinc-900 dark:bg-zinc-100 dark:text-zinc-900 dark:border-zinc-100"
-                    : "border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:border-zinc-400 dark:hover:border-zinc-500"
-                }`}
+                className="pill-toggle"
+                data-active={active ? "true" : "false"}
+                aria-pressed={active ? "true" : "false"}
               >
                 {item.label}
               </button>

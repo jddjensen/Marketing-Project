@@ -100,6 +100,14 @@ export async function POST(
   if (url.length === 0 || url.length > 2048) {
     return Response.json({ error: "url must be 1–2048 chars" }, { status: 400 });
   }
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return Response.json({ error: "url must be http(s)" }, { status: 400 });
+    }
+  } catch {
+    return Response.json({ error: "url must be a valid http(s) URL" }, { status: 400 });
+  }
 
   let platform: ValidPlatform | null = null;
   if (typeof body.platform === "string" && body.platform.length > 0) {

@@ -47,6 +47,15 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return Response.json({ error: "unauthorized" }, { status: 401 });
+  }
+
   const body = (await request.json().catch(() => null)) as {
     label?: unknown;
     width?: unknown;
@@ -71,15 +80,6 @@ export async function POST(request: NextRequest) {
   }
   if (!VALID_UNITS.has(unit)) {
     return Response.json({ error: "invalid unit" }, { status: 400 });
-  }
-
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return Response.json({ error: "unauthorized" }, { status: 401 });
   }
 
   const { data, error } = await supabase

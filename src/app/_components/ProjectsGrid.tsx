@@ -155,12 +155,12 @@ export function ProjectsGrid() {
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3 text-sm">
           <span className="font-medium uppercase tracking-wide text-zinc-500">Projects</span>
-          <label className="flex items-center gap-1.5 text-xs text-zinc-500">
+          <label className="flex items-center gap-2 text-xs text-zinc-500 cursor-pointer select-none">
             <input
               type="checkbox"
               checked={showArchived}
               onChange={(e) => setShowArchived(e.target.checked)}
-              className="accent-zinc-900 dark:accent-zinc-100"
+              className="check-tactile"
             />
             Show archived
           </label>
@@ -411,7 +411,7 @@ function CreateDialog({
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Q2 Spring Launch"
                 maxLength={120}
-                className="mt-1 w-full rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="input-tactile mt-1 w-full"
               />
             </div>
             <div className="sm:col-span-2">
@@ -424,7 +424,7 @@ function CreateDialog({
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Regional launch targeting Pacific Northwest, April–June"
                 maxLength={240}
-                className="mt-1 w-full rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="input-tactile mt-1 w-full"
               />
             </div>
           </div>
@@ -490,7 +490,7 @@ function CreateDialog({
                           >
                             <input
                               type="checkbox"
-                              className="mt-0.5 accent-zinc-900 dark:accent-zinc-100"
+                              className="check-tactile mt-0.5"
                               checked={checked}
                               onChange={() => toggle(c.key)}
                             />

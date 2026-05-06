@@ -207,7 +207,7 @@ export function ProjectDashboard({
               Choose where UTM builders should live for this project.
             </p>
           </div>
-          <div className="flex items-center gap-1 text-xs rounded-md border border-zinc-200 dark:border-zinc-800 p-0.5 bg-white dark:bg-zinc-900">
+          <div className="segmented" role="group" aria-label="Tracking links location">
             {(
                 [
                   { key: "project_tab" as const, label: "Here only" },
@@ -219,11 +219,9 @@ export function ProjectDashboard({
                 key={opt.key}
                 type="button"
                 onClick={() => updateTrackingLocation(opt.key)}
-                className={`px-2.5 py-1 rounded ${
-                  trackingLocation === opt.key
-                    ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
-                    : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
-                }`}
+                className="segmented-option"
+                data-active={trackingLocation === opt.key ? "true" : "false"}
+                aria-pressed={trackingLocation === opt.key ? "true" : "false"}
               >
                 {opt.label}
               </button>
@@ -455,17 +453,15 @@ function CampaignMedia({
             Everything uploaded across channels for this project — at a glance.
           </p>
         </div>
-        <div className="flex items-center gap-1 text-xs rounded-md border border-zinc-200 dark:border-zinc-800 p-0.5 bg-white dark:bg-zinc-900">
+        <div className="segmented" role="group" aria-label="Group creatives by">
           {(["platform", "ratio"] as const).map((opt) => (
             <button
               key={opt}
               type="button"
               onClick={() => onGroupByChange(opt)}
-              className={`px-2.5 py-1 rounded ${
-                groupBy === opt
-                  ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
-                  : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
-              }`}
+              className="segmented-option"
+              data-active={groupBy === opt ? "true" : "false"}
+              aria-pressed={groupBy === opt ? "true" : "false"}
             >
               {opt === "platform" ? "By channel" : "By slot"}
             </button>

@@ -634,7 +634,7 @@ function AddFormatDialog({
                     value={labelOverride}
                     onChange={(e) => setLabelOverride(e.target.value)}
                     placeholder={preset.label}
-                    className="mt-1 w-full rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="input-tactile mt-1 w-full"
                   />
                 </div>
               )}
@@ -693,7 +693,7 @@ function AddFormatDialog({
                         value={labelOverride}
                         onChange={(e) => setLabelOverride(e.target.value)}
                         placeholder={blueprint.label}
-                        className="mt-1 w-full rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="input-tactile mt-1 w-full"
                       />
                     </div>
                   )}
@@ -715,7 +715,7 @@ function AddFormatDialog({
                   value={customLabel}
                   onChange={(e) => setCustomLabel(e.target.value)}
                   placeholder="e.g. Downtown wallscape"
-                  className="mt-1 w-full rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="input-tactile mt-1 w-full"
                 />
               </div>
 
@@ -731,7 +731,7 @@ function AddFormatDialog({
                     required
                     value={customWidth}
                     onChange={(e) => setCustomWidth(e.target.value)}
-                    className="mt-1 w-full rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="input-tactile mt-1 w-full"
                   />
                 </div>
                 <div>
@@ -745,7 +745,7 @@ function AddFormatDialog({
                     required
                     value={customHeight}
                     onChange={(e) => setCustomHeight(e.target.value)}
-                    className="mt-1 w-full rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="input-tactile mt-1 w-full"
                   />
                 </div>
                 <div>
@@ -755,7 +755,7 @@ function AddFormatDialog({
                   <select
                     value={customUnit}
                     onChange={(e) => setCustomUnit(e.target.value as Unit)}
-                    className="mt-1 w-full rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="select-tactile mt-1 w-full"
                   >
                     <option value="in">in</option>
                     <option value="ft">ft</option>
@@ -772,7 +772,7 @@ function AddFormatDialog({
                     type="checkbox"
                     checked={saveAsBlueprint}
                     onChange={(e) => setSaveAsBlueprint(e.target.checked)}
-                    className="mt-0.5 accent-zinc-900 dark:accent-zinc-100"
+                    className="check-tactile mt-0.5"
                   />
                   <div className="min-w-0">
                     <div className="text-sm font-medium">Save as reusable blueprint</div>
@@ -793,7 +793,7 @@ function AddFormatDialog({
                       value={blueprintLabel}
                       onChange={(e) => setBlueprintLabel(e.target.value)}
                       placeholder="Defaults to the format name above"
-                      className="mt-1 w-full rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="input-tactile mt-1 w-full"
                     />
                   </div>
                 )}
