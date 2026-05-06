@@ -108,7 +108,7 @@ export function ProjectsGrid() {
         const body = (await res.json()) as { project?: Project; error?: string };
         if (!res.ok || !body.project) throw new Error(body.error ?? "failed to create");
         setCreating(false);
-        router.push(`/projects/${body.project.id}`);
+        router.push(`/projects/${body.project.id}`, { transitionTypes: ["nav-forward"] });
       } catch (e) {
         setError(e instanceof Error ? e.message : "failed to create");
       } finally {
@@ -269,6 +269,7 @@ function ProjectCard({
     <div className="relative group">
       <Link
         href={`/projects/${project.id}`}
+        transitionTypes={["nav-forward"]}
         className="apple-lift block rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-zinc-400 dark:hover:border-zinc-600 shadow-[var(--shadow-soft)]"
       >
         <div

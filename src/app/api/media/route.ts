@@ -1,9 +1,9 @@
 import { NextRequest } from "next/server";
 import { CHANNEL_KEYS } from "@/lib/channels";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { signedMediaUrls } from "@/lib/storage";
 
 const VALID_PLATFORMS = new Set<string>(CHANNEL_KEYS);
-const BUCKET = "creatives";
 
 export async function GET(request: NextRequest) {
   const platform = request.nextUrl.searchParams.get("platform");
@@ -23,15 +23,22 @@ export async function GET(request: NextRequest) {
     .eq("platform", platform)
     .order("uploaded_at", { ascending: false });
 
-  if (error) return Response.json({ error: error.message }, { status: 500 });
+  if (error) return Response.json({ error: "failed to load media" }, { status: 500 });
+
+  const rows = data ?? [];
+  const urlMap = await signedMediaUrls(
+    supabase,
+    rows.map((r) => r.storage_path)
+  );
 
   const result: Record<string, Array<Record<string, unknown>>> = {};
-  for (const row of data ?? []) {
-    const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(row.storage_path);
+  for (const row of rows) {
+    const url = urlMap.get(row.storage_path);
+    if (!url) continue;
     const bucket = result[row.ratio] ?? (result[row.ratio] = []);
     bucket.push({
       id: row.id,
-      url: pub.publicUrl,
+      url,
       storagePath: row.storage_path,
       name: row.original_name,
       kind: row.kind,

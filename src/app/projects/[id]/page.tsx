@@ -18,6 +18,7 @@ export default async function ProjectPage({
           <div>
             <Link
               href="/"
+              transitionTypes={["nav-back"]}
               className="text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
             >
               ← Projects

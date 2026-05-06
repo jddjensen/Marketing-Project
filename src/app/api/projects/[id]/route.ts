@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { serializeCampaignBrief } from "@/lib/campaignBrief";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { CREATIVES_BUCKET } from "@/lib/storage";
 
 type ProjectRow = {
   id: string;
@@ -328,7 +329,7 @@ export async function DELETE(
 
   if (mediaRows && mediaRows.length > 0) {
     const paths = mediaRows.map((r) => r.storage_path);
-    await supabase.storage.from("creatives").remove(paths);
+    await supabase.storage.from(CREATIVES_BUCKET).remove(paths);
   }
 
   return Response.json({ ok: true });

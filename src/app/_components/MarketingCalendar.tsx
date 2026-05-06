@@ -636,6 +636,7 @@ function TimelineRow({
     <li className="grid grid-cols-1 md:grid-cols-[260px_1fr] items-stretch">
       <Link
         href={`/projects/${entry.id}`}
+        transitionTypes={["nav-forward"]}
         className="block px-4 py-3 border-b md:border-b-0 md:border-r border-zinc-100 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors"
       >
         <div className="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">
@@ -707,6 +708,7 @@ function ProjectRowBasic({ entry }: { entry: CalendarEntry }) {
     <li>
       <Link
         href={`/projects/${entry.id}`}
+        transitionTypes={["nav-forward"]}
         className="flex items-center gap-3 px-4 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors"
       >
         <span
@@ -750,6 +752,7 @@ function EmptyState() {
       </p>
       <Link
         href="/"
+        transitionTypes={["nav-back"]}
         className="apple-tap mt-4 rounded-lg bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 px-4 py-2 text-sm font-medium hover:opacity-90"
       >
         Back to projects

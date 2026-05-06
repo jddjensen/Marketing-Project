@@ -1,7 +1,6 @@
 import { NextRequest } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-
-const BUCKET = "creatives";
+import { CREATIVES_BUCKET } from "@/lib/storage";
 
 export async function DELETE(
   _request: NextRequest,
@@ -27,7 +26,7 @@ export async function DELETE(
   if (count === 0) return Response.json({ error: "not found" }, { status: 404 });
 
   if (mediaRows && mediaRows.length > 0) {
-    await supabase.storage.from(BUCKET).remove(mediaRows.map((r) => r.storage_path));
+    await supabase.storage.from(CREATIVES_BUCKET).remove(mediaRows.map((r) => r.storage_path));
   }
   return Response.json({ ok: true });
 }

@@ -84,6 +84,7 @@ export default async function CalendarPage() {
           <div className="flex items-center gap-4">
             <Link
               href="/"
+              transitionTypes={["nav-back"]}
               className="text-xs font-medium uppercase tracking-wide text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
             >
               ← Projects

@@ -280,6 +280,7 @@ function PlatformCard({
     <div className="relative group">
       <Link
         href={`/projects/${projectId}/${platform.key}`}
+        transitionTypes={["nav-forward"]}
         className="apple-lift block rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 hover:border-zinc-400 dark:hover:border-zinc-600 shadow-[var(--shadow-soft)]"
       >
         <div className="font-semibold">{platform.name}</div>
@@ -515,6 +516,7 @@ function CreativeTile({
   return (
     <Link
       href={`/projects/${projectId}/${item.platform}`}
+      transitionTypes={["nav-forward"]}
       className="block group"
       title={`${channelLabel} · ${formatAssetLabel(item.ratio)} · ${item.name}`}
     >

@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { UserMenu } from "./UserMenu";
+import { UploadProgressOverlay, type UploadProgressState } from "./UploadProgressOverlay";
+import { uploadWithProgress } from "@/lib/uploadWithProgress";
 import {
   formatDimensions,
   type SignageBlueprint,
@@ -64,6 +66,8 @@ export function SignageBoard({
   const [blueprints, setBlueprints] = useState<SignageBlueprint[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [uploadingId, setUploadingId] = useState<string | null>(null);
+  const [uploadState, setUploadState] = useState<UploadProgressState | null>(null);
+  const uploadAbort = useRef<AbortController | null>(null);
   const [addingFormat, setAddingFormat] = useState(false);
   const [menuId, setMenuId] = useState<string | null>(null);
 
@@ -168,29 +172,59 @@ export function SignageBoard({
     async (format: SignageFormat, files: FileList) => {
       setError(null);
       setUploadingId(format.id);
+      const list = Array.from(files);
+      const controller = new AbortController();
+      uploadAbort.current = controller;
       try {
-        for (const file of Array.from(files)) {
+        for (let i = 0; i < list.length; i++) {
+          const file = list[i];
+          setUploadState({
+            fileName: file.name,
+            fileIndex: i + 1,
+            fileTotal: list.length,
+            percent: 0,
+            bytesLoaded: 0,
+            bytesTotal: file.size,
+          });
           const fd = new FormData();
           fd.append("file", file);
           fd.append("platform", "signage");
           fd.append("projectId", projectId);
           fd.append("ratio", `${trimDimension(format.width)}x${trimDimension(format.height)}`);
           fd.append("signageFormatId", format.id);
-          const res = await fetch("/api/upload", { method: "POST", body: fd });
+          const res = await uploadWithProgress<{ error?: string }>("/api/upload", fd, {
+            signal: controller.signal,
+            onProgress: ({ loaded, total, percent }) => {
+              setUploadState((prev) =>
+                prev
+                  ? { ...prev, percent, bytesLoaded: loaded, bytesTotal: total || prev.bytesTotal }
+                  : prev
+              );
+            },
+          });
           if (!res.ok) {
-            const body = (await res.json().catch(() => ({}))) as { error?: string };
-            throw new Error(body.error ?? "upload failed");
+            throw new Error(res.body?.error ?? "upload failed");
           }
         }
         await fetchData();
       } catch (e) {
-        setError(e instanceof Error ? e.message : "upload failed");
+        if (e instanceof DOMException && e.name === "AbortError") {
+          setError("Upload cancelled");
+        } else {
+          setError(e instanceof Error ? e.message : "upload failed");
+        }
       } finally {
+        uploadAbort.current = null;
+        setUploadState(null);
         setUploadingId(null);
       }
     },
     [projectId, fetchData]
   );
+
+  const cancelUpload = useCallback(() => {
+    uploadAbort.current?.abort();
+  }, []);
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100">
@@ -199,6 +233,7 @@ export function SignageBoard({
           <div>
             <Link
               href={`/projects/${projectId}`}
+              transitionTypes={["nav-back"]}
               className="text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
             >
               ← {projectName}
@@ -290,6 +325,7 @@ export function SignageBoard({
           onSaveBlueprint={saveBlueprint}
         />
       )}
+      <UploadProgressOverlay state={uploadState} onCancel={cancelUpload} />
     </div>
   );
 }

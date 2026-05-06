@@ -20,6 +20,10 @@
   --dur-fast: 140ms;
   --dur-base: 220ms;
   --dur-slow: 360ms;
+  --dur-route-exit: 120ms;
+  --dur-route-enter: 180ms;
+  --dur-route-slide: 260ms;
+  --route-slide-offset: 28px;
 }
 
 @theme inline {
@@ -54,7 +58,12 @@ html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
-  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
 }
 
 body {
@@ -70,7 +79,10 @@ body {
   *::before,
   *::after {
     animation-duration: 0.001ms !important;
+    animation-delay: 0.001ms !important;
     transition-duration: 0.001ms !important;
+    transition-delay: 0.001ms !important;
+    scroll-behavior: auto !important;
   }
   ::view-transition-group(*),
   ::view-transition-old(*),
@@ -331,31 +343,97 @@ body {
 
 /* -------- View transitions -------- */
 
+::view-transition {
+  background: var(--background);
+}
+
+::view-transition-group(root) {
+  animation-duration: var(--dur-route-enter);
+  animation-timing-function: var(--ease-apple-soft);
+}
+
 ::view-transition-old(root),
 ::view-transition-new(root) {
-  animation-duration: 300ms;
-  animation-timing-function: var(--ease-apple);
+  animation-duration: var(--dur-route-enter);
+  animation-timing-function: var(--ease-apple-soft);
+  mix-blend-mode: normal;
+  backface-visibility: hidden;
 }
 
 ::view-transition-old(root) {
-  animation-name: apple-fade-out;
+  animation-name: route-root-fade-out;
 }
 ::view-transition-new(root) {
-  animation-name: apple-fade-in;
+  animation-name: route-root-fade-in;
 }
 
-@keyframes apple-fade-out {
+::view-transition-old(.route-fade) {
+  animation: var(--dur-route-exit) var(--ease-apple-soft) both route-fade reverse;
+}
+::view-transition-new(.route-fade) {
+  animation: var(--dur-route-enter) var(--ease-apple) 40ms both route-fade;
+}
+
+::view-transition-old(.nav-forward) {
+  --slide-offset: calc(var(--route-slide-offset) * -1);
+  animation:
+    var(--dur-route-exit) ease-in both route-fade reverse,
+    var(--dur-route-slide) var(--ease-apple-soft) both route-slide reverse;
+}
+::view-transition-new(.nav-forward) {
+  --slide-offset: var(--route-slide-offset);
+  animation:
+    var(--dur-route-enter) var(--ease-apple) 60ms both route-fade,
+    var(--dur-route-slide) var(--ease-apple) both route-slide;
+}
+::view-transition-old(.nav-back) {
+  --slide-offset: var(--route-slide-offset);
+  animation:
+    var(--dur-route-exit) ease-in both route-fade reverse,
+    var(--dur-route-slide) var(--ease-apple-soft) both route-slide reverse;
+}
+::view-transition-new(.nav-back) {
+  --slide-offset: calc(var(--route-slide-offset) * -1);
+  animation:
+    var(--dur-route-enter) var(--ease-apple) 60ms both route-fade,
+    var(--dur-route-slide) var(--ease-apple) both route-slide;
+}
+
+::view-transition-group(site-header) {
+  animation: none;
+  z-index: 100;
+}
+::view-transition-old(site-header) {
+  display: none;
+}
+::view-transition-new(site-header) {
+  animation: none;
+}
+
+@keyframes route-root-fade-out {
   to {
     opacity: 0;
-    transform: scale(0.985);
-    filter: blur(2px);
   }
 }
-@keyframes apple-fade-in {
+@keyframes route-root-fade-in {
   from {
     opacity: 0;
-    transform: scale(1.015);
-    filter: blur(2px);
+  }
+}
+@keyframes route-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes route-slide {
+  from {
+    transform: translate3d(var(--slide-offset), 0, 0);
+  }
+  to {
+    transform: translate3d(0, 0, 0);
   }
 }
 
@@ -378,7 +456,7 @@ body {
 @keyframes modal-in {
   from {
     opacity: 0;
-    transform: scale(0.96) translateY(8px);
+    transform: scale(0.985) translateY(8px);
   }
   to {
     opacity: 1;
@@ -394,17 +472,54 @@ body {
   }
 }
 .modal-backdrop {
-  animation: backdrop-in 180ms var(--ease-apple) both;
+  animation: backdrop-in var(--dur-fast) var(--ease-apple) both;
 }
 .modal-surface {
-  animation: modal-in 260ms var(--ease-spring) both;
+  animation: modal-in var(--dur-base) var(--ease-apple) both;
+  transform-origin: center;
+  will-change: opacity, transform;
+}
+
+/* -------- Upload progress bar -------- */
+
+.progress-track {
+  position: relative;
+  width: 100%;
+  height: 6px;
+  background: var(--surface-sunken);
+  border-radius: 999px;
+  overflow: hidden;
+  box-shadow: var(--shadow-inset);
+}
+.progress-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--accent);
+  border-radius: 999px;
+  transition: width var(--dur-base) var(--ease-apple);
+}
+.progress-fill[data-indeterminate="true"] {
+  width: 35% !important;
+  animation: progress-indeterminate 1.4s var(--ease-apple-soft) infinite;
+}
+@keyframes progress-indeterminate {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(285%);
+  }
 }
 
 /* -------- Header translucency -------- */
 
 .apple-header {
+  view-transition-name: site-header;
   background: var(--surface-translucent);
   backdrop-filter: saturate(180%) blur(18px);
   -webkit-backdrop-filter: saturate(180%) blur(18px);
   border-bottom: 1px solid var(--border);
+  transition: background-color var(--dur-base) var(--ease-apple),
+    border-color var(--dur-base) var(--ease-apple),
+    box-shadow var(--dur-base) var(--ease-apple);
 }

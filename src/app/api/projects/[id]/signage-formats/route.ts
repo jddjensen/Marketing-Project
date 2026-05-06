@@ -1,8 +1,8 @@
 import { NextRequest } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { signedMediaUrls } from "@/lib/storage";
 
 const VALID_UNITS = new Set(["in", "ft", "cm", "m", "px"]);
-const BUCKET = "creatives";
 
 type FormatRow = {
   id: string;
@@ -46,16 +46,23 @@ export async function GET(
     .eq("project_id", id)
     .eq("platform", "signage")
     .order("uploaded_at", { ascending: false });
-  if (mErr) return Response.json({ error: mErr.message }, { status: 500 });
+  if (mErr) return Response.json({ error: "failed to load media" }, { status: 500 });
+
+  const mediaRows = (media ?? []).filter((row) => row.signage_format_id);
+  const urlMap = await signedMediaUrls(
+    supabase,
+    mediaRows.map((row) => row.storage_path)
+  );
 
   const mediaByFormat: Record<string, Array<Record<string, unknown>>> = {};
-  for (const row of media ?? []) {
-    if (!row.signage_format_id) continue;
-    const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(row.storage_path);
-    const bucket = mediaByFormat[row.signage_format_id] ?? (mediaByFormat[row.signage_format_id] = []);
+  for (const row of mediaRows) {
+    const url = urlMap.get(row.storage_path);
+    if (!url) continue;
+    const formatKey = row.signage_format_id as string;
+    const bucket = mediaByFormat[formatKey] ?? (mediaByFormat[formatKey] = []);
     bucket.push({
       id: row.id,
-      url: pub.publicUrl,
+      url,
       storagePath: row.storage_path,
       name: row.original_name,
       kind: row.kind,

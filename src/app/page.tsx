@@ -17,6 +17,7 @@ export default function Home() {
           <div className="flex items-center gap-3">
             <Link
               href="/calendar"
+              transitionTypes={["nav-forward"]}
               className="apple-tap rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3 py-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-200 hover:border-zinc-400 dark:hover:border-zinc-600"
             >
               Calendar

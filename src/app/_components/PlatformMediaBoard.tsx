@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { UserMenu } from "./UserMenu";
+import { UploadProgressOverlay, type UploadProgressState } from "./UploadProgressOverlay";
+import { uploadWithProgress } from "@/lib/uploadWithProgress";
 
 export type Ratio = string;
 
@@ -56,6 +58,8 @@ export function PlatformMediaBoard({
   const [media, setMedia] = useState<MediaMap>({});
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState<Ratio | null>(null);
+  const [uploadState, setUploadState] = useState<UploadProgressState | null>(null);
+  const uploadAbort = useRef<AbortController | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tracking, setTracking] = useState<Record<string, TrackingItem>>({});
 
@@ -94,26 +98,54 @@ export function PlatformMediaBoard({
     async (ratio: Ratio, file: File) => {
       setError(null);
       setUploading(ratio);
+      const controller = new AbortController();
+      uploadAbort.current = controller;
+      setUploadState({
+        fileName: file.name,
+        fileIndex: 1,
+        fileTotal: 1,
+        percent: 0,
+        bytesLoaded: 0,
+        bytesTotal: file.size,
+      });
       try {
         const fd = new FormData();
         fd.append("file", file);
         fd.append("ratio", ratio);
         fd.append("platform", platform);
         fd.append("projectId", projectId);
-        const res = await fetch("/api/upload", { method: "POST", body: fd });
+        const res = await uploadWithProgress<{ error?: string }>("/api/upload", fd, {
+          signal: controller.signal,
+          onProgress: ({ loaded, total, percent }) => {
+            setUploadState((prev) =>
+              prev
+                ? { ...prev, percent, bytesLoaded: loaded, bytesTotal: total || prev.bytesTotal }
+                : prev
+            );
+          },
+        });
         if (!res.ok) {
-          const body = (await res.json().catch(() => ({}))) as { error?: string };
-          throw new Error(body.error ?? "upload failed");
+          throw new Error(res.body?.error ?? "upload failed");
         }
         await fetchMedia();
       } catch (e) {
-        setError(e instanceof Error ? e.message : "upload failed");
+        if (e instanceof DOMException && e.name === "AbortError") {
+          setError("Upload cancelled");
+        } else {
+          setError(e instanceof Error ? e.message : "upload failed");
+        }
       } finally {
+        uploadAbort.current = null;
+        setUploadState(null);
         setUploading(null);
       }
     },
     [fetchMedia, platform, projectId]
   );
+
+  const cancelUpload = useCallback(() => {
+    uploadAbort.current?.abort();
+  }, []);
 
   const saveTracking = useCallback(
     async (mediaId: string, url: string) => {
@@ -155,6 +187,7 @@ export function PlatformMediaBoard({
           <div>
             <Link
               href={`/projects/${projectId}`}
+              transitionTypes={["nav-back"]}
               className="text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
             >
               ← {projectName}
@@ -204,6 +237,7 @@ export function PlatformMediaBoard({
         </div>
         {children}
       </main>
+      <UploadProgressOverlay state={uploadState} onCancel={cancelUpload} />
     </div>
   );
 }
