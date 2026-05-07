@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
     .eq("project_id", scope.projectId)
     .eq("media.platform", scope.platform);
 
-  if (error) return Response.json({ error: error.message }, { status: 500 });
+  if (error) return Response.json({ error: "request failed" }, { status: 500 });
 
   const items = (data ?? [])
     .filter((r) => r.media)
@@ -139,7 +139,7 @@ export async function DELETE(request: NextRequest) {
     .eq("project_id", scope.projectId)
     .eq("media_id", mediaId);
 
-  if (error) return Response.json({ error: error.message }, { status: 500 });
+  if (error) return Response.json({ error: "request failed" }, { status: 500 });
   if (count === 0) return Response.json({ error: "not found" }, { status: 404 });
   return Response.json({ ok: true });
 }

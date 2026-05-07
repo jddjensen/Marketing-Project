@@ -39,7 +39,7 @@ export async function GET(
 
   if (totalRes.error || last24Res.error || recentRes.error) {
     return Response.json(
-      { error: totalRes.error?.message ?? last24Res.error?.message ?? recentRes.error?.message ?? "failed" },
+      { error: "failed to load scan analytics" },
       { status: 500 }
     );
   }

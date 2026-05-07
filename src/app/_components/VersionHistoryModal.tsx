@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type Version = {
   id: string;
@@ -28,6 +28,18 @@ export function VersionHistoryModal({
   const [versions, setVersions] = useState<Version[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [closing, setClosing] = useState(false);
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const requestClose = useCallback(() => {
+    if (closing) return;
+    setClosing(true);
+    closeTimer.current = setTimeout(onClose, 200);
+  }, [closing, onClose]);
+  useEffect(() => {
+    return () => {
+      if (closeTimer.current) clearTimeout(closeTimer.current);
+    };
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -112,13 +124,15 @@ export function VersionHistoryModal({
   return (
     <div
       className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4"
+      data-state={closing ? "closed" : "open"}
       role="dialog"
       aria-modal="true"
       aria-label="Version history"
-      onClick={onClose}
+      onClick={requestClose}
     >
       <div
         className="modal-surface w-full max-w-2xl max-h-[80vh] overflow-hidden rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-2xl flex flex-col"
+        data-state={closing ? "closed" : "open"}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="px-5 py-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
@@ -130,8 +144,8 @@ export function VersionHistoryModal({
           </div>
           <button
             type="button"
-            onClick={onClose}
-            className="text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 px-2 py-1"
+            onClick={requestClose}
+            className="apple-tap text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 px-2 py-1"
             aria-label="Close"
           >
             ×

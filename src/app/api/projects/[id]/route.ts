@@ -118,7 +118,7 @@ export async function GET(
     .eq("id", id)
     .maybeSingle();
 
-  if (error) return Response.json({ error: error.message }, { status: 500 });
+  if (error) return Response.json({ error: "failed to load project" }, { status: 500 });
   if (!data) return Response.json({ error: "not found" }, { status: 404 });
   return Response.json({ project: serialize(data) });
 }
@@ -301,7 +301,7 @@ export async function PATCH(
     .single();
 
   if (error || !data) {
-    return Response.json({ error: error?.message ?? "update failed" }, { status: 500 });
+    return Response.json({ error: "update failed" }, { status: 500 });
   }
   return Response.json({ project: serialize(data) });
 }
@@ -324,7 +324,7 @@ export async function DELETE(
     .delete({ count: "exact" })
     .eq("id", id);
 
-  if (error) return Response.json({ error: error.message }, { status: 500 });
+  if (error) return Response.json({ error: "failed to delete project" }, { status: 500 });
   if (count === 0) return Response.json({ error: "not found" }, { status: 404 });
 
   if (mediaRows && mediaRows.length > 0) {

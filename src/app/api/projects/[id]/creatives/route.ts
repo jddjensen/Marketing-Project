@@ -111,6 +111,14 @@ export async function POST(
     .select("id, creative_id, version_num, platform, ratio, kind, copy, uploaded_at")
     .single();
   if (insertError || !inserted) {
+    // 23505 = unique violation on the partial index that ensures only one
+    // is_current=true row per creative_id. A concurrent replace beat us.
+    if (insertError && (insertError as { code?: string }).code === "23505") {
+      return Response.json(
+        { error: "another version of this creative was just published — refresh and retry" },
+        { status: 409 }
+      );
+    }
     return Response.json({ error: "failed to save creative" }, { status: 500 });
   }
 
@@ -126,9 +134,19 @@ export async function POST(
         if (row.storage_path) paths.push(row.storage_path);
         if (row.poster_storage_path) paths.push(row.poster_storage_path);
       }
-      await supabase.from("media").delete().in("id", archivedIds);
-      if (paths.length > 0) {
-        await supabase.storage.from("creatives").remove(paths);
+      const { error: deleteErr } = await supabase
+        .from("media")
+        .delete()
+        .in("id", archivedIds);
+      if (deleteErr) {
+        console.warn("text-creative: archive-delete failed; keeping storage", deleteErr.message);
+      } else if (paths.length > 0) {
+        const { error: removeErr } = await supabase.storage
+          .from("creatives")
+          .remove(paths);
+        if (removeErr) {
+          console.warn("text-creative: storage cleanup failed", paths, removeErr.message);
+        }
       }
     } else {
       await supabase

@@ -475,7 +475,14 @@ function CampaignMedia({
       </div>
 
       {media === null ? (
-        <div className="text-sm text-zinc-500">Loading…</div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3" aria-busy="true">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="space-y-1.5">
+              <div className="skeleton aspect-square w-full" />
+              <div className="skeleton h-2.5 w-3/4" />
+            </div>
+          ))}
+        </div>
       ) : totalVisible === 0 ? (
         <div className="rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 bg-white/40 dark:bg-zinc-900/40 py-10 text-sm text-zinc-500 text-center">
           No creatives yet. Upload media from a channel board to see it here.
@@ -521,7 +528,7 @@ function CreativeTile({
     <Link
       href={`/projects/${projectId}/${item.platform}`}
       transitionTypes={["nav-forward"]}
-      className="block group"
+      className="tile-hover block group rounded-lg"
       title={`${channelLabel} · ${formatAssetLabel(item.ratio)} · ${item.name ?? "Text creative"}`}
     >
       <div

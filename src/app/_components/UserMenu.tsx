@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { useAppearance } from "./AppearanceProvider";
+import { useExitAnimation } from "./useExitAnimation";
 
 export function UserMenu() {
   const router = useRouter();
@@ -12,6 +13,7 @@ export function UserMenu() {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const { theme } = useAppearance();
+  const { mounted, state } = useExitAnimation(open, 130);
 
   useEffect(() => {
     const supabase = createSupabaseBrowserClient();
@@ -78,10 +80,11 @@ export function UserMenu() {
         </span>
       </button>
 
-      {open && (
+      {mounted && (
         <div
           aria-label="Account menu"
-          className="absolute right-0 mt-2 w-64 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-[var(--shadow-lift)] overflow-hidden z-50"
+          data-state={state}
+          className="popover-surface absolute right-0 mt-2 w-64 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-[var(--shadow-lift)] overflow-hidden z-50"
         >
           <div className="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800">
             <div className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">

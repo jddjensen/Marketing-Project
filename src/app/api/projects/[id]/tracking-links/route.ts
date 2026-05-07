@@ -60,8 +60,8 @@ export async function GET(
     supabase.from("projects").select("ga4_property_id").eq("id", id).maybeSingle(),
   ]);
 
-  if (error) return Response.json({ error: error.message }, { status: 500 });
-  if (projectError) return Response.json({ error: projectError.message }, { status: 500 });
+  if (error) return Response.json({ error: "failed to load tracking links" }, { status: 500 });
+  if (projectError) return Response.json({ error: "failed to load project settings" }, { status: 500 });
 
   return Response.json({
     links: (data ?? []).map((r) => serialize(r as LinkRow)),
@@ -142,7 +142,7 @@ export async function POST(
     .single();
 
   if (error || !data) {
-    return Response.json({ error: error?.message ?? "failed to create" }, { status: 500 });
+    return Response.json({ error: "failed to create tracking link" }, { status: 500 });
   }
   return Response.json({ link: serialize(data as LinkRow) });
 }

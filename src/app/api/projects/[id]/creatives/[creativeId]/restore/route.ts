@@ -1,8 +1,11 @@
 import { NextRequest } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-// Restore an archived version: flip is_current=true on the chosen version,
-// is_current=false on every other version of the same creative.
+// Restore an archived version: atomically set is_current=true on the chosen
+// version, false on every other row of the same creative. The flip happens
+// in a single SQL UPDATE inside the restore_creative_version RPC, so two
+// concurrent restores can't leave the creative in a state with zero or two
+// current rows.
 export async function POST(
   request: NextRequest,
   ctx: { params: Promise<{ id: string; creativeId: string }> }
@@ -19,40 +22,17 @@ export async function POST(
     return Response.json({ error: "versionId required" }, { status: 400 });
   }
 
-  // Confirm the target version exists in this creative + project.
-  const { data: target, error: targetError } = await supabase
-    .from("media")
-    .select("id, is_current")
-    .eq("id", body.versionId)
-    .eq("project_id", projectId)
-    .eq("creative_id", creativeId)
-    .maybeSingle();
-  if (targetError) {
-    return Response.json({ error: "lookup failed" }, { status: 500 });
-  }
-  if (!target) return Response.json({ error: "version not found" }, { status: 404 });
+  const { data, error } = await supabase.rpc("restore_creative_version", {
+    p_project_id: projectId,
+    p_creative_id: creativeId,
+    p_version_id: body.versionId,
+  });
 
-  if (target.is_current) {
-    return Response.json({ ok: true, alreadyCurrent: true });
-  }
-
-  // Two-step flip: archive everything on this creative, then restore the target.
-  const { error: archiveError } = await supabase
-    .from("media")
-    .update({ is_current: false })
-    .eq("creative_id", creativeId)
-    .eq("project_id", projectId);
-  if (archiveError) {
+  if (error) {
     return Response.json({ error: "restore failed" }, { status: 500 });
   }
-
-  const { error: restoreError } = await supabase
-    .from("media")
-    .update({ is_current: true })
-    .eq("id", body.versionId);
-  if (restoreError) {
-    return Response.json({ error: "restore failed" }, { status: 500 });
+  if (!data) {
+    return Response.json({ error: "version not found" }, { status: 404 });
   }
-
   return Response.json({ ok: true });
 }

@@ -175,7 +175,21 @@ export function ProjectsGrid() {
       </div>
 
       {projects === null ? (
-        <div className="text-sm text-zinc-500">Loading…</div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" aria-busy="true">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div
+              key={i}
+              className="rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900"
+            >
+              <div className="skeleton aspect-[4/3] w-full" />
+              <div className="p-4 space-y-2">
+                <div className="skeleton h-4 w-2/3" />
+                <div className="skeleton h-3 w-full" />
+                <div className="skeleton h-3 w-4/5" />
+              </div>
+            </div>
+          ))}
+        </div>
       ) : active.length === 0 && archived.length === 0 ? (
         <EmptyState onCreate={() => setCreating(true)} />
       ) : (

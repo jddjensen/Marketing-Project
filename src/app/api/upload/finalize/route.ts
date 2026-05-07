@@ -210,7 +210,20 @@ export async function POST(request: NextRequest) {
     // the orphaned storage objects so we don't leak storage.
     const cleanup = [storagePath];
     if (posterFinalPath) cleanup.push(posterFinalPath);
-    await supabase.storage.from(CREATIVES_BUCKET).remove(cleanup);
+    const { error: cleanupErr } = await supabase.storage
+      .from(CREATIVES_BUCKET)
+      .remove(cleanup);
+    if (cleanupErr) {
+      console.warn("finalize: orphan cleanup failed", cleanup, cleanupErr.message);
+    }
+    // Postgres unique violation = 23505. The partial unique index on
+    // (creative_id) where is_current=true catches concurrent replaces.
+    if (insertError && (insertError as { code?: string }).code === "23505") {
+      return Response.json(
+        { error: "another version of this creative was just published — refresh and retry" },
+        { status: 409 }
+      );
+    }
     return Response.json({ error: "failed to save media record" }, { status: 500 });
   }
 
@@ -227,9 +240,21 @@ export async function POST(request: NextRequest) {
         if (row.storage_path) paths.push(row.storage_path);
         if (row.poster_storage_path) paths.push(row.poster_storage_path);
       }
-      await supabase.from("media").delete().in("id", oldIds);
-      if (paths.length > 0) {
-        await supabase.storage.from(CREATIVES_BUCKET).remove(paths);
+      const { error: deleteErr } = await supabase
+        .from("media")
+        .delete()
+        .in("id", oldIds);
+      if (deleteErr) {
+        // DB delete failed — DO NOT remove storage objects, or live rows
+        // will be left pointing at missing files.
+        console.warn("finalize: archive-delete failed; keeping storage", deleteErr.message);
+      } else if (paths.length > 0) {
+        const { error: removeErr } = await supabase.storage
+          .from(CREATIVES_BUCKET)
+          .remove(paths);
+        if (removeErr) {
+          console.warn("finalize: storage cleanup failed", paths, removeErr.message);
+        }
       }
     } else {
       await supabase

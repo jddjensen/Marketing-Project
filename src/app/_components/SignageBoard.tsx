@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { UserMenu } from "./UserMenu";
 import { UploadProgressOverlay, type UploadProgressState } from "./UploadProgressOverlay";
+import { VersionHistoryModal } from "./VersionHistoryModal";
 import { uploadWithProgress } from "@/lib/uploadWithProgress";
 import { uploadVideoDirect } from "@/lib/directUpload";
 import { extractVideoPoster } from "@/lib/videoThumbnail";
@@ -76,6 +77,7 @@ export function SignageBoard({
   const uploadAbort = useRef<AbortController | null>(null);
   const [addingFormat, setAddingFormat] = useState(false);
   const [menuId, setMenuId] = useState<string | null>(null);
+  const [historyFor, setHistoryFor] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     const res = await fetch(`/api/projects/${projectId}/signage-formats`, { cache: "no-store" });
@@ -174,8 +176,84 @@ export function SignageBoard({
     [projectId, fetchData]
   );
 
+  // Single-file upload, used by both the bulk uploadFiles flow and the
+  // tile-level Replace flow.
+  const uploadOne = useCallback(
+    async (
+      format: SignageFormat,
+      file: File,
+      controller: AbortController,
+      options: {
+        fileIndex: number;
+        fileTotal: number;
+        replaceCreativeId?: string;
+        deletePrevious?: boolean;
+        carryCopy?: Record<string, unknown> | null;
+      }
+    ) => {
+      setUploadState({
+        fileName: file.name,
+        fileIndex: options.fileIndex,
+        fileTotal: options.fileTotal,
+        percent: 0,
+        bytesLoaded: 0,
+        bytesTotal: file.size,
+      });
+      const ratio = `${trimDimension(format.width)}x${trimDimension(format.height)}`;
+      const onProgress = ({ loaded, total, percent }: { loaded: number; total: number; percent: number }) => {
+        setUploadState((prev) =>
+          prev
+            ? { ...prev, percent, bytesLoaded: loaded, bytesTotal: total || prev.bytesTotal }
+            : prev
+        );
+      };
+      if (file.type.startsWith("video/")) {
+        const poster = await extractVideoPoster(file);
+        await uploadVideoDirect({
+          file,
+          poster,
+          projectId,
+          platform: "signage",
+          ratio,
+          signageFormatId: format.id,
+          replaceCreativeId: options.replaceCreativeId,
+          deletePrevious: options.deletePrevious,
+          copy: options.carryCopy ?? null,
+          signal: controller.signal,
+          onProgress,
+        });
+      } else {
+        const fd = new FormData();
+        fd.append("file", file);
+        fd.append("platform", "signage");
+        fd.append("projectId", projectId);
+        fd.append("ratio", ratio);
+        fd.append("signageFormatId", format.id);
+        if (options.replaceCreativeId) {
+          fd.append("replaceCreativeId", options.replaceCreativeId);
+          if (options.deletePrevious) fd.append("deletePrevious", "true");
+        }
+        if (options.carryCopy && Object.keys(options.carryCopy).length > 0) {
+          fd.append("copy", JSON.stringify(options.carryCopy));
+        }
+        const res = await uploadWithProgress<{ error?: string }>("/api/upload", fd, {
+          signal: controller.signal,
+          onProgress,
+        });
+        if (!res.ok) {
+          throw new Error(res.body?.error ?? "upload failed");
+        }
+      }
+    },
+    [projectId]
+  );
+
   const uploadFiles = useCallback(
     async (format: SignageFormat, files: FileList) => {
+      if (uploadAbort.current) {
+        setError("Wait for the current upload to finish before starting another.");
+        return;
+      }
       setError(null);
       setUploadingId(format.id);
       const list = Array.from(files);
@@ -183,51 +261,10 @@ export function SignageBoard({
       uploadAbort.current = controller;
       try {
         for (let i = 0; i < list.length; i++) {
-          const file = list[i];
-          setUploadState({
-            fileName: file.name,
+          await uploadOne(format, list[i], controller, {
             fileIndex: i + 1,
             fileTotal: list.length,
-            percent: 0,
-            bytesLoaded: 0,
-            bytesTotal: file.size,
           });
-          const ratio = `${trimDimension(format.width)}x${trimDimension(format.height)}`;
-          const onProgress = ({ loaded, total, percent }: { loaded: number; total: number; percent: number }) => {
-            setUploadState((prev) =>
-              prev
-                ? { ...prev, percent, bytesLoaded: loaded, bytesTotal: total || prev.bytesTotal }
-                : prev
-            );
-          };
-          if (file.type.startsWith("video/")) {
-            // Direct-to-storage for video — bypasses serverless body limits.
-            const poster = await extractVideoPoster(file);
-            await uploadVideoDirect({
-              file,
-              poster,
-              projectId,
-              platform: "signage",
-              ratio,
-              signageFormatId: format.id,
-              signal: controller.signal,
-              onProgress,
-            });
-          } else {
-            const fd = new FormData();
-            fd.append("file", file);
-            fd.append("platform", "signage");
-            fd.append("projectId", projectId);
-            fd.append("ratio", ratio);
-            fd.append("signageFormatId", format.id);
-            const res = await uploadWithProgress<{ error?: string }>("/api/upload", fd, {
-              signal: controller.signal,
-              onProgress,
-            });
-            if (!res.ok) {
-              throw new Error(res.body?.error ?? "upload failed");
-            }
-          }
         }
         await fetchData();
       } catch (e) {
@@ -242,7 +279,48 @@ export function SignageBoard({
         setUploadingId(null);
       }
     },
-    [projectId, fetchData]
+    [uploadOne, fetchData]
+  );
+
+  // Replace flow used by tile-level "Replace" buttons.
+  const replaceMedia = useCallback(
+    async (
+      format: SignageFormat,
+      file: File,
+      replaceCreativeId: string,
+      deletePrevious: boolean,
+      carryCopy: Record<string, unknown> | null
+    ) => {
+      if (uploadAbort.current) {
+        setError("Wait for the current upload to finish before starting another.");
+        return;
+      }
+      setError(null);
+      setUploadingId(format.id);
+      const controller = new AbortController();
+      uploadAbort.current = controller;
+      try {
+        await uploadOne(format, file, controller, {
+          fileIndex: 1,
+          fileTotal: 1,
+          replaceCreativeId,
+          deletePrevious,
+          carryCopy,
+        });
+        await fetchData();
+      } catch (e) {
+        if (e instanceof DOMException && e.name === "AbortError") {
+          setError("Upload cancelled");
+        } else {
+          setError(e instanceof Error ? e.message : "upload failed");
+        }
+      } finally {
+        uploadAbort.current = null;
+        setUploadState(null);
+        setUploadingId(null);
+      }
+    },
+    [uploadOne, fetchData]
   );
 
   const cancelUpload = useCallback(() => {
@@ -271,7 +349,7 @@ export function SignageBoard({
             <button
               type="button"
               onClick={() => setAddingFormat(true)}
-              className="text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 border border-zinc-200 dark:border-zinc-800 rounded-md px-2 py-1"
+              className="apple-tap text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 border border-zinc-200 dark:border-zinc-800 rounded-md px-2 py-1"
             >
               + Add format
             </button>
@@ -314,7 +392,18 @@ export function SignageBoard({
         </section>
 
         {data === null ? (
-          <div className="text-sm text-zinc-500">Loading…</div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6" aria-busy="true">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div
+                key={i}
+                className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 space-y-3"
+              >
+                <div className="skeleton h-4 w-1/2" />
+                <div className="skeleton h-3 w-1/3" />
+                <div className="skeleton aspect-video w-full" />
+              </div>
+            ))}
+          </div>
         ) : data.formats.length === 0 ? (
           <EmptyState onAdd={() => setAddingFormat(true)} />
         ) : (
@@ -330,6 +419,10 @@ export function SignageBoard({
                 onCloseMenu={() => setMenuId(null)}
                 onDelete={() => deleteFormat(format.id, format.label)}
                 onUpload={(files) => uploadFiles(format, files)}
+                onReplace={(file, creativeId, deletePrevious, carryCopy) =>
+                  replaceMedia(format, file, creativeId, deletePrevious, carryCopy)
+                }
+                onOpenHistory={(creativeId) => setHistoryFor(creativeId)}
               />
             ))}
           </div>
@@ -349,6 +442,14 @@ export function SignageBoard({
         />
       )}
       <UploadProgressOverlay state={uploadState} onCancel={cancelUpload} />
+      {historyFor && (
+        <VersionHistoryModal
+          projectId={projectId}
+          creativeId={historyFor}
+          onClose={() => setHistoryFor(null)}
+          onChanged={fetchData}
+        />
+      )}
     </div>
   );
 }
@@ -362,6 +463,8 @@ function FormatColumn({
   onCloseMenu,
   onDelete,
   onUpload,
+  onReplace,
+  onOpenHistory,
 }: {
   format: SignageFormat;
   items: MediaItem[];
@@ -371,6 +474,13 @@ function FormatColumn({
   onCloseMenu: () => void;
   onDelete: () => void;
   onUpload: (files: FileList) => void;
+  onReplace: (
+    file: File,
+    creativeId: string,
+    deletePrevious: boolean,
+    carryCopy: Record<string, unknown> | null
+  ) => void;
+  onOpenHistory: (creativeId: string) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -469,37 +579,104 @@ function FormatColumn({
           <div className="text-sm text-zinc-500 py-6 text-center">No media yet.</div>
         ) : (
           items.map((item) => (
-            <figure key={item.id} className="group">
-              <div
-                className={`${aspect} w-full rounded-lg overflow-hidden bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 relative`}
-              >
-                {item.kind === "image" && item.url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={item.url} alt={item.name ?? ""} className="w-full h-full object-cover" />
-                ) : item.kind === "video" && item.url ? (
-                  <video
-                    src={item.url}
-                    poster={item.posterUrl ?? undefined}
-                    controls
-                    playsInline
-                    preload={item.posterUrl ? "metadata" : "auto"}
-                    className="w-full h-full object-cover"
-                  />
-                ) : null}
-                {item.versionNum > 1 && (
-                  <span className="absolute top-1.5 left-1.5 rounded-full bg-zinc-900/80 dark:bg-zinc-100/90 text-white dark:text-zinc-900 text-[10px] font-semibold tracking-wide px-1.5 py-0.5">
-                    v{item.versionNum}
-                  </span>
-                )}
-              </div>
-              <figcaption className="mt-1.5 text-xs text-zinc-500 truncate" title={item.name ?? ""}>
-                {item.name ?? "—"}
-              </figcaption>
-            </figure>
+            <SignageTile
+              key={item.id}
+              item={item}
+              aspect={aspect}
+              onReplace={(file, deletePrevious) =>
+                onReplace(file, item.creativeId, deletePrevious, item.copy)
+              }
+              onOpenHistory={() => onOpenHistory(item.creativeId)}
+            />
           ))
         )}
       </div>
     </section>
+  );
+}
+
+function SignageTile({
+  item,
+  aspect,
+  onReplace,
+  onOpenHistory,
+}: {
+  item: MediaItem;
+  aspect: string;
+  onReplace: (file: File, deletePrevious: boolean) => void;
+  onOpenHistory: () => void;
+}) {
+  const replaceInputRef = useRef<HTMLInputElement>(null);
+  const [deletePrevious, setDeletePrevious] = useState(false);
+  return (
+    <figure className="group flex flex-col gap-2">
+      <div
+        className={`${aspect} w-full rounded-lg overflow-hidden bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 relative`}
+      >
+        {item.kind === "image" && item.url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={item.url} alt={item.name ?? ""} className="w-full h-full object-cover" />
+        ) : item.kind === "video" && item.url ? (
+          <video
+            src={item.url}
+            poster={item.posterUrl ?? undefined}
+            controls
+            playsInline
+            preload={item.posterUrl ? "metadata" : "auto"}
+            className="w-full h-full object-cover"
+          />
+        ) : null}
+        {item.versionNum > 1 && (
+          <span
+            className="absolute top-1.5 left-1.5 rounded-full bg-zinc-900/80 dark:bg-zinc-100/90 text-white dark:text-zinc-900 text-[10px] font-semibold tracking-wide px-1.5 py-0.5"
+            title={`Version ${item.versionNum}`}
+          >
+            v{item.versionNum}
+          </span>
+        )}
+      </div>
+      <figcaption className="text-xs text-zinc-500 truncate" title={item.name ?? ""}>
+        {item.name ?? "—"}
+      </figcaption>
+      <div className="flex items-center gap-2 text-[11px]">
+        <button
+          type="button"
+          onClick={() => replaceInputRef.current?.click()}
+          className="apple-tap text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 underline underline-offset-2 decoration-dotted"
+        >
+          Replace
+        </button>
+        <label className="flex items-center gap-1 text-zinc-500 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            className="check-tactile"
+            checked={deletePrevious}
+            onChange={(e) => setDeletePrevious(e.target.checked)}
+          />
+          delete old
+        </label>
+        <input
+          ref={replaceInputRef}
+          type="file"
+          aria-label="Replace creative file"
+          title="Replace creative file"
+          accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) onReplace(f, deletePrevious);
+            e.target.value = "";
+          }}
+        />
+        <button
+          type="button"
+          onClick={onOpenHistory}
+          className="apple-tap ml-auto text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 underline underline-offset-2 decoration-dotted"
+        >
+          History
+        </button>
+      </div>
+    </figure>
   );
 }
 

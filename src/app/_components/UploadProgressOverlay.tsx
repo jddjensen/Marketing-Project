@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { useExitAnimation } from "./useExitAnimation";
 
 export type UploadProgressState = {
   fileName: string;
@@ -32,28 +33,42 @@ export function UploadProgressOverlay({
   onCancel?: () => void;
   title?: string;
 }) {
+  const { mounted, state: animState } = useExitAnimation(state !== null, 200);
+  // Keep the last non-null progress value during the fade-out so the modal
+  // doesn't suddenly become blank as it animates away.
+  const [latest, setLatest] = useState<UploadProgressState | null>(state);
+  if (state && state !== latest) {
+    // setState during render is fine here — it's bounded by the equality
+    // check and only fires when the prop actually changes.
+    setLatest(state);
+  }
+
   useEffect(() => {
-    if (!state) return;
+    if (!mounted) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = prev;
     };
-  }, [state]);
+  }, [mounted]);
 
-  if (!state) return null;
+  if (!mounted || !latest) return null;
 
-  const indeterminate = state.bytesTotal === 0 && state.percent === 0;
-  const showCounter = state.fileTotal > 1;
+  const indeterminate = latest.bytesTotal === 0 && latest.percent === 0;
+  const showCounter = latest.fileTotal > 1;
 
   return (
     <div
       className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4"
+      data-state={animState}
       role="dialog"
       aria-modal="true"
       aria-label={title}
     >
-      <div className="modal-surface w-full max-w-sm rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-2xl p-6">
+      <div
+        className="modal-surface w-full max-w-sm rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-2xl p-6"
+        data-state={animState}
+      >
         <div className="flex items-center gap-3 mb-4">
           <div className="relative h-9 w-9 shrink-0 rounded-full bg-blue-50 dark:bg-blue-950/50 flex items-center justify-center">
             <svg
@@ -76,19 +91,19 @@ export function UploadProgressOverlay({
               {title}
               {showCounter && (
                 <span className="ml-1.5 text-xs font-normal text-zinc-500">
-                  {state.fileIndex} of {state.fileTotal}
+                  {latest.fileIndex} of {latest.fileTotal}
                 </span>
               )}
             </div>
-            <div className="text-xs text-zinc-500 truncate" title={state.fileName}>
-              {state.fileName}
+            <div className="text-xs text-zinc-500 truncate" title={latest.fileName}>
+              {latest.fileName}
             </div>
           </div>
           <div
             className="text-sm font-mono tabular-nums text-zinc-700 dark:text-zinc-200"
             aria-live="polite"
           >
-            {indeterminate ? "…" : `${state.percent}%`}
+            {indeterminate ? "…" : `${latest.percent}%`}
           </div>
         </div>
 
@@ -97,19 +112,19 @@ export function UploadProgressOverlay({
           role="progressbar"
           aria-valuemin={0}
           aria-valuemax={100}
-          aria-valuenow={indeterminate ? undefined : state.percent}
+          aria-valuenow={indeterminate ? undefined : latest.percent}
         >
           <div
             className="progress-fill"
             data-indeterminate={indeterminate ? "true" : "false"}
-            style={indeterminate ? undefined : { width: `${state.percent}%` }}
+            style={indeterminate ? undefined : { width: `${latest.percent}%` }}
           />
         </div>
 
         <div className="mt-3 flex items-center justify-between text-[11px] text-zinc-500 font-mono tabular-nums">
           <span>
-            {state.bytesTotal > 0
-              ? `${formatBytes(state.bytesLoaded)} / ${formatBytes(state.bytesTotal)}`
+            {latest.bytesTotal > 0
+              ? `${formatBytes(latest.bytesLoaded)} / ${formatBytes(latest.bytesTotal)}`
               : "Preparing…"}
           </span>
           {onCancel && (

@@ -54,81 +54,111 @@ export async function uploadVideoDirect(input: {
     signal,
   } = input;
 
-  // 1. Sign main file.
-  const signedMain = await signOne({
-    projectId,
-    platform,
-    ratio,
-    kind: "video",
-    mimeType: file.type,
-    fileSize: file.size,
-    fileName: file.name,
-    signageFormatId,
-    signal,
-  });
+  // Track every storage path that's been written so we can clean up if
+  // anything after the main PUT fails. Aborts skip cleanup — the user
+  // expressed intent to abandon, and the signed URLs are single-use.
+  const orphans: string[] = [];
 
-  // 2. Sign poster in parallel with the main upload (when present).
-  let signedPoster: SignResponse | null = null;
-  let posterPromise: Promise<void> | null = null;
-  if (poster && poster.size > 0) {
-    signedPoster = await signOne({
+  try {
+    // 1. Sign main file.
+    const signedMain = await signOne({
       projectId,
       platform,
       ratio,
-      kind: "poster",
-      mimeType: poster.type || "image/jpeg",
-      fileSize: poster.size,
-      fileName: "poster.jpg",
+      kind: "video",
+      mimeType: file.type,
+      fileSize: file.size,
+      fileName: file.name,
       signageFormatId,
       signal,
     });
-    posterPromise = putToSignedUrl(signedPoster.uploadUrl, poster, {
-      mimeType: "image/jpeg",
+
+    // 2. Sign poster in parallel with the main upload (when present).
+    let signedPoster: SignResponse | null = null;
+    let posterPromise: Promise<void> | null = null;
+    if (poster && poster.size > 0) {
+      signedPoster = await signOne({
+        projectId,
+        platform,
+        ratio,
+        kind: "poster",
+        mimeType: poster.type || "image/jpeg",
+        fileSize: poster.size,
+        fileName: "poster.jpg",
+        signageFormatId,
+        signal,
+      });
+      posterPromise = putToSignedUrl(signedPoster.uploadUrl, poster, {
+        mimeType: "image/jpeg",
+        signal,
+      });
+    }
+
+    // 3. PUT the main file with progress reporting.
+    await putToSignedUrl(signedMain.uploadUrl, file, {
+      mimeType: file.type,
+      onProgress,
       signal,
     });
-  }
+    orphans.push(signedMain.storagePath);
 
-  // 3. PUT the main file with progress reporting.
-  await putToSignedUrl(signedMain.uploadUrl, file, {
-    mimeType: file.type,
-    onProgress,
-    signal,
-  });
-
-  if (posterPromise) {
-    try {
-      await posterPromise;
-    } catch {
-      // Poster failure is non-fatal — the video still succeeded.
-      signedPoster = null;
+    let posterFinalPath: string | null = null;
+    if (posterPromise && signedPoster) {
+      try {
+        await posterPromise;
+        posterFinalPath = signedPoster.storagePath;
+        orphans.push(posterFinalPath);
+      } catch {
+        // Poster failure is non-fatal — the video still succeeded.
+        // The poster bytes never landed (PUT failed), nothing to clean.
+      }
     }
-  }
 
-  // 4. Finalize.
-  const res = await fetch("/api/upload/finalize", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      projectId,
-      platform,
-      ratio,
-      storagePath: signedMain.storagePath,
-      posterStoragePath: signedPoster?.storagePath ?? null,
-      fileName: file.name,
-      fileSize: file.size,
-      mimeType: file.type,
-      signageFormatId: signageFormatId ?? null,
-      replaceCreativeId: replaceCreativeId ?? null,
-      deletePrevious: deletePrevious ?? false,
-      copy: copy ?? null,
-    }),
-    signal,
-  });
-  const body = (await res.json().catch(() => ({}))) as { error?: string } & Partial<DirectUploadResult>;
-  if (!res.ok) {
-    throw new Error(body.error ?? "upload finalize failed");
+    // 4. Finalize.
+    const res = await fetch("/api/upload/finalize", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        projectId,
+        platform,
+        ratio,
+        storagePath: signedMain.storagePath,
+        posterStoragePath: posterFinalPath,
+        fileName: file.name,
+        fileSize: file.size,
+        mimeType: file.type,
+        signageFormatId: signageFormatId ?? null,
+        replaceCreativeId: replaceCreativeId ?? null,
+        deletePrevious: deletePrevious ?? false,
+        copy: copy ?? null,
+      }),
+      signal,
+    });
+    const body = (await res.json().catch(() => ({}))) as { error?: string } & Partial<DirectUploadResult>;
+    if (!res.ok) {
+      throw new Error(body.error ?? "upload finalize failed");
+    }
+    // Finalize succeeded — orphans now have a media row pointing at them,
+    // they're no longer orphaned.
+    return body as DirectUploadResult;
+  } catch (err) {
+    // Best-effort cleanup of uploaded bytes when finalize never recorded
+    // them. AbortError still triggers cleanup — the user told us to abandon.
+    if (orphans.length > 0) {
+      try {
+        await fetch("/api/upload/cleanup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ projectId, paths: orphans }),
+          // Don't propagate the original signal — the user aborted the
+          // upload; the cleanup is a separate, short request.
+        });
+      } catch {
+        /* swallow — cleanup is best-effort */
+      }
+    }
+    throw err;
   }
-  return body as DirectUploadResult;
 }
 
 async function signOne(input: {

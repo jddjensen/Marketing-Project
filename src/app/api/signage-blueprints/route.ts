@@ -40,7 +40,7 @@ export async function GET() {
     .order("created_at", { ascending: false });
 
   if (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: "failed to load blueprints" }, { status: 500 });
   }
 
   return Response.json({ blueprints: (data ?? []).map(serialize) });
@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (error || !data) {
-    return Response.json({ error: error?.message ?? "insert failed" }, { status: 500 });
+    return Response.json({ error: "insert failed" }, { status: 500 });
   }
 
   return Response.json({ blueprint: serialize(data) });

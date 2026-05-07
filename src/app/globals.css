@@ -17,9 +17,10 @@
   --ease-apple: cubic-bezier(0.32, 0.72, 0, 1);
   --ease-apple-soft: cubic-bezier(0.25, 0.1, 0.25, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-  --dur-fast: 140ms;
-  --dur-base: 220ms;
-  --dur-slow: 360ms;
+  --dur-snap: 90ms;     /* press feedback — should feel instant */
+  --dur-fast: 140ms;    /* hover, focus ring, color swaps */
+  --dur-base: 220ms;    /* lift, shadow, gentle motion */
+  --dur-slow: 320ms;    /* modal/page transitions */
   --dur-route-exit: 120ms;
   --dur-route-enter: 180ms;
   --dur-route-slide: 260ms;
@@ -182,11 +183,17 @@ body {
   transition: transform var(--dur-fast) var(--ease-apple),
     box-shadow var(--dur-base) var(--ease-apple),
     background-color var(--dur-fast) var(--ease-apple),
-    border-color var(--dur-fast) var(--ease-apple);
+    border-color var(--dur-fast) var(--ease-apple),
+    opacity var(--dur-fast) var(--ease-apple);
   will-change: transform;
 }
-.apple-tap:active {
+/* Subtle invitation on hover — gives buttons life without being noisy. */
+.apple-tap:hover:not(:disabled) {
+  transform: scale(1.025);
+}
+.apple-tap:active:not(:disabled) {
   transform: scale(0.97);
+  transition-duration: var(--dur-snap);
 }
 .apple-lift {
   transition: transform var(--dur-base) var(--ease-apple),
@@ -199,7 +206,64 @@ body {
 }
 .apple-lift:active {
   transform: translateY(0) scale(0.99);
-  transition-duration: var(--dur-fast);
+  transition-duration: var(--dur-snap);
+}
+
+/* Skeleton placeholder — gentle shimmer for loading states. Used in place of
+ * "Loading..." text so the layout doesn't jump when data arrives. */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--surface-sunken);
+  border-radius: 8px;
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.06) 40%,
+    rgba(255, 255, 255, 0.12) 50%,
+    rgba(255, 255, 255, 0.06) 60%,
+    transparent 100%
+  );
+  transform: translateX(-100%);
+  animation: skeleton-shimmer 1.6s var(--ease-apple-soft) infinite;
+}
+[data-color-scheme="dark"] .skeleton::after {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.04) 40%,
+    rgba(255, 255, 255, 0.08) 50%,
+    rgba(255, 255, 255, 0.04) 60%,
+    transparent 100%
+  );
+}
+@keyframes skeleton-shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+/* Card / tile hover — subtle lift + accent border. Use on grid items that
+ * the user is meant to click. Plays nicely with .apple-tap on inner buttons. */
+.tile-hover {
+  transition: transform var(--dur-base) var(--ease-apple),
+    box-shadow var(--dur-base) var(--ease-apple),
+    border-color var(--dur-fast) var(--ease-apple);
+  will-change: transform;
+}
+.tile-hover:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-soft);
+  border-color: var(--border-strong);
+}
+.tile-hover:active {
+  transform: translateY(0);
+  transition-duration: var(--dur-snap);
 }
 
 /* -------- Tactile selectables -------- */
@@ -559,6 +623,65 @@ body {
   animation: modal-in var(--dur-base) var(--ease-apple) both;
   transform-origin: center;
   will-change: opacity, transform;
+}
+
+/* Exit animations — driven by data-state="closed" set just before unmount.
+ * Components use the useExitAnimation hook to delay actual removal until
+ * these have played, so close transitions feel as smooth as opens. */
+@keyframes modal-out {
+  from {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.985) translateY(4px);
+  }
+}
+@keyframes backdrop-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+.modal-backdrop[data-state="closed"] {
+  animation: backdrop-out var(--dur-fast) var(--ease-apple) both;
+}
+.modal-surface[data-state="closed"] {
+  animation: modal-out 200ms var(--ease-apple) both;
+}
+
+/* Popover entrance / exit — lighter than the full modal, anchored to a
+ * trigger. Used by UserMenu and similar dropdowns. */
+@keyframes popover-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+@keyframes popover-out {
+  from {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.97) translateY(-4px);
+  }
+}
+.popover-surface {
+  animation: popover-in 160ms var(--ease-apple) both;
+  transform-origin: top right;
+  will-change: opacity, transform;
+}
+.popover-surface[data-state="closed"] {
+  animation: popover-out 130ms var(--ease-apple) both;
 }
 
 /* -------- Upload progress bar -------- */

@@ -123,7 +123,7 @@ export async function PATCH(
     .single();
 
   if (error || !data) {
-    return Response.json({ error: error?.message ?? "update failed" }, { status: 500 });
+    return Response.json({ error: "update failed" }, { status: 500 });
   }
   return Response.json({ link: serialize(data as LinkRow) });
 }
@@ -139,7 +139,7 @@ export async function DELETE(
     .delete({ count: "exact" })
     .eq("id", linkId)
     .eq("project_id", id);
-  if (error) return Response.json({ error: error.message }, { status: 500 });
+  if (error) return Response.json({ error: "failed to delete tracking link" }, { status: 500 });
   if (count === 0) return Response.json({ error: "not found" }, { status: 404 });
   return Response.json({ ok: true });
 }

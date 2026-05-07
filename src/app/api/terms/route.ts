@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
     .eq("platform", scope.platform)
     .order("added_at", { ascending: false });
 
-  if (error) return Response.json({ error: error.message }, { status: 500 });
+  if (error) return Response.json({ error: "request failed" }, { status: 500 });
 
   const terms = (data ?? []).map((t) => ({
     id: t.id,
@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
     .upsert(rows, { onConflict: "project_id,platform,value", ignoreDuplicates: true })
     .select("id, value, added_at");
 
-  if (error) return Response.json({ error: error.message }, { status: 500 });
+  if (error) return Response.json({ error: "request failed" }, { status: 500 });
 
   const added = (data ?? []).map((t) => ({
     id: t.id,
@@ -105,7 +105,7 @@ export async function DELETE(request: NextRequest) {
     .eq("platform", scope.platform)
     .eq("id", id);
 
-  if (error) return Response.json({ error: error.message }, { status: 500 });
+  if (error) return Response.json({ error: "request failed" }, { status: 500 });
   if (count === 0) return Response.json({ error: "not found" }, { status: 404 });
   return Response.json({ ok: true });
 }

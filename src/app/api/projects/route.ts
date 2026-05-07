@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
     .order("updated_at", { ascending: false });
   if (!includeArchived) query = query.is("archived_at", null);
   const { data, error } = await query;
-  if (error) return Response.json({ error: error.message }, { status: 500 });
+  if (error) return Response.json({ error: "failed to load projects" }, { status: 500 });
   return Response.json({ projects: (data ?? []).map(serialize) });
 }
 
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (error || !data) {
-    return Response.json({ error: error?.message ?? "failed to create" }, { status: 500 });
+    return Response.json({ error: "failed to create" }, { status: 500 });
   }
 
   if (platforms.length > 0) {

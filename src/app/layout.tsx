@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { ViewTransition } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
@@ -25,12 +25,6 @@ export const metadata: Metadata = {
     "Plan campaigns, organize creative across every channel, build trackable links and QR codes, and watch performance in one place.",
   applicationName: "Marketing Platform",
   authors: [{ name: "Marketing Platform" }],
-  // Theme color is applied to mobile browser chrome. Defaults to the slate
-  // accent; users still see their chosen palette inside the app.
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#fafafa" },
-    { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
-  ],
   openGraph: {
     type: "website",
     siteName: "Marketing Platform",
@@ -51,6 +45,16 @@ export const metadata: Metadata = {
   },
 };
 
+// In Next 16+, themeColor must live on the viewport export, not metadata.
+// Applied to mobile browser chrome; users still see their picked palette
+// inside the app via the AppearanceProvider.
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#fafafa" },
+    { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
+  ],
+};
+
 // Inline boot script — runs before paint to apply saved appearance preferences.
 // Without this, every reload would flash the default palette/mode before React
 // hydrates and the user's choices get re-applied.
@@ -69,6 +73,12 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      // The boot script sets data-theme + data-color-scheme on <html> before
+      // React hydrates, so these attributes will differ from the SSR output.
+      // suppressHydrationWarning is the canonical opt-out for this pattern
+      // (used by next-themes and similar). Only suppresses the warning for
+      // the html element itself, not its children.
+      suppressHydrationWarning
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: appearanceBootScript }} />

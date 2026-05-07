@@ -113,8 +113,20 @@ export function PlatformMediaBoard({
     async (
       ratio: Ratio,
       file: File,
-      options?: { replaceCreativeId?: string; deletePrevious?: boolean }
+      options?: {
+        replaceCreativeId?: string;
+        deletePrevious?: boolean;
+        carryCopy?: Record<string, unknown> | null;
+      }
     ) => {
+      // Block concurrent uploads: the abort controller is shared across the
+      // single in-flight upload, and the progress overlay only renders one.
+      // This also prevents the cross-upload abort interference where
+      // cancelling B would leave A running with a stale ref.
+      if (uploadAbort.current) {
+        setError("Wait for the current upload to finish before starting another.");
+        return;
+      }
       setError(null);
       setUploading(ratio);
       const controller = new AbortController();
@@ -149,6 +161,7 @@ export function PlatformMediaBoard({
             ratio,
             replaceCreativeId: options?.replaceCreativeId,
             deletePrevious: options?.deletePrevious,
+            copy: options?.carryCopy ?? null,
             signal: controller.signal,
             onProgress,
           });
@@ -163,6 +176,9 @@ export function PlatformMediaBoard({
           if (options?.replaceCreativeId) {
             fd.append("replaceCreativeId", options.replaceCreativeId);
             if (options.deletePrevious) fd.append("deletePrevious", "true");
+          }
+          if (options?.carryCopy && Object.keys(options.carryCopy).length > 0) {
+            fd.append("copy", JSON.stringify(options.carryCopy));
           }
           const res = await uploadWithProgress<{ error?: string }>("/api/upload", fd, {
             signal: controller.signal,
@@ -246,7 +262,7 @@ export function PlatformMediaBoard({
               <button
                 type="button"
                 onClick={fetchTracking}
-                className="text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 border border-zinc-200 dark:border-zinc-800 rounded-md px-2 py-1"
+                className="apple-tap text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 border border-zinc-200 dark:border-zinc-800 rounded-md px-2 py-1"
               >
                 Refresh clicks
               </button>
@@ -273,8 +289,8 @@ export function PlatformMediaBoard({
               items={media[r.key] ?? []}
               uploading={uploading === r.key}
               onUpload={(ratio, file) => handleUpload(ratio, file)}
-              onUploadReplace={(ratio, file, replaceCreativeId, deletePrevious) =>
-                handleUpload(ratio, file, { replaceCreativeId, deletePrevious })
+              onUploadReplace={(ratio, file, replaceCreativeId, deletePrevious, carryCopy) =>
+                handleUpload(ratio, file, { replaceCreativeId, deletePrevious, carryCopy })
               }
               loading={loading}
               trackingEnabled={trackingEnabled}
@@ -341,7 +357,8 @@ function RatioColumn({
     ratio: Ratio,
     file: File,
     replaceCreativeId: string,
-    deletePrevious: boolean
+    deletePrevious: boolean,
+    carryCopy: Record<string, unknown> | null
   ) => void;
   loading: boolean;
   trackingEnabled: boolean;
@@ -434,7 +451,14 @@ function RatioColumn({
 
       <div className="px-4 pb-4 flex-1 flex flex-col gap-4">
         {loading && items.length === 0 ? (
-          <div className="text-sm text-zinc-500 py-6 text-center">Loading…</div>
+          <div className="space-y-3" aria-busy="true">
+            {Array.from({ length: 2 }).map((_, i) => (
+              <div key={i} className="space-y-2">
+                <div className={`skeleton ${config.aspect} w-full`} />
+                <div className="skeleton h-3 w-1/2" />
+              </div>
+            ))}
+          </div>
         ) : items.length === 0 ? (
           <div className="text-sm text-zinc-500 py-6 text-center">No media yet.</div>
         ) : (
@@ -450,7 +474,7 @@ function RatioColumn({
               projectId={projectId}
               platform={platform}
               onReplace={(file, deletePrevious) =>
-                onUploadReplace(config.key, file, item.creativeId, deletePrevious)
+                onUploadReplace(config.key, file, item.creativeId, deletePrevious, item.copy)
               }
               onOpenHistory={onOpenHistory}
               onMutated={onMutated}

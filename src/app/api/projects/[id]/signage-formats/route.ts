@@ -38,7 +38,7 @@ export async function GET(
     .select("id, label, preset_key, width, height, unit, created_at")
     .eq("project_id", id)
     .order("created_at", { ascending: true });
-  if (fErr) return Response.json({ error: fErr.message }, { status: 500 });
+  if (fErr) return Response.json({ error: "failed to load signage formats" }, { status: 500 });
 
   const { data: media, error: mErr } = await supabase
     .from("media")
@@ -140,7 +140,7 @@ export async function POST(
     .single();
 
   if (error || !data) {
-    return Response.json({ error: error?.message ?? "insert failed" }, { status: 500 });
+    return Response.json({ error: "insert failed" }, { status: 500 });
   }
   return Response.json({ format: serialize(data) });
 }
