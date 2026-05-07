@@ -10,18 +10,31 @@ export type UploadResponse<T = unknown> = {
   body: T | null;
 };
 
+export type UploadBody = FormData | Blob | File | ArrayBuffer | string;
+
+// XMLHttpRequest wrapper that emits real upload-progress events. Used for:
+//   1. Multipart POSTs to /api/upload (FormData body)
+//   2. Direct-to-storage PUTs to Supabase signed upload URLs (Blob body)
 export function uploadWithProgress<T = unknown>(
   url: string,
-  formData: FormData,
+  body: UploadBody,
   options?: {
+    method?: "POST" | "PUT";
+    headers?: Record<string, string>;
     onProgress?: (progress: UploadProgress) => void;
     signal?: AbortSignal;
   }
 ): Promise<UploadResponse<T>> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.open("POST", url, true);
+    xhr.open(options?.method ?? "POST", url, true);
     xhr.responseType = "text";
+
+    if (options?.headers) {
+      for (const [k, v] of Object.entries(options.headers)) {
+        xhr.setRequestHeader(k, v);
+      }
+    }
 
     xhr.upload.onprogress = (e) => {
       if (!options?.onProgress) return;
@@ -31,16 +44,16 @@ export function uploadWithProgress<T = unknown>(
     };
 
     xhr.onload = () => {
-      let body: T | null = null;
+      let parsed: T | null = null;
       const text = xhr.responseText;
       if (text) {
         try {
-          body = JSON.parse(text) as T;
+          parsed = JSON.parse(text) as T;
         } catch {
-          body = null;
+          parsed = null;
         }
       }
-      resolve({ status: xhr.status, ok: xhr.status >= 200 && xhr.status < 300, body });
+      resolve({ status: xhr.status, ok: xhr.status >= 200 && xhr.status < 300, body: parsed });
     };
 
     xhr.onerror = () => reject(new Error("network error"));
@@ -54,6 +67,6 @@ export function uploadWithProgress<T = unknown>(
       options.signal.addEventListener("abort", () => xhr.abort(), { once: true });
     }
 
-    xhr.send(formData);
+    xhr.send(body as XMLHttpRequestBodyInit);
   });
 }

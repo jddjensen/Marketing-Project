@@ -26,11 +26,15 @@ function aspectClass(ratio: string): string {
 
 type MediaItem = {
   id: string;
+  creativeId: string;
+  versionNum: number;
   platform: PlatformKey;
   ratio: string;
-  url: string;
-  name: string;
-  kind: "image" | "video";
+  url: string | null;
+  posterUrl: string | null;
+  name: string | null;
+  kind: "image" | "video" | "text";
+  copy: Record<string, unknown> | null;
   uploadedAt: number;
 };
 
@@ -518,16 +522,31 @@ function CreativeTile({
       href={`/projects/${projectId}/${item.platform}`}
       transitionTypes={["nav-forward"]}
       className="block group"
-      title={`${channelLabel} · ${formatAssetLabel(item.ratio)} · ${item.name}`}
+      title={`${channelLabel} · ${formatAssetLabel(item.ratio)} · ${item.name ?? "Text creative"}`}
     >
       <div
         className={`${aspect} w-full rounded-lg overflow-hidden bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 group-hover:border-zinc-400 dark:group-hover:border-zinc-600`}
       >
-        {item.kind === "image" ? (
+        {item.kind === "image" && item.url ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={item.url} alt={item.name} className="w-full h-full object-cover" />
+          <img src={item.url} alt={item.name ?? ""} className="w-full h-full object-cover" />
+        ) : item.kind === "video" && item.posterUrl ? (
+          // Use the poster as a static thumbnail to avoid downloading the
+          // full video just to render a preview tile.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={item.posterUrl} alt={item.name ?? ""} className="w-full h-full object-cover" />
+        ) : item.kind === "video" && item.url ? (
+          <video
+            src={item.url}
+            muted
+            playsInline
+            preload="metadata"
+            className="w-full h-full object-cover"
+          />
         ) : (
-          <video src={item.url} muted playsInline className="w-full h-full object-cover" />
+          <div className="w-full h-full flex items-center justify-center text-[10px] uppercase tracking-wider text-zinc-500">
+            Text
+          </div>
         )}
       </div>
       <div className="mt-1 flex items-center justify-between text-[11px] text-zinc-500">

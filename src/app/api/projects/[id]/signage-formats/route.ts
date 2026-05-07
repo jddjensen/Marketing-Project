@@ -42,31 +42,43 @@ export async function GET(
 
   const { data: media, error: mErr } = await supabase
     .from("media")
-    .select("id, ratio, storage_path, original_name, kind, uploaded_at, signage_format_id")
+    .select(
+      "id, creative_id, version_num, ratio, storage_path, poster_storage_path, original_name, kind, copy, uploaded_at, signage_format_id"
+    )
     .eq("project_id", id)
     .eq("platform", "signage")
+    .eq("is_current", true)
     .order("uploaded_at", { ascending: false });
   if (mErr) return Response.json({ error: "failed to load media" }, { status: 500 });
 
   const mediaRows = (media ?? []).filter((row) => row.signage_format_id);
-  const urlMap = await signedMediaUrls(
-    supabase,
-    mediaRows.map((row) => row.storage_path)
-  );
+  const allPaths: string[] = [];
+  for (const r of mediaRows) {
+    if (r.storage_path) allPaths.push(r.storage_path);
+    if (r.poster_storage_path) allPaths.push(r.poster_storage_path);
+  }
+  const urlMap = await signedMediaUrls(supabase, allPaths);
 
   const mediaByFormat: Record<string, Array<Record<string, unknown>>> = {};
   for (const row of mediaRows) {
-    const url = urlMap.get(row.storage_path);
-    if (!url) continue;
+    const url = row.storage_path ? urlMap.get(row.storage_path) ?? null : null;
+    if (row.kind !== "text" && !url) continue;
+    const posterUrl = row.poster_storage_path
+      ? urlMap.get(row.poster_storage_path) ?? null
+      : null;
     const formatKey = row.signage_format_id as string;
     const bucket = mediaByFormat[formatKey] ?? (mediaByFormat[formatKey] = []);
     bucket.push({
       id: row.id,
+      creativeId: row.creative_id,
+      versionNum: row.version_num,
       url,
+      posterUrl,
       storagePath: row.storage_path,
       name: row.original_name,
       kind: row.kind,
       ratio: row.ratio,
+      copy: (row.copy as Record<string, unknown> | null) ?? null,
       uploadedAt: new Date(row.uploaded_at).getTime(),
     });
   }

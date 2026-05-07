@@ -36,22 +36,107 @@
   --ease-spring: var(--ease-spring);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-    --surface: #111111;
-    --surface-translucent: rgba(17, 17, 17, 0.72);
-    --surface-sunken: #18181b;
-    --border: rgba(255, 255, 255, 0.08);
-    --border-strong: rgba(255, 255, 255, 0.22);
-    --accent: #60a5fa;
-    --accent-soft: rgba(96, 165, 250, 0.18);
-    --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.5);
-    --shadow-lift: 0 2px 6px rgba(0, 0, 0, 0.5), 0 20px 40px rgba(0, 0, 0, 0.6);
-    --shadow-inset: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
-    --shadow-segmented: 0 1px 1px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.6);
-  }
+/* Color scheme is resolved by JS (AppearanceProvider): "auto" reads the OS
+ * preference, otherwise the explicit choice wins. The provider sets
+ * data-color-scheme="light" or "dark" on <html> before paint. Using a
+ * class/attribute (instead of a media query) lets the user override their
+ * OS preference per app. */
+[data-color-scheme="dark"] {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+  --surface: #111111;
+  --surface-translucent: rgba(17, 17, 17, 0.72);
+  --surface-sunken: #18181b;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.22);
+  --accent: #60a5fa;
+  --accent-soft: rgba(96, 165, 250, 0.18);
+  --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-lift: 0 2px 6px rgba(0, 0, 0, 0.5), 0 20px 40px rgba(0, 0, 0, 0.6);
+  --shadow-inset: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  --shadow-segmented: 0 1px 1px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.6);
+}
+
+/* -------- Theme palettes --------
+ * `data-theme` is set on <html> by the AppearanceProvider. Each block
+ * overrides just the accent and a faint surface tint so the editorial
+ * neutrals stay consistent — only the personality color changes. */
+
+[data-theme="aurora"] {
+  --accent: #7c3aed;
+  --accent-soft: rgba(124, 58, 237, 0.13);
+  --surface-sunken: #f3f0fa;
+}
+[data-theme="aurora"][data-color-scheme="dark"] {
+  --accent: #a78bfa;
+  --accent-soft: rgba(167, 139, 250, 0.18);
+  --surface-sunken: #1a1721;
+}
+
+[data-theme="midnight"] {
+  --accent: #4f46e5;
+  --accent-soft: rgba(79, 70, 229, 0.13);
+}
+[data-theme="midnight"][data-color-scheme="dark"] {
+  --background: #07080d;
+  --accent: #818cf8;
+  --accent-soft: rgba(129, 140, 248, 0.2);
+  --surface-sunken: #0f1018;
+}
+
+[data-theme="sunset"] {
+  --accent: #e11d48;
+  --accent-soft: rgba(225, 29, 72, 0.12);
+  --surface-sunken: #f7f0f0;
+}
+[data-theme="sunset"][data-color-scheme="dark"] {
+  --accent: #fb7185;
+  --accent-soft: rgba(251, 113, 133, 0.18);
+  --surface-sunken: #1f1517;
+}
+
+[data-theme="forest"] {
+  --accent: #059669;
+  --accent-soft: rgba(5, 150, 105, 0.12);
+  --surface-sunken: #f0f5f1;
+}
+[data-theme="forest"][data-color-scheme="dark"] {
+  --accent: #34d399;
+  --accent-soft: rgba(52, 211, 153, 0.18);
+  --surface-sunken: #15201b;
+}
+
+[data-theme="rose"] {
+  --accent: #db2777;
+  --accent-soft: rgba(219, 39, 119, 0.12);
+  --surface-sunken: #f7f0f4;
+}
+[data-theme="rose"][data-color-scheme="dark"] {
+  --accent: #f472b6;
+  --accent-soft: rgba(244, 114, 182, 0.18);
+  --surface-sunken: #1f1620;
+}
+
+[data-theme="cyan"] {
+  --accent: #0891b2;
+  --accent-soft: rgba(8, 145, 178, 0.13);
+  --surface-sunken: #eff5f7;
+}
+[data-theme="cyan"][data-color-scheme="dark"] {
+  --accent: #22d3ee;
+  --accent-soft: rgba(34, 211, 238, 0.18);
+  --surface-sunken: #121d22;
+}
+
+[data-theme="amber"] {
+  --accent: #d97706;
+  --accent-soft: rgba(217, 119, 6, 0.13);
+  --surface-sunken: #f7f3ec;
+}
+[data-theme="amber"][data-color-scheme="dark"] {
+  --accent: #fbbf24;
+  --accent-soft: rgba(251, 191, 36, 0.18);
+  --surface-sunken: #1f1a13;
 }
 
 html {
@@ -174,10 +259,8 @@ body {
     background-color var(--dur-fast) var(--ease-apple),
     transform var(--dur-fast) var(--ease-apple);
 }
-@media (prefers-color-scheme: dark) {
-  .select-tactile {
-    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none'><path d='M3 4.5L6 7.5L9 4.5' stroke='%23a1a1aa' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/></svg>");
-  }
+[data-color-scheme="dark"] .select-tactile {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none'><path d='M3 4.5L6 7.5L9 4.5' stroke='%23a1a1aa' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/></svg>");
 }
 .select-tactile:hover:not(:focus):not(:disabled) {
   border-color: var(--border-strong);
@@ -217,10 +300,8 @@ body {
     transform var(--dur-fast) var(--ease-apple),
     box-shadow var(--dur-fast) var(--ease-apple);
 }
-@media (prefers-color-scheme: dark) {
-  .pill-toggle {
-    color: rgb(212, 212, 216);
-  }
+[data-color-scheme="dark"] .pill-toggle {
+  color: rgb(212, 212, 216);
 }
 .pill-toggle:hover:not([data-active="true"]):not(:disabled) {
   border-color: var(--border-strong);

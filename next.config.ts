@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const securityHeaders = [
   // Prevent the browser from sniffing a response's content-type — defense in
@@ -29,4 +30,15 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// Sentry's wrapper is a no-op for error capture when SENTRY_DSN isn't set.
+// Source map upload only runs when SENTRY_AUTH_TOKEN is provided, so local
+// dev / unconfigured deploys stay quiet.
+export default withSentryConfig(nextConfig, {
+  silent: !process.env.SENTRY_AUTH_TOKEN,
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  // Keep tunneling off until you intentionally enable it (avoids ad-block
+  // false positives by routing /monitoring through your own origin).
+  tunnelRoute: undefined,
+});

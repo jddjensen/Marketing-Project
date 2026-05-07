@@ -5,6 +5,8 @@ import Link from "next/link";
 import { UserMenu } from "./UserMenu";
 import { UploadProgressOverlay, type UploadProgressState } from "./UploadProgressOverlay";
 import { uploadWithProgress } from "@/lib/uploadWithProgress";
+import { uploadVideoDirect } from "@/lib/directUpload";
+import { extractVideoPoster } from "@/lib/videoThumbnail";
 import {
   formatDimensions,
   type SignageBlueprint,
@@ -25,10 +27,14 @@ type SignageFormat = {
 
 type MediaItem = {
   id: string;
-  url: string;
-  name: string;
-  kind: "image" | "video";
+  creativeId: string;
+  versionNum: number;
+  url: string | null;
+  posterUrl: string | null;
+  name: string | null;
+  kind: "image" | "video" | "text";
   ratio: string;
+  copy: Record<string, unknown> | null;
   uploadedAt: number;
 };
 
@@ -186,24 +192,41 @@ export function SignageBoard({
             bytesLoaded: 0,
             bytesTotal: file.size,
           });
-          const fd = new FormData();
-          fd.append("file", file);
-          fd.append("platform", "signage");
-          fd.append("projectId", projectId);
-          fd.append("ratio", `${trimDimension(format.width)}x${trimDimension(format.height)}`);
-          fd.append("signageFormatId", format.id);
-          const res = await uploadWithProgress<{ error?: string }>("/api/upload", fd, {
-            signal: controller.signal,
-            onProgress: ({ loaded, total, percent }) => {
-              setUploadState((prev) =>
-                prev
-                  ? { ...prev, percent, bytesLoaded: loaded, bytesTotal: total || prev.bytesTotal }
-                  : prev
-              );
-            },
-          });
-          if (!res.ok) {
-            throw new Error(res.body?.error ?? "upload failed");
+          const ratio = `${trimDimension(format.width)}x${trimDimension(format.height)}`;
+          const onProgress = ({ loaded, total, percent }: { loaded: number; total: number; percent: number }) => {
+            setUploadState((prev) =>
+              prev
+                ? { ...prev, percent, bytesLoaded: loaded, bytesTotal: total || prev.bytesTotal }
+                : prev
+            );
+          };
+          if (file.type.startsWith("video/")) {
+            // Direct-to-storage for video — bypasses serverless body limits.
+            const poster = await extractVideoPoster(file);
+            await uploadVideoDirect({
+              file,
+              poster,
+              projectId,
+              platform: "signage",
+              ratio,
+              signageFormatId: format.id,
+              signal: controller.signal,
+              onProgress,
+            });
+          } else {
+            const fd = new FormData();
+            fd.append("file", file);
+            fd.append("platform", "signage");
+            fd.append("projectId", projectId);
+            fd.append("ratio", ratio);
+            fd.append("signageFormatId", format.id);
+            const res = await uploadWithProgress<{ error?: string }>("/api/upload", fd, {
+              signal: controller.signal,
+              onProgress,
+            });
+            if (!res.ok) {
+              throw new Error(res.body?.error ?? "upload failed");
+            }
           }
         }
         await fetchData();
@@ -431,7 +454,7 @@ function FormatColumn({
         <input
           ref={inputRef}
           type="file"
-          accept="image/*,video/*"
+          accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm"
           multiple
           className="hidden"
           onChange={(e) => {
@@ -448,17 +471,29 @@ function FormatColumn({
           items.map((item) => (
             <figure key={item.id} className="group">
               <div
-                className={`${aspect} w-full rounded-lg overflow-hidden bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700`}
+                className={`${aspect} w-full rounded-lg overflow-hidden bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 relative`}
               >
-                {item.kind === "image" ? (
+                {item.kind === "image" && item.url ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={item.url} alt={item.name} className="w-full h-full object-cover" />
-                ) : (
-                  <video src={item.url} controls playsInline className="w-full h-full object-cover" />
+                  <img src={item.url} alt={item.name ?? ""} className="w-full h-full object-cover" />
+                ) : item.kind === "video" && item.url ? (
+                  <video
+                    src={item.url}
+                    poster={item.posterUrl ?? undefined}
+                    controls
+                    playsInline
+                    preload={item.posterUrl ? "metadata" : "auto"}
+                    className="w-full h-full object-cover"
+                  />
+                ) : null}
+                {item.versionNum > 1 && (
+                  <span className="absolute top-1.5 left-1.5 rounded-full bg-zinc-900/80 dark:bg-zinc-100/90 text-white dark:text-zinc-900 text-[10px] font-semibold tracking-wide px-1.5 py-0.5">
+                    v{item.versionNum}
+                  </span>
                 )}
               </div>
-              <figcaption className="mt-1.5 text-xs text-zinc-500 truncate" title={item.name}>
-                {item.name}
+              <figcaption className="mt-1.5 text-xs text-zinc-500 truncate" title={item.name ?? ""}>
+                {item.name ?? "—"}
               </figcaption>
             </figure>
           ))

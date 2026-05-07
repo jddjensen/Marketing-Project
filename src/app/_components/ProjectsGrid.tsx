@@ -552,19 +552,58 @@ function CreateDialog({
 
 function EmptyState({ onCreate }: { onCreate: () => void }) {
   return (
-    <div className="rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 bg-white/40 dark:bg-zinc-900/40 py-16 flex flex-col items-center text-center">
-      <div className="text-lg font-semibold">No projects yet</div>
-      <p className="text-sm text-zinc-500 mt-1 max-w-sm">
-        Create your first project to start organizing channels, uploading creatives, tracking
-        clicks, and managing search terms.
+    <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-8 py-12 sm:py-16 flex flex-col items-center text-center shadow-[var(--shadow-soft)]">
+      <div
+        className="h-14 w-14 rounded-2xl flex items-center justify-center bg-(--accent-soft) text-(--accent) mb-5"
+        aria-hidden="true"
+      >
+        <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 3v18" />
+          <path d="M3 12h18" />
+        </svg>
+      </div>
+
+      <h2 className="text-xl font-semibold tracking-tight">
+        Start your first campaign
+      </h2>
+      <p className="text-sm text-zinc-500 mt-1.5 max-w-md">
+        A project bundles every channel, creative, and tracked link for one campaign so the team works from one source of truth.
       </p>
+
+      <ul className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 w-full max-w-2xl text-left">
+        <FeatureBullet
+          title="Pick channels"
+          body="Meta, TikTok, YouTube, email, signage, and 8 more — turn on the ones you're using."
+        />
+        <FeatureBullet
+          title="Upload creative"
+          body="Drag in images or videos up to 2 GB. Versioned, with per-platform copy fields."
+        />
+        <FeatureBullet
+          title="Track results"
+          body="Generate UTM-tagged links and QR codes. See clicks and analytics roll up."
+        />
+      </ul>
+
       <button
         type="button"
         onClick={onCreate}
-        className="apple-tap mt-4 apple-tap rounded-lg bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 px-4 py-2 text-sm font-medium hover:opacity-90"
+        className="apple-tap mt-7 rounded-lg bg-(--accent) text-white px-5 py-2.5 text-sm font-semibold hover:opacity-90 focus-ring"
       >
-        + New project
+        + Create your first project
       </button>
+      <p className="text-[11px] text-zinc-500 mt-3">
+        Takes about 30 seconds. You can edit everything later.
+      </p>
     </div>
+  );
+}
+
+function FeatureBullet({ title, body }: { title: string; body: string }) {
+  return (
+    <li className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/60 dark:bg-zinc-950/40 p-4">
+      <div className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">{title}</div>
+      <p className="text-[11px] text-zinc-500 mt-1 leading-relaxed">{body}</p>
+    </li>
   );
 }

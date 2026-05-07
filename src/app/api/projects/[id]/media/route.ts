@@ -10,28 +10,40 @@ export async function GET(
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("media")
-    .select("id, platform, ratio, storage_path, original_name, kind, uploaded_at")
+    .select(
+      "id, creative_id, version_num, platform, ratio, storage_path, poster_storage_path, original_name, kind, copy, uploaded_at"
+    )
     .eq("project_id", id)
+    .eq("is_current", true)
     .order("uploaded_at", { ascending: false });
   if (error) return Response.json({ error: "failed to load media" }, { status: 500 });
 
   const rows = data ?? [];
-  const urlMap = await signedMediaUrls(
-    supabase,
-    rows.map((r) => r.storage_path)
-  );
+  const allPaths: string[] = [];
+  for (const r of rows) {
+    if (r.storage_path) allPaths.push(r.storage_path);
+    if (r.poster_storage_path) allPaths.push(r.poster_storage_path);
+  }
+  const urlMap = await signedMediaUrls(supabase, allPaths);
 
   const items = rows
     .map((row) => {
-      const url = urlMap.get(row.storage_path);
-      if (!url) return null;
+      const url = row.storage_path ? urlMap.get(row.storage_path) ?? null : null;
+      if (row.kind !== "text" && !url) return null;
+      const posterUrl = row.poster_storage_path
+        ? urlMap.get(row.poster_storage_path) ?? null
+        : null;
       return {
         id: row.id,
+        creativeId: row.creative_id,
+        versionNum: row.version_num,
         platform: row.platform,
         ratio: row.ratio,
         url,
+        posterUrl,
         name: row.original_name,
         kind: row.kind,
+        copy: (row.copy as Record<string, unknown> | null) ?? null,
         uploadedAt: new Date(row.uploaded_at).getTime(),
       };
     })

@@ -4,7 +4,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { UserMenu } from "./UserMenu";
 import { UploadProgressOverlay, type UploadProgressState } from "./UploadProgressOverlay";
+import { CreativeCopyPanel } from "./CreativeCopyPanel";
+import { VersionHistoryModal } from "./VersionHistoryModal";
+import { TextCreativeDialog } from "./TextCreativeDialog";
 import { uploadWithProgress } from "@/lib/uploadWithProgress";
+import { uploadVideoDirect } from "@/lib/directUpload";
+import { extractVideoPoster } from "@/lib/videoThumbnail";
+import { platformSupportsTextOnly } from "@/lib/platformCopy";
+import type { PlatformKey } from "@/lib/utm";
 
 export type Ratio = string;
 
@@ -18,10 +25,14 @@ export type RatioConfig = {
 
 type MediaItem = {
   id: string;
-  url: string;
-  name: string;
-  kind: "image" | "video";
+  creativeId: string;
+  versionNum: number;
+  url: string | null;
+  posterUrl: string | null;
+  name: string | null;
+  kind: "image" | "video" | "text";
   ratio: Ratio;
+  copy: Record<string, unknown> | null;
   uploadedAt: number;
 };
 
@@ -62,6 +73,10 @@ export function PlatformMediaBoard({
   const uploadAbort = useRef<AbortController | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tracking, setTracking] = useState<Record<string, TrackingItem>>({});
+  const [historyFor, setHistoryFor] = useState<string | null>(null);
+  const [textDialog, setTextDialog] = useState<{ ratio: Ratio; ratioLabel: string } | null>(null);
+  const platformKey = platform as PlatformKey;
+  const showTextOption = platformSupportsTextOnly(platformKey);
 
   const fetchMedia = useCallback(async () => {
     const res = await fetch(
@@ -95,7 +110,11 @@ export function PlatformMediaBoard({
   }, [fetchMedia, fetchTracking]);
 
   const handleUpload = useCallback(
-    async (ratio: Ratio, file: File) => {
+    async (
+      ratio: Ratio,
+      file: File,
+      options?: { replaceCreativeId?: string; deletePrevious?: boolean }
+    ) => {
       setError(null);
       setUploading(ratio);
       const controller = new AbortController();
@@ -109,24 +128,51 @@ export function PlatformMediaBoard({
         bytesTotal: file.size,
       });
       try {
-        const fd = new FormData();
-        fd.append("file", file);
-        fd.append("ratio", ratio);
-        fd.append("platform", platform);
-        fd.append("projectId", projectId);
-        const res = await uploadWithProgress<{ error?: string }>("/api/upload", fd, {
-          signal: controller.signal,
-          onProgress: ({ loaded, total, percent }) => {
-            setUploadState((prev) =>
-              prev
-                ? { ...prev, percent, bytesLoaded: loaded, bytesTotal: total || prev.bytesTotal }
-                : prev
-            );
-          },
-        });
-        if (!res.ok) {
-          throw new Error(res.body?.error ?? "upload failed");
+        const isVideo = file.type.startsWith("video/");
+        const onProgress = ({ loaded, total, percent }: { loaded: number; total: number; percent: number }) => {
+          setUploadState((prev) =>
+            prev
+              ? { ...prev, percent, bytesLoaded: loaded, bytesTotal: total || prev.bytesTotal }
+              : prev
+          );
+        };
+
+        if (isVideo) {
+          // Direct-to-storage flow — bypasses the Next.js function so files
+          // up to 2 GB go straight from browser to Supabase Storage.
+          const poster = await extractVideoPoster(file);
+          await uploadVideoDirect({
+            file,
+            poster,
+            projectId,
+            platform: platform as PlatformKey,
+            ratio,
+            replaceCreativeId: options?.replaceCreativeId,
+            deletePrevious: options?.deletePrevious,
+            signal: controller.signal,
+            onProgress,
+          });
+        } else {
+          // Images keep the existing API-route flow so we retain magic-byte
+          // sniffing and EXIF stripping.
+          const fd = new FormData();
+          fd.append("file", file);
+          fd.append("ratio", ratio);
+          fd.append("platform", platform);
+          fd.append("projectId", projectId);
+          if (options?.replaceCreativeId) {
+            fd.append("replaceCreativeId", options.replaceCreativeId);
+            if (options.deletePrevious) fd.append("deletePrevious", "true");
+          }
+          const res = await uploadWithProgress<{ error?: string }>("/api/upload", fd, {
+            signal: controller.signal,
+            onProgress,
+          });
+          if (!res.ok) {
+            throw new Error(res.body?.error ?? "upload failed");
+          }
         }
+
         await fetchMedia();
       } catch (e) {
         if (e instanceof DOMException && e.name === "AbortError") {
@@ -226,18 +272,45 @@ export function PlatformMediaBoard({
               config={r}
               items={media[r.key] ?? []}
               uploading={uploading === r.key}
-              onUpload={handleUpload}
+              onUpload={(ratio, file) => handleUpload(ratio, file)}
+              onUploadReplace={(ratio, file, replaceCreativeId, deletePrevious) =>
+                handleUpload(ratio, file, { replaceCreativeId, deletePrevious })
+              }
               loading={loading}
               trackingEnabled={trackingEnabled}
               tracking={tracking}
               onSaveTracking={saveTracking}
               onRemoveTracking={removeTracking}
+              projectId={projectId}
+              platform={platformKey}
+              showTextOption={showTextOption}
+              onOpenHistory={(creativeId) => setHistoryFor(creativeId)}
+              onOpenTextDialog={(ratio, ratioLabel) => setTextDialog({ ratio, ratioLabel })}
+              onMutated={fetchMedia}
             />
           ))}
         </div>
         {children}
       </main>
       <UploadProgressOverlay state={uploadState} onCancel={cancelUpload} />
+      {historyFor && (
+        <VersionHistoryModal
+          projectId={projectId}
+          creativeId={historyFor}
+          onClose={() => setHistoryFor(null)}
+          onChanged={fetchMedia}
+        />
+      )}
+      {textDialog && (
+        <TextCreativeDialog
+          projectId={projectId}
+          platform={platformKey}
+          ratio={textDialog.ratio}
+          ratioLabel={textDialog.ratioLabel}
+          onClose={() => setTextDialog(null)}
+          onSaved={fetchMedia}
+        />
+      )}
     </div>
   );
 }
@@ -247,21 +320,40 @@ function RatioColumn({
   items,
   uploading,
   onUpload,
+  onUploadReplace,
   loading,
   trackingEnabled,
   tracking,
   onSaveTracking,
   onRemoveTracking,
+  projectId,
+  platform,
+  showTextOption,
+  onOpenHistory,
+  onOpenTextDialog,
+  onMutated,
 }: {
   config: RatioConfig;
   items: MediaItem[];
   uploading: boolean;
   onUpload: (ratio: Ratio, file: File) => void;
+  onUploadReplace: (
+    ratio: Ratio,
+    file: File,
+    replaceCreativeId: string,
+    deletePrevious: boolean
+  ) => void;
   loading: boolean;
   trackingEnabled: boolean;
   tracking: Record<string, TrackingItem>;
   onSaveTracking: (mediaKey: string, url: string) => Promise<void>;
   onRemoveTracking: (mediaKey: string) => Promise<void>;
+  projectId: string;
+  platform: PlatformKey;
+  showTextOption: boolean;
+  onOpenHistory: (creativeId: string) => void;
+  onOpenTextDialog: (ratio: Ratio, ratioLabel: string) => void;
+  onMutated: () => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -318,7 +410,7 @@ function RatioColumn({
         <input
           ref={inputRef}
           type="file"
-          accept="image/*,video/*"
+          accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm"
           multiple
           className="hidden"
           onChange={(e) => {
@@ -327,6 +419,18 @@ function RatioColumn({
           }}
         />
       </div>
+
+      {showTextOption && (
+        <div className="mx-4 -mt-2 mb-2">
+          <button
+            type="button"
+            onClick={() => onOpenTextDialog(config.key, config.label)}
+            className="text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 underline underline-offset-2 decoration-dotted"
+          >
+            + New text-only creative
+          </button>
+        </div>
+      )}
 
       <div className="px-4 pb-4 flex-1 flex flex-col gap-4">
         {loading && items.length === 0 ? (
@@ -343,6 +447,13 @@ function RatioColumn({
               tracking={tracking[item.id]}
               onSaveTracking={onSaveTracking}
               onRemoveTracking={onRemoveTracking}
+              projectId={projectId}
+              platform={platform}
+              onReplace={(file, deletePrevious) =>
+                onUploadReplace(config.key, file, item.creativeId, deletePrevious)
+              }
+              onOpenHistory={onOpenHistory}
+              onMutated={onMutated}
             />
           ))
         )}
@@ -358,6 +469,11 @@ function MediaTile({
   tracking,
   onSaveTracking,
   onRemoveTracking,
+  projectId,
+  platform,
+  onReplace,
+  onOpenHistory,
+  onMutated,
 }: {
   item: MediaItem;
   aspect: string;
@@ -365,22 +481,109 @@ function MediaTile({
   tracking: TrackingItem | undefined;
   onSaveTracking: (mediaId: string, url: string) => Promise<void>;
   onRemoveTracking: (mediaId: string) => Promise<void>;
+  projectId: string;
+  platform: PlatformKey;
+  onReplace: (file: File, deletePrevious: boolean) => void;
+  onOpenHistory: (creativeId: string) => void;
+  onMutated: () => void;
 }) {
+  const replaceInputRef = useRef<HTMLInputElement>(null);
+  const [deletePrevious, setDeletePrevious] = useState(false);
+
   return (
     <figure className="group flex flex-col gap-2">
       <div
-        className={`${aspect} w-full rounded-lg overflow-hidden bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700`}
+        className={`${aspect} w-full rounded-lg overflow-hidden bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 relative`}
       >
-        {item.kind === "image" ? (
+        {item.kind === "image" && item.url ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={item.url} alt={item.name} className="w-full h-full object-cover" />
-        ) : (
-          <video src={item.url} controls playsInline className="w-full h-full object-cover" />
+          <img src={item.url} alt={item.name ?? ""} className="w-full h-full object-cover" />
+        ) : item.kind === "video" && item.url ? (
+          <video
+            src={item.url}
+            poster={item.posterUrl ?? undefined}
+            controls
+            playsInline
+            preload={item.posterUrl ? "metadata" : "auto"}
+            className="w-full h-full object-cover"
+          />
+        ) : item.kind === "text" ? (
+          <div className="w-full h-full flex flex-col items-center justify-center text-zinc-500 px-3 text-center">
+            <span className="text-[10px] uppercase tracking-wider">Text creative</span>
+            {item.copy && (
+              <p className="mt-2 text-xs line-clamp-4 text-zinc-700 dark:text-zinc-300">
+                {firstCopySnippet(item.copy)}
+              </p>
+            )}
+          </div>
+        ) : null}
+
+        {item.versionNum > 1 && (
+          <span
+            className="absolute top-1.5 left-1.5 rounded-full bg-zinc-900/80 dark:bg-zinc-100/90 text-white dark:text-zinc-900 text-[10px] font-semibold tracking-wide px-1.5 py-0.5"
+            title={`Version ${item.versionNum}`}
+          >
+            v{item.versionNum}
+          </span>
         )}
       </div>
-      <figcaption className="text-xs text-zinc-500 truncate" title={item.name}>
-        {item.name}
+
+      <figcaption className="text-xs text-zinc-500 truncate" title={item.name ?? ""}>
+        {item.name ?? "Text-only creative"}
       </figcaption>
+
+      <div className="flex items-center gap-2 text-[11px]">
+        {item.kind !== "text" && (
+          <>
+            <button
+              type="button"
+              onClick={() => replaceInputRef.current?.click()}
+              className="text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 underline underline-offset-2 decoration-dotted"
+            >
+              Replace
+            </button>
+            <label className="flex items-center gap-1 text-zinc-500 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                className="check-tactile"
+                checked={deletePrevious}
+                onChange={(e) => setDeletePrevious(e.target.checked)}
+              />
+              delete old
+            </label>
+            <input
+              ref={replaceInputRef}
+              type="file"
+              aria-label="Replace creative file"
+              title="Replace creative file"
+              accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) onReplace(f, deletePrevious);
+                e.target.value = "";
+              }}
+            />
+          </>
+        )}
+        <button
+          type="button"
+          onClick={() => onOpenHistory(item.creativeId)}
+          className="ml-auto text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 underline underline-offset-2 decoration-dotted"
+        >
+          History
+        </button>
+      </div>
+
+      <CreativeCopyPanel
+        projectId={projectId}
+        creativeId={item.creativeId}
+        versionId={item.id}
+        platform={platform}
+        initialCopy={item.copy}
+        onSaved={onMutated}
+      />
+
       {trackingEnabled && (
         <TrackingControls
           mediaId={item.id}
@@ -391,6 +594,18 @@ function MediaTile({
       )}
     </figure>
   );
+}
+
+function firstCopySnippet(copy: Record<string, unknown>): string {
+  for (const value of Object.values(copy)) {
+    if (typeof value === "string" && value.trim().length > 0) {
+      return value.length > 200 ? `${value.slice(0, 200)}…` : value;
+    }
+    if (Array.isArray(value) && value.length > 0 && typeof value[0] === "string") {
+      return value[0] as string;
+    }
+  }
+  return "(no copy yet)";
 }
 
 function TrackingControls({
