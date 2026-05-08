@@ -4,7 +4,7 @@ export const CREATIVES_BUCKET = "creatives";
 
 // 1 hour matches typical session UI patterns; the frontend re-fetches media
 // lists on mount and after upload, so URLs stay fresh in normal use.
-export const SIGNED_URL_TTL_SECONDS = 3600;
+const SIGNED_URL_TTL_SECONDS = 3600;
 
 export async function signedMediaUrl(
   supabase: SupabaseClient,

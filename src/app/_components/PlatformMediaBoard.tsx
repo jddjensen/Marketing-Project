@@ -13,9 +13,9 @@ import { extractVideoPoster } from "@/lib/videoThumbnail";
 import { platformSupportsTextOnly } from "@/lib/platformCopy";
 import type { PlatformKey } from "@/lib/utm";
 
-export type Ratio = string;
+type Ratio = string;
 
-export type RatioConfig = {
+type RatioConfig = {
   key: Ratio;
   label: string;
   aspect: string;

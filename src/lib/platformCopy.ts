@@ -4,9 +4,9 @@ import type { PlatformKey } from "./utm";
 // server-side validator. Field constraints reflect what each ad platform
 // actually requires or recommends as of 2026.
 
-export type CopyFieldType = "text" | "textarea" | "list" | "select";
+type CopyFieldType = "text" | "textarea" | "list" | "select";
 
-export type CopyFieldOption = { value: string; label: string };
+type CopyFieldOption = { value: string; label: string };
 
 export type CopyField = {
   key: string;
@@ -47,7 +47,7 @@ const GENERIC_CTA_OPTIONS: CopyFieldOption[] = [
   { value: "get_started", label: "Get started" },
 ];
 
-export const PLATFORM_COPY_FIELDS: Record<PlatformKey, CopyField[]> = {
+const PLATFORM_COPY_FIELDS: Record<PlatformKey, CopyField[]> = {
   meta: [
     {
       key: "primaryText",
@@ -356,7 +356,7 @@ export function platformSupportsTextOnly(platform: PlatformKey): boolean {
   return ["email", "sms", "internal-messaging", "pr"].includes(platform);
 }
 
-export type CopyValidationResult =
+type CopyValidationResult =
   | { ok: true; value: Record<string, unknown> }
   | { ok: false; error: string };
 

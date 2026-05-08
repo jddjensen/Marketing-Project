@@ -1,6 +1,6 @@
 export type Unit = "in" | "ft" | "cm" | "m" | "px";
 
-export type SignagePreset = {
+type SignagePreset = {
   key: string;
   label: string;
   width: number;

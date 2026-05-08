@@ -4,7 +4,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export type TrackingLinksLocation = "project_tab" | "platform_panel" | "both";
 
-export type ProjectSummary = {
+type ProjectSummary = {
   id: string;
   name: string;
   description: string | null;

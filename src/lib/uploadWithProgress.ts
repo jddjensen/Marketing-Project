@@ -4,13 +4,13 @@ export type UploadProgress = {
   percent: number;
 };
 
-export type UploadResponse<T = unknown> = {
+type UploadResponse<T = unknown> = {
   status: number;
   ok: boolean;
   body: T | null;
 };
 
-export type UploadBody = FormData | Blob | File | ArrayBuffer | string;
+type UploadBody = FormData | Blob | File | ArrayBuffer | string;
 
 // XMLHttpRequest wrapper that emits real upload-progress events. Used for:
 //   1. Multipart POSTs to /api/upload (FormData body)

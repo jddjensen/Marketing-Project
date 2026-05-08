@@ -1,6 +1,6 @@
 import type { PlatformKey } from "@/lib/utm";
 
-export type ChannelSlot = {
+type ChannelSlot = {
   key: string;
   label: string;
   aspect: string;
@@ -8,7 +8,7 @@ export type ChannelSlot = {
   recommended?: boolean;
 };
 
-export type ChannelCategoryKey =
+type ChannelCategoryKey =
   | "owned-direct"
   | "paid-media"
   | "distribution-pr"

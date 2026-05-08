@@ -37,7 +37,7 @@ export function slugify(s: string): string {
     .replace(/^_+|_+$/g, "");
 }
 
-export type UtmLinkShape = {
+type UtmLinkShape = {
   id?: string | null;
   url: string;
   platform: PlatformKey | null;

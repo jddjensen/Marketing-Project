@@ -30,15 +30,15 @@ type RunReportResponse = {
 
 type RunReportRow = NonNullable<RunReportResponse["rows"]>[number];
 
-export type GoogleAnalyticsStatus = "ready" | "property_missing" | "credentials_missing";
+type GoogleAnalyticsStatus = "ready" | "property_missing" | "credentials_missing";
 
-export type GoogleAnalyticsProjectSettings = {
+type GoogleAnalyticsProjectSettings = {
   ga4PropertyId: string | null;
   status: GoogleAnalyticsStatus;
   credentialsConfigured: boolean;
 };
 
-export type GoogleAnalyticsLinkSummary = {
+type GoogleAnalyticsLinkSummary = {
   sessions: number;
   engagedSessions: number;
   views: number;
@@ -61,7 +61,7 @@ export type GoogleAnalyticsProjectLinkMetrics = {
   purchaseRevenue: number;
 };
 
-export type GoogleAnalyticsProjectPerformanceSummary = {
+type GoogleAnalyticsProjectPerformanceSummary = {
   totals: GoogleAnalyticsProjectLinkMetrics;
   byLink: Record<string, GoogleAnalyticsProjectLinkMetrics>;
   trend: Array<{
@@ -126,7 +126,7 @@ function readServiceAccountCredentials(): ServiceAccountCredentials | null {
   };
 }
 
-export function getGoogleAnalyticsCredentialsConfigured() {
+function getGoogleAnalyticsCredentialsConfigured() {
   return readServiceAccountCredentials() !== null;
 }
 

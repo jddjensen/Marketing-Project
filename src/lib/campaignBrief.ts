@@ -28,21 +28,6 @@ type CampaignBriefSource = {
   brief_exhibit: string | null;
 };
 
-export const EMPTY_CAMPAIGN_BRIEF: CampaignBrief = {
-  objective: null,
-  audience: null,
-  offer: null,
-  cta: null,
-  kpiTargets: null,
-  launchStartDate: null,
-  launchEndDate: null,
-  owner: null,
-  budget: null,
-  successDefinition: null,
-  event: null,
-  exhibit: null,
-};
-
 function parseBudget(value: string | number | null) {
   if (value === null || value === undefined || value === "") return null;
   const parsed = typeof value === "number" ? value : Number(value);

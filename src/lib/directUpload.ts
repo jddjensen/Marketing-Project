@@ -1,7 +1,7 @@
 import type { PlatformKey } from "./utm";
 import { uploadWithProgress, type UploadProgress } from "./uploadWithProgress";
 
-export type DirectUploadResult = {
+type DirectUploadResult = {
   id: string;
   creativeId: string;
   versionNum: number;
