@@ -85,6 +85,15 @@ export function HoverScrubVideo({ src, poster, className = "" }: Props) {
     if (activated) return;
     const video = videoRef.current;
     if (!video) return;
+    // Clear scrub state first. Otherwise an in-flight scrub `seeked` event
+    // would fire after we set currentTime=0, see a stale target, and bounce
+    // playback back to the cursor position.
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+    targetTimeRef.current = 0;
+    seekingRef.current = false;
     setActivated(true);
     video.currentTime = 0;
     video.play().catch(() => {
@@ -115,7 +124,9 @@ export function HoverScrubVideo({ src, poster, className = "" }: Props) {
       role={activated ? undefined : "button"}
       tabIndex={activated ? -1 : 0}
       aria-label={activated ? undefined : "Play video"}
-      className="relative w-full h-full focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent)] focus-visible:ring-offset-0"
+      // Inset focus ring: outer rings get clipped by the parent tile's
+      // overflow-hidden, so we draw it just inside the wrapper edge instead.
+      className="relative w-full h-full focus:outline-none focus-visible:shadow-[inset_0_0_0_2px_var(--accent)]"
     >
       <video
         ref={videoRef}
