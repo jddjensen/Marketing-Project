@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "generate:test-assets": "node scripts/generate-test-assets.mjs",
+    "upload:test-assets": "node scripts/upload-test-assets.mjs",
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit"

@@ -1,0 +1,83 @@
+{
+  "website": {
+    "headline": "Meet the ocean after dark",
+    "subhead": "A limited-run evening event built for families, members, and first-time guests.",
+    "body": "Use this copy to test website creative fields and landing page selection.",
+    "cta": "Plan your visit",
+    "altText": "Guests walking through a glowing aquarium gallery during an evening event."
+  },
+  "email": {
+    "subject": "Ocean Nights tickets are live",
+    "preheader": "Reserve your evening aquarium visit before spots fill.",
+    "headline": "A new after-dark aquarium experience",
+    "body": "Bring the campaign to life with email copy, creative uploads, and tracked links.",
+    "cta": "Get tickets"
+  },
+  "sms": {
+    "message": "Ocean Nights is live. Reserve your evening aquarium visit today: {{short_link}}",
+    "shortLink": "{{short_link}}"
+  },
+  "internal-messaging": {
+    "subject": "Team Talk: Ocean Nights launch",
+    "body": "Guests may ask about event hours, ticket availability, member discounts, and parking."
+  },
+  "meta": {
+    "primaryText": "See the aquarium glow after dark with limited Ocean Nights tickets.",
+    "headline": "Ocean Nights is here",
+    "description": "Limited evening tickets",
+    "cta": "learn_more"
+  },
+  "tiktok": {
+    "caption": "The aquarium looks different after dark. Ocean Nights tickets are live.",
+    "displayName": "Aquarium Test",
+    "cta": "learn_more"
+  },
+  "youtube": {
+    "title": "Ocean Nights at the Aquarium",
+    "description": "A test video creative for campaign review, UTM generation, and dashboard validation.",
+    "tags": [
+      "aquarium",
+      "family",
+      "event",
+      "ocean"
+    ]
+  },
+  "google-search": {
+    "headlines": [
+      "Aquarium After Dark",
+      "Ocean Nights Tickets",
+      "Plan Your Visit"
+    ],
+    "descriptions": [
+      "Reserve tickets for a limited evening aquarium experience.",
+      "Explore glowing habitats, family activities, and member perks."
+    ],
+    "displayPaths": [
+      "ocean-nights",
+      "tickets"
+    ]
+  },
+  "ott": {
+    "headline": "Ocean Nights",
+    "cta": "Plan your visit"
+  },
+  "pr": {
+    "headline": "Aquarium announces Ocean Nights",
+    "subhead": "A limited after-dark experience opens for families and members.",
+    "body": "This is a test PR payload for upload, review, and collateral organization.",
+    "contact": "press@example.test"
+  },
+  "digital-signage": {
+    "headline": "Ocean Nights",
+    "cta": "Tickets on sale"
+  },
+  "signage": {
+    "headline": "Ocean Nights",
+    "cta": "Scan for tickets"
+  },
+  "flyers": {
+    "headline": "Ocean Nights",
+    "body": "A limited evening aquarium experience with glowing habitats and family activities.",
+    "cta": "Scan to reserve tickets"
+  }
+}

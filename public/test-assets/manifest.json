@@ -1,0 +1,740 @@
+[
+  {
+    "platform": "website",
+    "platformName": "Website",
+    "slot": "hero-slider",
+    "label": "Hero Slider",
+    "width": 1600,
+    "height": 900,
+    "mimeType": "image/png",
+    "file": "media/website__hero-slider__1600x900.png",
+    "suggestedCopy": {
+      "headline": "Meet the ocean after dark",
+      "subhead": "A limited-run evening event built for families, members, and first-time guests.",
+      "body": "Use this copy to test website creative fields and landing page selection.",
+      "cta": "Plan your visit",
+      "altText": "Guests walking through a glowing aquarium gallery during an evening event."
+    }
+  },
+  {
+    "platform": "website",
+    "platformName": "Website",
+    "slot": "pop-up",
+    "label": "Pop Up",
+    "width": 1080,
+    "height": 1350,
+    "mimeType": "image/png",
+    "file": "media/website__pop-up__1080x1350.png",
+    "suggestedCopy": {
+      "headline": "Meet the ocean after dark",
+      "subhead": "A limited-run evening event built for families, members, and first-time guests.",
+      "body": "Use this copy to test website creative fields and landing page selection.",
+      "cta": "Plan your visit",
+      "altText": "Guests walking through a glowing aquarium gallery during an evening event."
+    }
+  },
+  {
+    "platform": "website",
+    "platformName": "Website",
+    "slot": "landing-page",
+    "label": "Landing Page",
+    "width": 1600,
+    "height": 900,
+    "mimeType": "image/png",
+    "file": "media/website__landing-page__1600x900.png",
+    "suggestedCopy": {
+      "headline": "Meet the ocean after dark",
+      "subhead": "A limited-run evening event built for families, members, and first-time guests.",
+      "body": "Use this copy to test website creative fields and landing page selection.",
+      "cta": "Plan your visit",
+      "altText": "Guests walking through a glowing aquarium gallery during an evening event."
+    }
+  },
+  {
+    "platform": "website",
+    "platformName": "Website",
+    "slot": "blog",
+    "label": "Blog",
+    "width": 1200,
+    "height": 900,
+    "mimeType": "image/png",
+    "file": "media/website__blog__1200x900.png",
+    "suggestedCopy": {
+      "headline": "Meet the ocean after dark",
+      "subhead": "A limited-run evening event built for families, members, and first-time guests.",
+      "body": "Use this copy to test website creative fields and landing page selection.",
+      "cta": "Plan your visit",
+      "altText": "Guests walking through a glowing aquarium gallery during an evening event."
+    }
+  },
+  {
+    "platform": "website",
+    "platformName": "Website",
+    "slot": "habitat-slider",
+    "label": "Habitat Slider",
+    "width": 1600,
+    "height": 900,
+    "mimeType": "image/png",
+    "file": "media/website__habitat-slider__1600x900.png",
+    "suggestedCopy": {
+      "headline": "Meet the ocean after dark",
+      "subhead": "A limited-run evening event built for families, members, and first-time guests.",
+      "body": "Use this copy to test website creative fields and landing page selection.",
+      "cta": "Plan your visit",
+      "altText": "Guests walking through a glowing aquarium gallery during an evening event."
+    }
+  },
+  {
+    "platform": "email",
+    "platformName": "Email",
+    "slot": "campaign",
+    "label": "Campaign",
+    "width": 1080,
+    "height": 1350,
+    "mimeType": "image/png",
+    "file": "media/email__campaign__1080x1350.png",
+    "suggestedCopy": {
+      "subject": "Ocean Nights tickets are live",
+      "preheader": "Reserve your evening aquarium visit before spots fill.",
+      "headline": "A new after-dark aquarium experience",
+      "body": "Bring the campaign to life with email copy, creative uploads, and tracked links.",
+      "cta": "Get tickets"
+    }
+  },
+  {
+    "platform": "email",
+    "platformName": "Email",
+    "slot": "flow",
+    "label": "Flow",
+    "width": 1080,
+    "height": 1350,
+    "mimeType": "image/png",
+    "file": "media/email__flow__1080x1350.png",
+    "suggestedCopy": {
+      "subject": "Ocean Nights tickets are live",
+      "preheader": "Reserve your evening aquarium visit before spots fill.",
+      "headline": "A new after-dark aquarium experience",
+      "body": "Bring the campaign to life with email copy, creative uploads, and tracked links.",
+      "cta": "Get tickets"
+    }
+  },
+  {
+    "platform": "sms",
+    "platformName": "SMS",
+    "slot": "campaign",
+    "label": "Campaign",
+    "width": 1080,
+    "height": 1920,
+    "mimeType": "image/png",
+    "file": "media/sms__campaign__1080x1920.png",
+    "suggestedCopy": {
+      "message": "Ocean Nights is live. Reserve your evening aquarium visit today: {{short_link}}",
+      "shortLink": "{{short_link}}"
+    }
+  },
+  {
+    "platform": "sms",
+    "platformName": "SMS",
+    "slot": "flow",
+    "label": "Flow",
+    "width": 1080,
+    "height": 1920,
+    "mimeType": "image/png",
+    "file": "media/sms__flow__1080x1920.png",
+    "suggestedCopy": {
+      "message": "Ocean Nights is live. Reserve your evening aquarium visit today: {{short_link}}",
+      "shortLink": "{{short_link}}"
+    }
+  },
+  {
+    "platform": "internal-messaging",
+    "platformName": "Internal Messaging",
+    "slot": "team-talk",
+    "label": "Team Talk",
+    "width": 1200,
+    "height": 900,
+    "mimeType": "image/png",
+    "file": "media/internal-messaging__team-talk__1200x900.png",
+    "suggestedCopy": {
+      "subject": "Team Talk: Ocean Nights launch",
+      "body": "Guests may ask about event hours, ticket availability, member discounts, and parking."
+    }
+  },
+  {
+    "platform": "internal-messaging",
+    "platformName": "Internal Messaging",
+    "slot": "front-desk-faq",
+    "label": "Front Desk FAQ",
+    "width": 1200,
+    "height": 900,
+    "mimeType": "image/png",
+    "file": "media/internal-messaging__front-desk-faq__1200x900.png",
+    "suggestedCopy": {
+      "subject": "Team Talk: Ocean Nights launch",
+      "body": "Guests may ask about event hours, ticket availability, member discounts, and parking."
+    }
+  },
+  {
+    "platform": "meta",
+    "platformName": "Meta",
+    "slot": "4x5",
+    "label": "4:5 Feed",
+    "width": 1080,
+    "height": 1350,
+    "mimeType": "image/png",
+    "file": "media/meta__4x5__1080x1350.png",
+    "suggestedCopy": {
+      "primaryText": "See the aquarium glow after dark with limited Ocean Nights tickets.",
+      "headline": "Ocean Nights is here",
+      "description": "Limited evening tickets",
+      "cta": "learn_more"
+    }
+  },
+  {
+    "platform": "meta",
+    "platformName": "Meta",
+    "slot": "9x16",
+    "label": "9:16 Stories / Reels",
+    "width": 1080,
+    "height": 1920,
+    "mimeType": "image/png",
+    "file": "media/meta__9x16__1080x1920.png",
+    "suggestedCopy": {
+      "primaryText": "See the aquarium glow after dark with limited Ocean Nights tickets.",
+      "headline": "Ocean Nights is here",
+      "description": "Limited evening tickets",
+      "cta": "learn_more"
+    }
+  },
+  {
+    "platform": "meta",
+    "platformName": "Meta",
+    "slot": "1x1",
+    "label": "1:1 Square",
+    "width": 1080,
+    "height": 1080,
+    "mimeType": "image/png",
+    "file": "media/meta__1x1__1080x1080.png",
+    "suggestedCopy": {
+      "primaryText": "See the aquarium glow after dark with limited Ocean Nights tickets.",
+      "headline": "Ocean Nights is here",
+      "description": "Limited evening tickets",
+      "cta": "learn_more"
+    }
+  },
+  {
+    "platform": "meta",
+    "platformName": "Meta",
+    "slot": "1.91x1",
+    "label": "1.91:1 Landscape",
+    "width": 1200,
+    "height": 628,
+    "mimeType": "image/png",
+    "file": "media/meta__1.91x1__1200x628.png",
+    "suggestedCopy": {
+      "primaryText": "See the aquarium glow after dark with limited Ocean Nights tickets.",
+      "headline": "Ocean Nights is here",
+      "description": "Limited evening tickets",
+      "cta": "learn_more"
+    }
+  },
+  {
+    "platform": "meta",
+    "platformName": "Meta",
+    "slot": "16x9",
+    "label": "16:9 Horizontal",
+    "width": 1920,
+    "height": 1080,
+    "mimeType": "image/png",
+    "file": "media/meta__16x9__1920x1080.png",
+    "suggestedCopy": {
+      "primaryText": "See the aquarium glow after dark with limited Ocean Nights tickets.",
+      "headline": "Ocean Nights is here",
+      "description": "Limited evening tickets",
+      "cta": "learn_more"
+    }
+  },
+  {
+    "platform": "tiktok",
+    "platformName": "TikTok",
+    "slot": "9x16",
+    "label": "9:16 Vertical",
+    "width": 1080,
+    "height": 1920,
+    "mimeType": "image/png",
+    "file": "media/tiktok__9x16__1080x1920.png",
+    "suggestedCopy": {
+      "caption": "The aquarium looks different after dark. Ocean Nights tickets are live.",
+      "displayName": "Aquarium Test",
+      "cta": "learn_more"
+    }
+  },
+  {
+    "platform": "tiktok",
+    "platformName": "TikTok",
+    "slot": "1x1",
+    "label": "1:1 Square",
+    "width": 1080,
+    "height": 1080,
+    "mimeType": "image/png",
+    "file": "media/tiktok__1x1__1080x1080.png",
+    "suggestedCopy": {
+      "caption": "The aquarium looks different after dark. Ocean Nights tickets are live.",
+      "displayName": "Aquarium Test",
+      "cta": "learn_more"
+    }
+  },
+  {
+    "platform": "tiktok",
+    "platformName": "TikTok",
+    "slot": "16x9",
+    "label": "16:9 Horizontal",
+    "width": 1920,
+    "height": 1080,
+    "mimeType": "image/png",
+    "file": "media/tiktok__16x9__1920x1080.png",
+    "suggestedCopy": {
+      "caption": "The aquarium looks different after dark. Ocean Nights tickets are live.",
+      "displayName": "Aquarium Test",
+      "cta": "learn_more"
+    }
+  },
+  {
+    "platform": "youtube",
+    "platformName": "YouTube",
+    "slot": "16x9",
+    "label": "16:9 Horizontal",
+    "width": 1920,
+    "height": 1080,
+    "mimeType": "image/png",
+    "file": "media/youtube__16x9__1920x1080.png",
+    "suggestedCopy": {
+      "title": "Ocean Nights at the Aquarium",
+      "description": "A test video creative for campaign review, UTM generation, and dashboard validation.",
+      "tags": [
+        "aquarium",
+        "family",
+        "event",
+        "ocean"
+      ]
+    }
+  },
+  {
+    "platform": "youtube",
+    "platformName": "YouTube",
+    "slot": "9x16",
+    "label": "9:16 Vertical",
+    "width": 1080,
+    "height": 1920,
+    "mimeType": "image/png",
+    "file": "media/youtube__9x16__1080x1920.png",
+    "suggestedCopy": {
+      "title": "Ocean Nights at the Aquarium",
+      "description": "A test video creative for campaign review, UTM generation, and dashboard validation.",
+      "tags": [
+        "aquarium",
+        "family",
+        "event",
+        "ocean"
+      ]
+    }
+  },
+  {
+    "platform": "youtube",
+    "platformName": "YouTube",
+    "slot": "1x1",
+    "label": "1:1 Square",
+    "width": 1080,
+    "height": 1080,
+    "mimeType": "image/png",
+    "file": "media/youtube__1x1__1080x1080.png",
+    "suggestedCopy": {
+      "title": "Ocean Nights at the Aquarium",
+      "description": "A test video creative for campaign review, UTM generation, and dashboard validation.",
+      "tags": [
+        "aquarium",
+        "family",
+        "event",
+        "ocean"
+      ]
+    }
+  },
+  {
+    "platform": "youtube",
+    "platformName": "YouTube",
+    "slot": "youtube-thumbnail",
+    "label": "Thumbnail",
+    "width": 1920,
+    "height": 1080,
+    "mimeType": "image/png",
+    "file": "media/youtube__youtube-thumbnail__1920x1080.png",
+    "suggestedCopy": {
+      "title": "Ocean Nights at the Aquarium",
+      "description": "A test video creative for campaign review, UTM generation, and dashboard validation.",
+      "tags": [
+        "aquarium",
+        "family",
+        "event",
+        "ocean"
+      ]
+    }
+  },
+  {
+    "platform": "youtube",
+    "platformName": "YouTube",
+    "slot": "companion-banner",
+    "label": "Companion Banner",
+    "width": 1500,
+    "height": 300,
+    "mimeType": "image/png",
+    "file": "media/youtube__companion-banner__1500x300.png",
+    "suggestedCopy": {
+      "title": "Ocean Nights at the Aquarium",
+      "description": "A test video creative for campaign review, UTM generation, and dashboard validation.",
+      "tags": [
+        "aquarium",
+        "family",
+        "event",
+        "ocean"
+      ]
+    }
+  },
+  {
+    "platform": "google-search",
+    "platformName": "Google Search",
+    "slot": "1x1",
+    "label": "1:1 Square Image",
+    "width": 1200,
+    "height": 1200,
+    "mimeType": "image/png",
+    "file": "media/google-search__1x1__1200x1200.png",
+    "suggestedCopy": {
+      "headlines": [
+        "Aquarium After Dark",
+        "Ocean Nights Tickets",
+        "Plan Your Visit"
+      ],
+      "descriptions": [
+        "Reserve tickets for a limited evening aquarium experience.",
+        "Explore glowing habitats, family activities, and member perks."
+      ],
+      "displayPaths": [
+        "ocean-nights",
+        "tickets"
+      ]
+    }
+  },
+  {
+    "platform": "google-search",
+    "platformName": "Google Search",
+    "slot": "1.91x1",
+    "label": "1.91:1 Landscape Image",
+    "width": 1200,
+    "height": 628,
+    "mimeType": "image/png",
+    "file": "media/google-search__1.91x1__1200x628.png",
+    "suggestedCopy": {
+      "headlines": [
+        "Aquarium After Dark",
+        "Ocean Nights Tickets",
+        "Plan Your Visit"
+      ],
+      "descriptions": [
+        "Reserve tickets for a limited evening aquarium experience.",
+        "Explore glowing habitats, family activities, and member perks."
+      ],
+      "displayPaths": [
+        "ocean-nights",
+        "tickets"
+      ]
+    }
+  },
+  {
+    "platform": "google-search",
+    "platformName": "Google Search",
+    "slot": "logo-1x1",
+    "label": "1:1 Business Logo",
+    "width": 1200,
+    "height": 1200,
+    "mimeType": "image/png",
+    "file": "media/google-search__logo-1x1__1200x1200.png",
+    "suggestedCopy": {
+      "headlines": [
+        "Aquarium After Dark",
+        "Ocean Nights Tickets",
+        "Plan Your Visit"
+      ],
+      "descriptions": [
+        "Reserve tickets for a limited evening aquarium experience.",
+        "Explore glowing habitats, family activities, and member perks."
+      ],
+      "displayPaths": [
+        "ocean-nights",
+        "tickets"
+      ]
+    }
+  },
+  {
+    "platform": "ott",
+    "platformName": "OTT",
+    "slot": "office",
+    "label": "Office",
+    "width": 1920,
+    "height": 1080,
+    "mimeType": "image/png",
+    "file": "media/ott__office__1920x1080.png",
+    "suggestedCopy": {
+      "headline": "Ocean Nights",
+      "cta": "Plan your visit"
+    }
+  },
+  {
+    "platform": "ott",
+    "platformName": "OTT",
+    "slot": "streaming-network-1",
+    "label": "Streaming Network 1",
+    "width": 1920,
+    "height": 1080,
+    "mimeType": "image/png",
+    "file": "media/ott__streaming-network-1__1920x1080.png",
+    "suggestedCopy": {
+      "headline": "Ocean Nights",
+      "cta": "Plan your visit"
+    }
+  },
+  {
+    "platform": "ott",
+    "platformName": "OTT",
+    "slot": "streaming-network-2",
+    "label": "Streaming Network 2",
+    "width": 1920,
+    "height": 1080,
+    "mimeType": "image/png",
+    "file": "media/ott__streaming-network-2__1920x1080.png",
+    "suggestedCopy": {
+      "headline": "Ocean Nights",
+      "cta": "Plan your visit"
+    }
+  },
+  {
+    "platform": "pr",
+    "platformName": "PR",
+    "slot": "youtube",
+    "label": "Partner YouTube",
+    "width": 1920,
+    "height": 1080,
+    "mimeType": "image/png",
+    "file": "media/pr__youtube__1920x1080.png",
+    "suggestedCopy": {
+      "headline": "Aquarium announces Ocean Nights",
+      "subhead": "A limited after-dark experience opens for families and members.",
+      "body": "This is a test PR payload for upload, review, and collateral organization.",
+      "contact": "press@example.test"
+    }
+  },
+  {
+    "platform": "pr",
+    "platformName": "PR",
+    "slot": "influencers",
+    "label": "Influencers",
+    "width": 1080,
+    "height": 1920,
+    "mimeType": "image/png",
+    "file": "media/pr__influencers__1080x1920.png",
+    "suggestedCopy": {
+      "headline": "Aquarium announces Ocean Nights",
+      "subhead": "A limited after-dark experience opens for families and members.",
+      "body": "This is a test PR payload for upload, review, and collateral organization.",
+      "contact": "press@example.test"
+    }
+  },
+  {
+    "platform": "pr",
+    "platformName": "PR",
+    "slot": "regional-utah",
+    "label": "Regional Utah",
+    "width": 1080,
+    "height": 1350,
+    "mimeType": "image/png",
+    "file": "media/pr__regional-utah__1080x1350.png",
+    "suggestedCopy": {
+      "headline": "Aquarium announces Ocean Nights",
+      "subhead": "A limited after-dark experience opens for families and members.",
+      "body": "This is a test PR payload for upload, review, and collateral organization.",
+      "contact": "press@example.test"
+    }
+  },
+  {
+    "platform": "pr",
+    "platformName": "PR",
+    "slot": "national",
+    "label": "National",
+    "width": 1080,
+    "height": 1350,
+    "mimeType": "image/png",
+    "file": "media/pr__national__1080x1350.png",
+    "suggestedCopy": {
+      "headline": "Aquarium announces Ocean Nights",
+      "subhead": "A limited after-dark experience opens for families and members.",
+      "body": "This is a test PR payload for upload, review, and collateral organization.",
+      "contact": "press@example.test"
+    }
+  },
+  {
+    "platform": "digital-signage",
+    "platformName": "Digital Signage",
+    "slot": "admission",
+    "label": "Admission",
+    "width": 1920,
+    "height": 1080,
+    "mimeType": "image/png",
+    "file": "media/digital-signage__admission__1920x1080.png",
+    "suggestedCopy": {
+      "headline": "Ocean Nights",
+      "cta": "Tickets on sale"
+    }
+  },
+  {
+    "platform": "digital-signage",
+    "platformName": "Digital Signage",
+    "slot": "info-desk",
+    "label": "Info Desk",
+    "width": 1920,
+    "height": 1080,
+    "mimeType": "image/png",
+    "file": "media/digital-signage__info-desk__1920x1080.png",
+    "suggestedCopy": {
+      "headline": "Ocean Nights",
+      "cta": "Tickets on sale"
+    }
+  },
+  {
+    "platform": "digital-signage",
+    "platformName": "Digital Signage",
+    "slot": "on-campus",
+    "label": "On Campus",
+    "width": 1920,
+    "height": 1080,
+    "mimeType": "image/png",
+    "file": "media/digital-signage__on-campus__1920x1080.png",
+    "suggestedCopy": {
+      "headline": "Ocean Nights",
+      "cta": "Tickets on sale"
+    }
+  },
+  {
+    "platform": "flyers",
+    "platformName": "Flyers",
+    "slot": "8.5x11",
+    "label": "8.5 x 11 Letter",
+    "width": 1275,
+    "height": 1650,
+    "mimeType": "image/png",
+    "file": "media/flyers__8.5x11__1275x1650.png",
+    "suggestedCopy": {
+      "headline": "Ocean Nights",
+      "body": "A limited evening aquarium experience with glowing habitats and family activities.",
+      "cta": "Scan to reserve tickets"
+    }
+  },
+  {
+    "platform": "flyers",
+    "platformName": "Flyers",
+    "slot": "5.5x8.5",
+    "label": "5.5 x 8.5 Half-Sheet",
+    "width": 1100,
+    "height": 1700,
+    "mimeType": "image/png",
+    "file": "media/flyers__5.5x8.5__1100x1700.png",
+    "suggestedCopy": {
+      "headline": "Ocean Nights",
+      "body": "A limited evening aquarium experience with glowing habitats and family activities.",
+      "cta": "Scan to reserve tickets"
+    }
+  },
+  {
+    "platform": "flyers",
+    "platformName": "Flyers",
+    "slot": "11x17",
+    "label": "11 x 17 Tabloid",
+    "width": 1100,
+    "height": 1700,
+    "mimeType": "image/png",
+    "file": "media/flyers__11x17__1100x1700.png",
+    "suggestedCopy": {
+      "headline": "Ocean Nights",
+      "body": "A limited evening aquarium experience with glowing habitats and family activities.",
+      "cta": "Scan to reserve tickets"
+    }
+  },
+  {
+    "platform": "signage",
+    "platformName": "Physical Signage",
+    "slot": "billboard-highway-default",
+    "label": "Billboard Highway Default",
+    "width": 1920,
+    "height": 560,
+    "mimeType": "image/png",
+    "file": "media/signage__billboard-highway-default__1920x560.png",
+    "suggestedCopy": {
+      "headline": "Ocean Nights",
+      "cta": "Scan for tickets"
+    }
+  },
+  {
+    "platform": "signage",
+    "platformName": "Physical Signage",
+    "slot": "billboard-poster",
+    "label": "Billboard Poster",
+    "width": 1600,
+    "height": 800,
+    "mimeType": "image/png",
+    "file": "media/signage__billboard-poster__1600x800.png",
+    "suggestedCopy": {
+      "headline": "Ocean Nights",
+      "cta": "Scan for tickets"
+    }
+  },
+  {
+    "platform": "signage",
+    "platformName": "Physical Signage",
+    "slot": "aframe",
+    "label": "A-Frame Sidewalk Sign",
+    "width": 800,
+    "height": 1200,
+    "mimeType": "image/png",
+    "file": "media/signage__aframe__800x1200.png",
+    "suggestedCopy": {
+      "headline": "Ocean Nights",
+      "cta": "Scan for tickets"
+    }
+  },
+  {
+    "platform": "signage",
+    "platformName": "Physical Signage",
+    "slot": "hframe-standard",
+    "label": "H-Frame Standard",
+    "width": 900,
+    "height": 1200,
+    "mimeType": "image/png",
+    "file": "media/signage__hframe-standard__900x1200.png",
+    "suggestedCopy": {
+      "headline": "Ocean Nights",
+      "cta": "Scan for tickets"
+    }
+  },
+  {
+    "platform": "signage",
+    "platformName": "Physical Signage",
+    "slot": "poster-standard",
+    "label": "Poster Standard",
+    "width": 900,
+    "height": 1200,
+    "mimeType": "image/png",
+    "file": "media/signage__poster-standard__900x1200.png",
+    "suggestedCopy": {
+      "headline": "Ocean Nights",
+      "cta": "Scan for tickets"
+    }
+  }
+]

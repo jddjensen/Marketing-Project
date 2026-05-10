@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 
 const PUBLIC_PATHS = new Set(["/login", "/register", "/auth/callback"]);
+const PUBLIC_PREFIXES = ["/test-assets"];
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -9,7 +10,10 @@ export async function proxy(request: NextRequest) {
   const isAuthApi = pathname.startsWith("/api/auth/");
   const isClickRedirect =
     pathname.startsWith("/c/") || pathname.startsWith("/go/") || pathname.startsWith("/qr/");
-  if (isAuthApi || isClickRedirect || PUBLIC_PATHS.has(pathname)) {
+  const isPublicPrefix = PUBLIC_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+  );
+  if (isAuthApi || isClickRedirect || PUBLIC_PATHS.has(pathname) || isPublicPrefix) {
     return NextResponse.next();
   }
 

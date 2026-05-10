@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { UserMenu } from "./UserMenu";
+import { HoverScrubVideo } from "./HoverScrubVideo";
 import { UploadProgressOverlay, type UploadProgressState } from "./UploadProgressOverlay";
 import { VersionHistoryModal } from "./VersionHistoryModal";
 import { uploadWithProgress } from "@/lib/uploadWithProgress";
@@ -617,12 +618,9 @@ function SignageTile({
           // eslint-disable-next-line @next/next/no-img-element
           <img src={item.url} alt={item.name ?? ""} className="w-full h-full object-cover" />
         ) : item.kind === "video" && item.url ? (
-          <video
+          <HoverScrubVideo
             src={item.url}
             poster={item.posterUrl ?? undefined}
-            controls
-            playsInline
-            preload={item.posterUrl ? "metadata" : "auto"}
             className="w-full h-full object-cover"
           />
         ) : null}

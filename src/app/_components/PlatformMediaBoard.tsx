@@ -6,6 +6,7 @@ import { UserMenu } from "./UserMenu";
 import { UploadProgressOverlay, type UploadProgressState } from "./UploadProgressOverlay";
 import { CampaignMoodboardReview } from "./CampaignMoodboardReview";
 import { CreativeCopyPanel } from "./CreativeCopyPanel";
+import { HoverScrubVideo } from "./HoverScrubVideo";
 import { VersionHistoryModal } from "./VersionHistoryModal";
 import { TextCreativeDialog } from "./TextCreativeDialog";
 import { uploadWithProgress } from "@/lib/uploadWithProgress";
@@ -568,12 +569,9 @@ function MediaTile({
           // eslint-disable-next-line @next/next/no-img-element
           <img src={item.url} alt={item.name ?? ""} className="w-full h-full object-cover" />
         ) : item.kind === "video" && item.url ? (
-          <video
+          <HoverScrubVideo
             src={item.url}
             poster={item.posterUrl ?? undefined}
-            controls
-            playsInline
-            preload={item.posterUrl ? "metadata" : "auto"}
             className="w-full h-full object-cover"
           />
         ) : item.kind === "text" ? (
