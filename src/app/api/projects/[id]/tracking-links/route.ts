@@ -63,9 +63,18 @@ export async function GET(
   if (error) return Response.json({ error: "failed to load tracking links" }, { status: 500 });
   if (projectError) return Response.json({ error: "failed to load project settings" }, { status: 500 });
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const analytics = await buildGoogleAnalyticsProjectSettings(
+    supabase,
+    project?.ga4_property_id ?? null,
+    user?.id ?? null
+  );
+
   return Response.json({
     links: (data ?? []).map((r) => serialize(r as LinkRow)),
-    analytics: buildGoogleAnalyticsProjectSettings(project?.ga4_property_id ?? null),
+    analytics,
   });
 }
 

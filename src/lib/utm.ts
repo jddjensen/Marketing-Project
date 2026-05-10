@@ -29,6 +29,18 @@ export const PLATFORM_DEFAULTS: Record<PlatformKey, { source: string; medium: st
   flyers: { source: "flyer", medium: "print" },
 };
 
+export function platformUtmBase(platform: PlatformKey): string {
+  return platform
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+export function formatCreativeUtmTag(platform: PlatformKey, sequence: number): string {
+  const base = platformUtmBase(platform);
+  return sequence <= 1 ? base : `${base}${sequence}`;
+}
+
 export function slugify(s: string): string {
   return s
     .toLowerCase()

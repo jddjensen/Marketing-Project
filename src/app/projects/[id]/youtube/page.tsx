@@ -1,5 +1,4 @@
 import { PlatformMediaBoard } from "@/app/_components/PlatformMediaBoard";
-import { TrackingLinksPanel } from "@/app/_components/TrackingLinksPanel";
 import { CHANNEL_BY_KEY } from "@/lib/channels";
 import { loadProject } from "@/lib/projects";
 
@@ -11,9 +10,6 @@ export default async function YouTubePage({
   const { id } = await params;
   const project = await loadProject(id);
   const channel = CHANNEL_BY_KEY.youtube;
-  const showTracking =
-    project.trackingLinksLocation === "platform_panel" ||
-    project.trackingLinksLocation === "both";
   return (
     <PlatformMediaBoard
       projectId={id}
@@ -22,12 +18,6 @@ export default async function YouTubePage({
       title={channel.boardTitle ?? "YouTube — Campaign Media"}
       subtitle={channel.boardSubtitle ?? channel.desc}
       ratios={channel.slots ?? []}
-    >
-      {showTracking && (
-        <div className="mt-10">
-          <TrackingLinksPanel projectId={id} projectName={project.name} platform="youtube" />
-        </div>
-      )}
-    </PlatformMediaBoard>
+    />
   );
 }

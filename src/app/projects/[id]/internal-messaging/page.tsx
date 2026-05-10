@@ -1,5 +1,4 @@
 import { PlatformMediaBoard } from "@/app/_components/PlatformMediaBoard";
-import { TrackingLinksPanel } from "@/app/_components/TrackingLinksPanel";
 import { CHANNEL_BY_KEY } from "@/lib/channels";
 import { loadProject } from "@/lib/projects";
 
@@ -7,9 +6,6 @@ export default async function InternalMessagingPage({ params }: { params: Promis
   const { id } = await params;
   const project = await loadProject(id);
   const channel = CHANNEL_BY_KEY["internal-messaging"];
-  const showTracking =
-    project.trackingLinksLocation === "platform_panel" ||
-    project.trackingLinksLocation === "both";
 
   return (
     <PlatformMediaBoard
@@ -19,12 +15,6 @@ export default async function InternalMessagingPage({ params }: { params: Promis
       title={channel.boardTitle ?? "Internal Messaging — Campaign Media"}
       subtitle={channel.boardSubtitle ?? channel.desc}
       ratios={channel.slots ?? []}
-    >
-      {showTracking && (
-        <div className="mt-10">
-          <TrackingLinksPanel projectId={id} projectName={project.name} platform="internal-messaging" />
-        </div>
-      )}
-    </PlatformMediaBoard>
+    />
   );
 }

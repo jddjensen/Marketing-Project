@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { CampaignBriefPanel } from "./CampaignBriefPanel";
+import { LandingPagesPanel } from "./LandingPagesPanel";
 import { PerformanceDashboardPanel } from "./PerformanceDashboardPanel";
-import { TrackingLinksPanel } from "./TrackingLinksPanel";
 import { aspectClassForAsset, formatAssetLabel } from "@/lib/channelAssets";
 import {
   CHANNELS,
@@ -17,8 +17,6 @@ import {
 } from "@/lib/channels";
 import type { CampaignBrief } from "@/lib/campaignBrief";
 import type { PlatformKey } from "@/lib/utm";
-
-type TrackingLinksLocation = "project_tab" | "platform_panel" | "both";
 
 function aspectClass(ratio: string): string {
   return aspectClassForAsset(ratio);
@@ -40,13 +38,9 @@ type MediaItem = {
 
 export function ProjectDashboard({
   projectId,
-  projectName,
-  initialTrackingLinksLocation,
   initialCampaignBrief,
 }: {
   projectId: string;
-  projectName: string;
-  initialTrackingLinksLocation: TrackingLinksLocation;
   initialCampaignBrief: CampaignBrief;
 }) {
   const [enabled, setEnabled] = useState<PlatformKey[] | null>(null);
@@ -54,23 +48,6 @@ export function ProjectDashboard({
   const [adding, setAdding] = useState(false);
   const [menuKey, setMenuKey] = useState<PlatformKey | null>(null);
   const [groupBy, setGroupBy] = useState<"platform" | "ratio">("platform");
-  const [trackingLocation, setTrackingLocation] = useState<TrackingLinksLocation>(
-    initialTrackingLinksLocation
-  );
-
-  const updateTrackingLocation = useCallback(
-    async (next: TrackingLinksLocation) => {
-      const prev = trackingLocation;
-      setTrackingLocation(next);
-      const res = await fetch(`/api/projects/${projectId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ trackingLinksLocation: next }),
-      });
-      if (!res.ok) setTrackingLocation(prev);
-    },
-    [projectId, trackingLocation]
-  );
 
   const fetchPlatforms = useCallback(async () => {
     const res = await fetch(`/api/projects/${projectId}/platforms`, { cache: "no-store" });
@@ -201,51 +178,7 @@ export function ProjectDashboard({
         onGroupByChange={setGroupBy}
       />
 
-      <section>
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-sm font-medium uppercase tracking-wide text-zinc-500">
-              Tracking links
-            </h2>
-            <p className="text-xs text-zinc-500 mt-1">
-              Choose where UTM builders should live for this project.
-            </p>
-          </div>
-          <div className="segmented" role="group" aria-label="Tracking links location">
-            {(
-                [
-                  { key: "project_tab" as const, label: "Here only" },
-                  { key: "platform_panel" as const, label: "On channels" },
-                  { key: "both" as const, label: "Both" },
-                ]
-              ).map((opt) => (
-              <button
-                key={opt.key}
-                type="button"
-                onClick={() => updateTrackingLocation(opt.key)}
-                className="segmented-option"
-                data-active={trackingLocation === opt.key ? "true" : "false"}
-                aria-pressed={trackingLocation === opt.key ? "true" : "false"}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {trackingLocation === "platform_panel" ? (
-          <div className="rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 bg-white/40 dark:bg-zinc-900/40 py-6 text-sm text-zinc-500 text-center">
-            Tracking links are shown on each channel page. Switch to <em>Here only</em> or
-            <em> Both</em> to manage them from the project dashboard.
-          </div>
-        ) : (
-          <TrackingLinksPanel
-            projectId={projectId}
-            projectName={projectName}
-            heading="All tracking links"
-          />
-        )}
-      </section>
+      <LandingPagesPanel projectId={projectId} />
 
       {adding && (
         <AddPlatformDialog
@@ -357,18 +290,21 @@ function AddPlatformDialog({
     <div
       role="dialog"
       aria-modal="true"
-      className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4"
+      className="modal-backdrop fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 px-4 py-6 backdrop-blur-sm sm:items-center"
       onClick={onClose}
     >
       <div
-        className="modal-surface w-full max-w-md rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-5 shadow-[var(--shadow-lift)]"
+        className="modal-surface flex max-h-[calc(100vh-3rem)] w-full max-w-md flex-col rounded-xl border border-zinc-200 bg-white shadow-[var(--shadow-lift)] dark:border-zinc-800 dark:bg-zinc-900"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="font-semibold text-lg">Add channel</h2>
-        <p className="text-sm text-zinc-500 mt-1">
-          Pick a top-level channel to enable for this project. Placements and size slots stay nested inside the channel.
-        </p>
-        <div className="mt-4 space-y-4">
+        <div className="shrink-0 px-5 pt-5">
+          <h2 className="font-semibold text-lg">Add channel</h2>
+          <p className="mt-1 text-sm text-zinc-500">
+            Pick a top-level channel to enable for this project. Placements and size slots stay
+            nested inside the channel.
+          </p>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 space-y-4">
           {CHANNEL_CATEGORY_ORDER.map((group) => {
             const items = options.filter((option) => option.category === group);
             if (items.length === 0) return null;
@@ -397,7 +333,7 @@ function AddPlatformDialog({
             );
           })}
         </div>
-        <div className="flex items-center justify-end pt-4">
+        <div className="flex shrink-0 items-center justify-end border-t border-zinc-200 px-5 py-3 dark:border-zinc-800">
           <button
             type="button"
             onClick={onClose}

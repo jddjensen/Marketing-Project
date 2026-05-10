@@ -653,6 +653,26 @@ body {
   animation: modal-out 200ms var(--ease-apple) both;
 }
 
+/* -------- Campaign moodboard review -------- */
+
+@keyframes moodboard-feature-in {
+  from {
+    opacity: 0;
+    transform: translate3d(18px, 0, 0) scale(0.985);
+    filter: blur(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+    filter: blur(0);
+  }
+}
+
+.moodboard-feature {
+  animation: moodboard-feature-in 520ms var(--ease-apple) both;
+  will-change: opacity, transform, filter;
+}
+
 /* Popover entrance / exit — lighter than the full modal, anchored to a
  * trigger. Used by UserMenu and similar dropdowns. */
 @keyframes popover-in {

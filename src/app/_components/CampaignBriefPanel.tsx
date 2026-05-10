@@ -124,6 +124,31 @@ export function CampaignBriefPanel({
     setDraft(toDraft(body.project.campaignBrief));
     setNotice("Campaign brief saved.");
   };
+  const briefActions = (
+    <div className="flex items-center justify-end gap-2">
+      {dirty && (
+        <button
+          type="button"
+          onClick={() => {
+            setDraft(savedDraft);
+            setError(null);
+            setNotice(null);
+          }}
+          className="apple-tap text-xs rounded-md border border-zinc-200 dark:border-zinc-800 px-3 py-1.5 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+        >
+          Reset
+        </button>
+      )}
+      <button
+        type="button"
+        onClick={() => void saveBrief()}
+        disabled={!dirty || saving}
+        className="apple-tap rounded-md bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 px-4 py-2 text-sm font-medium disabled:opacity-50 hover:opacity-90"
+      >
+        {saving ? "Saving…" : "Save brief"}
+      </button>
+    </div>
+  );
 
   return (
     <section className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5">
@@ -136,29 +161,6 @@ export function CampaignBriefPanel({
             Set the strategic spine of the campaign before execution starts: what this campaign is
             trying to do, who it is for, what the offer is, and how success will be measured.
           </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {dirty && (
-            <button
-              type="button"
-              onClick={() => {
-                setDraft(savedDraft);
-                setError(null);
-                setNotice(null);
-              }}
-              className="apple-tap text-xs rounded-md border border-zinc-200 dark:border-zinc-800 px-3 py-1.5 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
-            >
-              Reset
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() => void saveBrief()}
-            disabled={!dirty || saving}
-            className="apple-tap rounded-md bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 px-4 py-2 text-sm font-medium disabled:opacity-50 hover:opacity-90"
-          >
-            {saving ? "Saving…" : "Save brief"}
-          </button>
         </div>
       </div>
 
@@ -267,6 +269,10 @@ export function CampaignBriefPanel({
             />
           </div>
         </div>
+      </div>
+
+      <div className="mt-5 border-t border-zinc-200 pt-4 dark:border-zinc-800">
+        {briefActions}
       </div>
     </section>
   );

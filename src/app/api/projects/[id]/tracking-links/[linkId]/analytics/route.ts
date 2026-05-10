@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import {
   buildGoogleAnalyticsProjectSettings,
   getGoogleAnalyticsLinkSummary,
+  getUserGoogleAnalyticsAccessToken,
   isGoogleAnalyticsError,
 } from "@/lib/googleAnalytics";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -29,17 +30,29 @@ export async function GET(
   if (projectError) return Response.json({ error: projectError.message }, { status: 500 });
   if (!link) return Response.json({ error: "not found" }, { status: 404 });
 
-  const analytics = buildGoogleAnalyticsProjectSettings(project?.ga4_property_id ?? null);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const analytics = await buildGoogleAnalyticsProjectSettings(
+    supabase,
+    project?.ga4_property_id ?? null,
+    user?.id ?? null
+  );
   if (analytics.status !== "ready" || !analytics.ga4PropertyId) {
     return Response.json({ analytics, summary: null });
   }
 
   try {
+    const accessToken =
+      analytics.authMode === "oauth" && user?.id
+        ? await getUserGoogleAnalyticsAccessToken(supabase, user.id)
+        : null;
     const summary = await getGoogleAnalyticsLinkSummary({
       propertyId: analytics.ga4PropertyId,
       linkId,
       createdAt: new Date(link.created_at).getTime(),
       refresh,
+      accessToken,
     });
 
     return Response.json({ analytics, summary });

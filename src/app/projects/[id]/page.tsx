@@ -33,8 +33,6 @@ export default async function ProjectPage({
       </header>
       <ProjectDashboard
         projectId={id}
-        projectName={project.name}
-        initialTrackingLinksLocation={project.trackingLinksLocation}
         initialCampaignBrief={project.campaignBrief}
       />
     </div>

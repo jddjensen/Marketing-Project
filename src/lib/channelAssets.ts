@@ -15,9 +15,18 @@ const CUSTOM_ASPECTS: Record<string, string> = {
   "streaming-network-1": "aspect-video",
   "streaming-network-2": "aspect-video",
   youtube: "aspect-video",
+  "youtube-thumbnail": "aspect-video",
+  "companion-banner": "aspect-[5/1]",
   influencers: "aspect-[9/16]",
   "regional-utah": "aspect-[4/5]",
   national: "aspect-[4/5]",
+  "logo-1x1": "aspect-square",
+};
+
+const CUSTOM_LABELS: Record<string, string> = {
+  "youtube-thumbnail": "YouTube Thumbnail",
+  "companion-banner": "Companion Banner",
+  "logo-1x1": "1:1 Business Logo",
 };
 
 export function aspectClassForAsset(key: string): string {
@@ -33,6 +42,8 @@ export function aspectClassForAsset(key: string): string {
 }
 
 export function formatAssetLabel(key: string): string {
+  if (CUSTOM_LABELS[key]) return CUSTOM_LABELS[key];
+
   const ratio = key.match(/^(\d+(?:\.\d+)?)x(\d+(?:\.\d+)?)$/);
   if (ratio) return `${ratio[1]}:${ratio[2]}`;
 

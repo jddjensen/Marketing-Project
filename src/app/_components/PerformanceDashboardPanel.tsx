@@ -4,8 +4,12 @@ import { useCallback, useEffect, useState } from "react";
 import type { PlatformKey } from "@/lib/utm";
 type AnalyticsSettings = {
   ga4PropertyId: string | null;
-  status: "ready" | "property_missing" | "credentials_missing";
+  status: "ready" | "property_missing" | "account_not_connected" | "credentials_missing";
   credentialsConfigured: boolean;
+  oauthConfigured: boolean;
+  connected: boolean;
+  accountEmail: string | null;
+  authMode: "oauth" | "service_account" | null;
 };
 
 type ChannelBucketKey = PlatformKey | "all-channels";
@@ -113,14 +117,24 @@ function statusTone(settings: AnalyticsSettings | null) {
     return {
       className:
         "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200",
-      label: "Tracked clicks and QR scans are live. Add a GA4 property to unlock sessions, conversions, and revenue.",
+      label: settings.connected
+        ? "Tracked clicks and QR scans are live. Choose a GA4 property below to unlock sessions, conversions, and revenue."
+        : "Tracked clicks and QR scans are live. Add a GA4 property to unlock sessions, conversions, and revenue.",
+    };
+  }
+
+  if (settings.status === "account_not_connected") {
+    return {
+      className:
+        "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200",
+      label: "Tracked clicks and QR scans are live. Connect Google Analytics below to pull website sessions, conversions, and revenue.",
     };
   }
 
   return {
     className:
       "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200",
-    label: "Tracked clicks and QR scans are live. Server-side Google Analytics credentials still need to be configured.",
+    label: "Tracked clicks and QR scans are live. Google OAuth credentials still need to be configured.",
   };
 }
 
@@ -311,7 +325,7 @@ export function PerformanceDashboardPanel({ projectId }: { projectId: string }) 
                 </div>
               ) : (
                 <div className="text-sm text-zinc-500">
-                  No tracked links yet. Add a landing page below and use the tracked link copy action to start building performance data.
+                  No tracked links yet. Add a landing page below, then assign it to a creative to start building performance data.
                 </div>
               )}
             </div>

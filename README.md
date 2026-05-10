@@ -117,7 +117,7 @@ Core tables:
 
 - The `creatives` bucket must be private in production. Migration `0014_secure_creatives_bucket.sql` enforces this.
 - `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are required at runtime. They're optional at build time — pages that fetch from Supabase are marked `dynamic`.
-- For Google Analytics: set either `GOOGLE_SERVICE_ACCOUNT_JSON` (one-line JSON) or the email/private-key pair. See [`.env.local.example`](.env.local.example).
+- For Google Analytics account login: set `GOOGLE_OAUTH_CLIENT_ID` and `GOOGLE_OAUTH_CLIENT_SECRET`, and add `/api/google-analytics/oauth/callback` as an authorized redirect URI in Google Cloud. Service-account GA4 access remains available as a fallback. See [`.env.local.example`](.env.local.example).
 
 ## Conventions
 

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { UserMenu } from "./UserMenu";
 import { UploadProgressOverlay, type UploadProgressState } from "./UploadProgressOverlay";
+import { CampaignMoodboardReview } from "./CampaignMoodboardReview";
 import { CreativeCopyPanel } from "./CreativeCopyPanel";
 import { VersionHistoryModal } from "./VersionHistoryModal";
 import { TextCreativeDialog } from "./TextCreativeDialog";
@@ -11,7 +12,7 @@ import { uploadWithProgress } from "@/lib/uploadWithProgress";
 import { uploadVideoDirect } from "@/lib/directUpload";
 import { extractVideoPoster } from "@/lib/videoThumbnail";
 import { platformSupportsTextOnly } from "@/lib/platformCopy";
-import type { PlatformKey } from "@/lib/utm";
+import { platformUtmBase, PLATFORM_DEFAULTS, type PlatformKey } from "@/lib/utm";
 
 type Ratio = string;
 
@@ -41,10 +42,21 @@ type MediaMap = Record<Ratio, MediaItem[]>;
 type TrackingItem = {
   id: string;
   platform: string;
-  mediaId: string;
+  creativeId: string;
   url: string;
+  label: string | null;
+  utmSource: string | null;
+  utmContent: string | null;
+  utmSequence: number | null;
   clicks: number;
   createdAt: number;
+};
+
+type LandingPage = {
+  id: string;
+  url: string;
+  label: string | null;
+  platform: PlatformKey | null;
 };
 
 export function PlatformMediaBoard({
@@ -54,7 +66,7 @@ export function PlatformMediaBoard({
   title,
   subtitle,
   ratios,
-  trackingEnabled = false,
+  trackingEnabled = true,
   children,
 }: {
   projectId: string;
@@ -73,6 +85,8 @@ export function PlatformMediaBoard({
   const uploadAbort = useRef<AbortController | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tracking, setTracking] = useState<Record<string, TrackingItem>>({});
+  const [landingPages, setLandingPages] = useState<LandingPage[] | null>(null);
+  const [moodboardOpen, setMoodboardOpen] = useState(false);
   const [historyFor, setHistoryFor] = useState<string | null>(null);
   const [textDialog, setTextDialog] = useState<{ ratio: Ratio; ratioLabel: string } | null>(null);
   const platformKey = platform as PlatformKey;
@@ -97,17 +111,28 @@ export function PlatformMediaBoard({
     if (!res.ok) return;
     const data = (await res.json()) as { items: TrackingItem[] };
     const map: Record<string, TrackingItem> = {};
-    for (const item of data.items) map[item.mediaId] = item;
+    for (const item of data.items) map[item.creativeId] = item;
     setTracking(map);
   }, [platform, projectId, trackingEnabled]);
 
+  const fetchLandingPages = useCallback(async () => {
+    if (!trackingEnabled) return;
+    const res = await fetch(`/api/projects/${projectId}/tracking-links`, { cache: "no-store" });
+    if (!res.ok) {
+      setLandingPages([]);
+      return;
+    }
+    const data = (await res.json()) as { links?: LandingPage[] };
+    setLandingPages((data.links ?? []).filter((link) => link.platform === null));
+  }, [projectId, trackingEnabled]);
+
   useEffect(() => {
     async function loadBoard() {
-      await Promise.all([fetchMedia(), fetchTracking()]);
+      await Promise.all([fetchMedia(), fetchTracking(), fetchLandingPages()]);
     }
 
     void loadBoard();
-  }, [fetchMedia, fetchTracking]);
+  }, [fetchLandingPages, fetchMedia, fetchTracking]);
 
   const handleUpload = useCallback(
     async (
@@ -210,32 +235,32 @@ export function PlatformMediaBoard({
   }, []);
 
   const saveTracking = useCallback(
-    async (mediaId: string, url: string) => {
+    async (creativeId: string, landingPageId: string) => {
       const res = await fetch(`/api/tracking?platform=${platform}&projectId=${projectId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mediaId, url }),
+        body: JSON.stringify({ creativeId, landingPageId }),
       });
       if (!res.ok) {
         const body = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new Error(body.error ?? "failed to save url");
+        throw new Error(body.error ?? "failed to save landing page");
       }
       const body = (await res.json()) as { item: TrackingItem };
-      setTracking((prev) => ({ ...prev, [mediaId]: body.item }));
+      setTracking((prev) => ({ ...prev, [creativeId]: body.item }));
     },
     [platform, projectId]
   );
 
   const removeTracking = useCallback(
-    async (mediaId: string) => {
+    async (creativeId: string) => {
       const res = await fetch(
-        `/api/tracking?platform=${platform}&projectId=${projectId}&mediaId=${encodeURIComponent(mediaId)}`,
+        `/api/tracking?platform=${platform}&projectId=${projectId}&creativeId=${encodeURIComponent(creativeId)}`,
         { method: "DELETE" }
       );
       if (!res.ok) return;
       setTracking((prev) => {
         const next = { ...prev };
-        delete next[mediaId];
+        delete next[creativeId];
         return next;
       });
     },
@@ -258,13 +283,20 @@ export function PlatformMediaBoard({
             <p className="text-sm text-zinc-500 mt-1">{subtitle}</p>
           </div>
           <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setMoodboardOpen(true)}
+              className="apple-tap rounded-md border border-zinc-200 px-3 py-2 text-xs font-medium text-zinc-600 hover:border-zinc-400 hover:text-zinc-950 dark:border-zinc-800 dark:text-zinc-300 dark:hover:border-zinc-600 dark:hover:text-zinc-100"
+            >
+              Review moodboard
+            </button>
             {trackingEnabled && (
               <button
                 type="button"
-                onClick={fetchTracking}
+                onClick={() => void Promise.all([fetchTracking(), fetchLandingPages()])}
                 className="apple-tap text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 border border-zinc-200 dark:border-zinc-800 rounded-md px-2 py-1"
               >
-                Refresh clicks
+                Refresh links
               </button>
             )}
             <UserMenu />
@@ -295,6 +327,7 @@ export function PlatformMediaBoard({
               loading={loading}
               trackingEnabled={trackingEnabled}
               tracking={tracking}
+              landingPages={landingPages}
               onSaveTracking={saveTracking}
               onRemoveTracking={removeTracking}
               projectId={projectId}
@@ -327,6 +360,13 @@ export function PlatformMediaBoard({
           onSaved={fetchMedia}
         />
       )}
+      {moodboardOpen && (
+        <CampaignMoodboardReview
+          projectId={projectId}
+          projectName={projectName}
+          onClose={() => setMoodboardOpen(false)}
+        />
+      )}
     </div>
   );
 }
@@ -340,6 +380,7 @@ function RatioColumn({
   loading,
   trackingEnabled,
   tracking,
+  landingPages,
   onSaveTracking,
   onRemoveTracking,
   projectId,
@@ -363,7 +404,8 @@ function RatioColumn({
   loading: boolean;
   trackingEnabled: boolean;
   tracking: Record<string, TrackingItem>;
-  onSaveTracking: (mediaKey: string, url: string) => Promise<void>;
+  landingPages: LandingPage[] | null;
+  onSaveTracking: (mediaKey: string, landingPageId: string) => Promise<void>;
   onRemoveTracking: (mediaKey: string) => Promise<void>;
   projectId: string;
   platform: PlatformKey;
@@ -468,7 +510,8 @@ function RatioColumn({
               item={item}
               aspect={config.aspect}
               trackingEnabled={trackingEnabled}
-              tracking={tracking[item.id]}
+              tracking={tracking[item.creativeId]}
+              landingPages={landingPages}
               onSaveTracking={onSaveTracking}
               onRemoveTracking={onRemoveTracking}
               projectId={projectId}
@@ -491,6 +534,7 @@ function MediaTile({
   aspect,
   trackingEnabled,
   tracking,
+  landingPages,
   onSaveTracking,
   onRemoveTracking,
   projectId,
@@ -503,8 +547,9 @@ function MediaTile({
   aspect: string;
   trackingEnabled: boolean;
   tracking: TrackingItem | undefined;
-  onSaveTracking: (mediaId: string, url: string) => Promise<void>;
-  onRemoveTracking: (mediaId: string) => Promise<void>;
+  landingPages: LandingPage[] | null;
+  onSaveTracking: (creativeId: string, landingPageId: string) => Promise<void>;
+  onRemoveTracking: (creativeId: string) => Promise<void>;
   projectId: string;
   platform: PlatformKey;
   onReplace: (file: File, deletePrevious: boolean) => void;
@@ -610,10 +655,13 @@ function MediaTile({
 
       {trackingEnabled && (
         <TrackingControls
-          mediaId={item.id}
+          creativeId={item.creativeId}
+          projectId={projectId}
           tracking={tracking}
+          landingPages={landingPages}
           onSave={onSaveTracking}
           onRemove={onRemoveTracking}
+          platform={platform}
         />
       )}
     </figure>
@@ -633,32 +681,45 @@ function firstCopySnippet(copy: Record<string, unknown>): string {
 }
 
 function TrackingControls({
-  mediaId,
+  creativeId,
+  projectId,
   tracking,
+  landingPages,
   onSave,
   onRemove,
+  platform,
 }: {
-  mediaId: string;
+  creativeId: string;
+  projectId: string;
   tracking: TrackingItem | undefined;
-  onSave: (mediaId: string, url: string) => Promise<void>;
-  onRemove: (mediaId: string) => Promise<void>;
+  landingPages: LandingPage[] | null;
+  onSave: (creativeId: string, landingPageId: string) => Promise<void>;
+  onRemove: (creativeId: string) => Promise<void>;
+  platform: PlatformKey;
 }) {
   const [editing, setEditing] = useState(!tracking);
-  const [url, setUrl] = useState(tracking?.url ?? "");
+  const [landingPageId, setLandingPageId] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const defaults = PLATFORM_DEFAULTS[platform];
+  const sourcePreview = platformUtmBase(platform);
+  const sourceLabel = tracking?.utmSource ?? defaults.source;
+  const creativeTag = tracking?.utmContent ?? null;
+  const currentLandingPage = landingPages?.find((page) => page.url === tracking?.url) ?? null;
 
   const trackingUrl =
     tracking && typeof window !== "undefined"
-      ? `${window.location.origin}/c/${tracking.id}`
-      : null;
+      ? `${window.location.origin}/go/${tracking.id}`
+      : tracking
+        ? `/go/${tracking.id}`
+        : null;
 
   const submit = async () => {
     setErr(null);
     setBusy(true);
     try {
-      await onSave(mediaId, url.trim());
+      await onSave(creativeId, landingPageId);
       setEditing(false);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "failed to save");
@@ -682,36 +743,65 @@ function TrackingControls({
     return (
       <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 p-2.5 space-y-2">
         <div className="text-[11px] uppercase tracking-wide font-medium text-zinc-500">
-          Destination URL
+          Landing page
         </div>
-        <div className="flex gap-2">
-          <input
-            type="url"
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder="https://example.com/landing"
-            className="input-tactile flex-1 text-xs"
-          />
-          <button
-            type="button"
-            onClick={submit}
-            disabled={busy || url.trim().length === 0}
-            className="rounded-md bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 px-3 py-1.5 text-xs font-medium disabled:opacity-50 hover:opacity-90"
-          >
-            {busy ? "…" : "Save"}
-          </button>
-          {tracking && (
+        {landingPages === null ? (
+          <div className="text-xs text-zinc-500">Loading landing pages…</div>
+        ) : landingPages.length === 0 ? (
+          <div className="text-xs text-zinc-500">
+            Add landing pages from the{" "}
+            <Link
+              href={`/projects/${projectId}`}
+              transitionTypes={["nav-back"]}
+              className="text-blue-600 dark:text-blue-400 hover:underline"
+            >
+              project dashboard
+            </Link>{" "}
+            before attaching one to this creative.
+          </div>
+        ) : (
+          <div className="flex gap-2">
+            <select
+              value={landingPageId}
+              onChange={(e) => setLandingPageId(e.target.value)}
+              className="select-tactile flex-1 text-xs"
+              aria-label="Landing page"
+            >
+              <option value="">Select landing page</option>
+              {landingPages.map((page) => (
+                <option key={page.id} value={page.id}>
+                  {page.label || page.url}
+                </option>
+              ))}
+            </select>
             <button
               type="button"
-              onClick={() => {
-                setEditing(false);
-                setUrl(tracking.url);
-              }}
-              className="text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+              onClick={submit}
+              disabled={busy || landingPageId.length === 0}
+              className="rounded-md bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 px-3 py-1.5 text-xs font-medium disabled:opacity-50 hover:opacity-90"
             >
-              Cancel
+              {busy ? "…" : "Save"}
             </button>
-          )}
+            {tracking && (
+              <button
+                type="button"
+                onClick={() => {
+                  setEditing(false);
+                  setLandingPageId(currentLandingPage?.id ?? "");
+                }}
+                className="text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+              >
+                Cancel
+              </button>
+            )}
+          </div>
+        )}
+        <div className="text-[11px] text-zinc-500">
+          Source will attach as{" "}
+          <span className="font-mono">{sourcePreview}</span>
+          {", "}
+          <span className="font-mono">{sourcePreview}2</span>
+          {", and so on when saved."}
         </div>
         {err && <div className="text-[11px] text-red-600 dark:text-red-400">{err}</div>}
       </div>
@@ -723,7 +813,7 @@ function TrackingControls({
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0 flex-1">
           <div className="text-[11px] uppercase tracking-wide font-medium text-zinc-500">
-            Destination
+            Landing page
           </div>
           <a
             href={tracking.url}
@@ -732,8 +822,18 @@ function TrackingControls({
             className="text-xs text-blue-600 dark:text-blue-400 hover:underline truncate block"
             title={tracking.url}
           >
-            {tracking.url}
+            {tracking.label || tracking.url}
           </a>
+          <div className="text-[11px] text-zinc-500 mt-0.5">
+            Source: <span className="font-mono">{sourceLabel}</span>
+            {creativeTag && (
+              <>
+                {" "}
+                <span className="text-zinc-400">/</span> Creative:{" "}
+                <span className="font-mono">{creativeTag}</span>
+              </>
+            )}
+          </div>
         </div>
         <div className="text-right">
           <div className="text-[11px] uppercase tracking-wide font-medium text-zinc-500">Clicks</div>
@@ -759,14 +859,17 @@ function TrackingControls({
       <div className="flex items-center justify-end gap-3 text-[11px]">
         <button
           type="button"
-          onClick={() => setEditing(true)}
+          onClick={() => {
+            setLandingPageId(currentLandingPage?.id ?? "");
+            setEditing(true);
+          }}
           className="text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
         >
-          Edit URL
+          Change landing page
         </button>
         <button
           type="button"
-          onClick={() => onRemove(mediaId)}
+          onClick={() => onRemove(creativeId)}
           className="text-zinc-500 hover:text-red-600 dark:hover:text-red-400"
         >
           Remove

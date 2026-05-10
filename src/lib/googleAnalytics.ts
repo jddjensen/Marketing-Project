@@ -1,8 +1,11 @@
 import { createSign } from "node:crypto";
 
-const GOOGLE_ANALYTICS_SCOPE = "https://www.googleapis.com/auth/analytics.readonly";
+export const GOOGLE_ANALYTICS_SCOPE = "https://www.googleapis.com/auth/analytics.readonly";
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const GOOGLE_ANALYTICS_DATA_API = "https://analyticsdata.googleapis.com/v1beta";
+const GOOGLE_ANALYTICS_ADMIN_API = "https://analyticsadmin.googleapis.com/v1beta";
+const GOOGLE_OAUTH_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
+const GOOGLE_OAUTH_SCOPES = ["openid", "email", "profile", GOOGLE_ANALYTICS_SCOPE];
 const SUMMARY_CACHE_TTL_MS = 15 * 60 * 1000;
 const ACCESS_TOKEN_SAFETY_MS = 60 * 1000;
 
@@ -30,12 +33,30 @@ type RunReportResponse = {
 
 type RunReportRow = NonNullable<RunReportResponse["rows"]>[number];
 
-type GoogleAnalyticsStatus = "ready" | "property_missing" | "credentials_missing";
+export type GoogleAnalyticsStatus =
+  | "ready"
+  | "property_missing"
+  | "account_not_connected"
+  | "credentials_missing";
 
-type GoogleAnalyticsProjectSettings = {
+export type GoogleAnalyticsAuthMode = "oauth" | "service_account" | null;
+
+export type GoogleAnalyticsProjectSettings = {
   ga4PropertyId: string | null;
   status: GoogleAnalyticsStatus;
   credentialsConfigured: boolean;
+  oauthConfigured: boolean;
+  connected: boolean;
+  accountEmail: string | null;
+  authMode: GoogleAnalyticsAuthMode;
+};
+
+export type GoogleAnalyticsPropertyOption = {
+  accountId: string;
+  accountName: string;
+  propertyId: string;
+  propertyName: string;
+  propertyResourceName: string;
 };
 
 type GoogleAnalyticsLinkSummary = {
@@ -72,6 +93,41 @@ type GoogleAnalyticsProjectPerformanceSummary = {
     purchaseRevenue: number;
   }>;
   lastSyncedAt: number;
+};
+
+type GoogleOAuthConfig = {
+  clientId: string;
+  clientSecret: string;
+};
+
+type GoogleOAuthTokenResponse = {
+  access_token?: string;
+  expires_in?: number;
+  refresh_token?: string;
+  scope?: string;
+  id_token?: string;
+  error?: string;
+  error_description?: string;
+};
+
+type GoogleAnalyticsConnectionRow = {
+  access_token: string;
+  refresh_token: string | null;
+  token_expires_at: string;
+  account_email: string | null;
+};
+
+type AccountSummariesResponse = {
+  accountSummaries?: Array<{
+    account?: string;
+    displayName?: string;
+    propertySummaries?: Array<{
+      property?: string;
+      displayName?: string;
+    }>;
+  }>;
+  nextPageToken?: string;
+  error?: { message?: string };
 };
 
 class GoogleAnalyticsError extends Error {
@@ -130,18 +186,140 @@ function getGoogleAnalyticsCredentialsConfigured() {
   return readServiceAccountCredentials() !== null;
 }
 
-export function buildGoogleAnalyticsProjectSettings(
-  ga4PropertyId: string | null
-): GoogleAnalyticsProjectSettings {
-  const credentialsConfigured = getGoogleAnalyticsCredentialsConfigured();
+function readGoogleOAuthConfig(): GoogleOAuthConfig | null {
+  const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID?.trim();
+  const clientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET?.trim();
+  if (!clientId || !clientSecret) return null;
+  return { clientId, clientSecret };
+}
+
+export function getGoogleAnalyticsOAuthConfigured() {
+  return readGoogleOAuthConfig() !== null;
+}
+
+export function buildGoogleAnalyticsRedirectUri(origin: string) {
+  return `${origin.replace(/\/$/, "")}/api/google-analytics/oauth/callback`;
+}
+
+export function buildGoogleAnalyticsAuthorizationUrl(args: {
+  origin: string;
+  state: string;
+}) {
+  const config = readGoogleOAuthConfig();
+  if (!config) {
+    throw new GoogleAnalyticsError("Google OAuth is not configured", 503);
+  }
+
+  const params = new URLSearchParams({
+    client_id: config.clientId,
+    redirect_uri: buildGoogleAnalyticsRedirectUri(args.origin),
+    response_type: "code",
+    scope: GOOGLE_OAUTH_SCOPES.join(" "),
+    access_type: "offline",
+    prompt: "consent",
+    include_granted_scopes: "true",
+    state: args.state,
+  });
+
+  return `${GOOGLE_OAUTH_AUTH_URL}?${params.toString()}`;
+}
+
+export async function exchangeGoogleAnalyticsOAuthCode(args: {
+  origin: string;
+  code: string;
+}) {
+  const config = readGoogleOAuthConfig();
+  if (!config) {
+    throw new GoogleAnalyticsError("Google OAuth is not configured", 503);
+  }
+
+  const res = await fetch(GOOGLE_TOKEN_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      client_id: config.clientId,
+      client_secret: config.clientSecret,
+      code: args.code,
+      grant_type: "authorization_code",
+      redirect_uri: buildGoogleAnalyticsRedirectUri(args.origin),
+    }),
+    cache: "no-store",
+  });
+
+  const body = (await res.json().catch(() => null)) as GoogleOAuthTokenResponse | null;
+  if (!res.ok || !body?.access_token || !body.expires_in) {
+    throw new GoogleAnalyticsError(
+      body?.error_description || body?.error || "Failed to connect Google Analytics",
+      res.status || 502
+    );
+  }
+
+  return body;
+}
+
+export function decodeGoogleAccountEmail(idToken: string | undefined) {
+  if (!idToken) return null;
+  const payload = idToken.split(".")[1];
+  if (!payload) return null;
+  try {
+    const parsed = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as {
+      email?: unknown;
+    };
+    return typeof parsed.email === "string" ? parsed.email : null;
+  } catch {
+    return null;
+  }
+}
+
+async function loadGoogleAnalyticsConnection(
+  supabase: Awaited<ReturnType<typeof import("@/lib/supabase/server").createSupabaseServerClient>>,
+  userId: string
+) {
+  const { data, error } = await supabase
+    .from("user_google_analytics_connections")
+    .select("access_token, refresh_token, token_expires_at, account_email")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error) {
+    throw new GoogleAnalyticsError("Failed to load Google Analytics connection", 500);
+  }
+
+  return (data ?? null) as GoogleAnalyticsConnectionRow | null;
+}
+
+export async function buildGoogleAnalyticsProjectSettings(
+  supabase: Awaited<ReturnType<typeof import("@/lib/supabase/server").createSupabaseServerClient>>,
+  ga4PropertyId: string | null,
+  userId: string | null
+): Promise<GoogleAnalyticsProjectSettings> {
+  const serviceCredentialsConfigured = getGoogleAnalyticsCredentialsConfigured();
+  const oauthConfigured = getGoogleAnalyticsOAuthConfigured();
+  const connection = userId ? await loadGoogleAnalyticsConnection(supabase, userId) : null;
+  const connected = Boolean(connection);
+  const authMode: GoogleAnalyticsAuthMode = connected
+    ? "oauth"
+    : serviceCredentialsConfigured
+      ? "service_account"
+      : null;
+  const credentialsConfigured = authMode !== null;
+
+  const status: GoogleAnalyticsStatus = !credentialsConfigured
+    ? oauthConfigured
+      ? "account_not_connected"
+      : "credentials_missing"
+    : ga4PropertyId
+      ? "ready"
+      : "property_missing";
+
   return {
     ga4PropertyId,
     credentialsConfigured,
-    status: credentialsConfigured
-      ? ga4PropertyId
-        ? "ready"
-        : "property_missing"
-      : "credentials_missing",
+    oauthConfigured,
+    connected,
+    accountEmail: connection?.account_email ?? null,
+    authMode,
+    status,
   };
 }
 
@@ -206,8 +384,67 @@ async function getGoogleAccessToken() {
   return body.access_token;
 }
 
-async function runGoogleAnalyticsReport(propertyId: string, body: RunReportRequest) {
-  const token = await getGoogleAccessToken();
+export async function getUserGoogleAnalyticsAccessToken(
+  supabase: Awaited<ReturnType<typeof import("@/lib/supabase/server").createSupabaseServerClient>>,
+  userId: string
+) {
+  const connection = await loadGoogleAnalyticsConnection(supabase, userId);
+  if (!connection) {
+    throw new GoogleAnalyticsError("Connect Google Analytics before loading GA4 data", 401);
+  }
+
+  if (new Date(connection.token_expires_at).getTime() > Date.now() + ACCESS_TOKEN_SAFETY_MS) {
+    return connection.access_token;
+  }
+
+  if (!connection.refresh_token) {
+    throw new GoogleAnalyticsError("Reconnect Google Analytics to refresh access", 401);
+  }
+
+  const config = readGoogleOAuthConfig();
+  if (!config) {
+    throw new GoogleAnalyticsError("Google OAuth is not configured", 503);
+  }
+
+  const res = await fetch(GOOGLE_TOKEN_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      client_id: config.clientId,
+      client_secret: config.clientSecret,
+      refresh_token: connection.refresh_token,
+      grant_type: "refresh_token",
+    }),
+    cache: "no-store",
+  });
+
+  const body = (await res.json().catch(() => null)) as GoogleOAuthTokenResponse | null;
+  if (!res.ok || !body?.access_token || !body.expires_in) {
+    throw new GoogleAnalyticsError(
+      body?.error_description || body?.error || "Failed to refresh Google Analytics access",
+      res.status || 502
+    );
+  }
+
+  const expiresAt = new Date(Date.now() + body.expires_in * 1000).toISOString();
+  await supabase
+    .from("user_google_analytics_connections")
+    .update({
+      access_token: body.access_token,
+      token_expires_at: expiresAt,
+      scope: body.scope ?? null,
+    })
+    .eq("user_id", userId);
+
+  return body.access_token;
+}
+
+async function runGoogleAnalyticsReport(
+  propertyId: string,
+  body: RunReportRequest,
+  accessToken?: string | null
+) {
+  const token = accessToken ?? (await getGoogleAccessToken());
   const res = await fetch(`${GOOGLE_ANALYTICS_DATA_API}/properties/${propertyId}:runReport`, {
     method: "POST",
     headers: {
@@ -296,6 +533,7 @@ export async function getGoogleAnalyticsLinkSummary(args: {
   linkId: string;
   createdAt: number;
   refresh?: boolean;
+  accessToken?: string | null;
 }) {
   const totalStartDate = toDateInput(args.createdAt);
   const trendStartDate = toDateInput(Math.max(args.createdAt, Date.now() - 13 * 24 * 60 * 60 * 1000));
@@ -321,7 +559,7 @@ export async function getGoogleAnalyticsLinkSummary(args: {
       dateRanges: [{ startDate: totalStartDate, endDate: "today" }],
       metrics,
       dimensionFilter: filter,
-    }),
+    }, args.accessToken),
     runGoogleAnalyticsReport(args.propertyId, {
       dateRanges: [{ startDate: trendStartDate, endDate: "today" }],
       dimensions: [{ name: "date" }],
@@ -329,7 +567,7 @@ export async function getGoogleAnalyticsLinkSummary(args: {
       dimensionFilter: filter,
       orderBys: [{ dimension: { dimensionName: "date" } }],
       limit: 14,
-    }),
+    }, args.accessToken),
   ]);
 
   const totalRow = totalsReport.rows?.[0];
@@ -360,6 +598,7 @@ export async function getGoogleAnalyticsProjectPerformance(args: {
   linkIds: string[];
   createdAt: number;
   refresh?: boolean;
+  accessToken?: string | null;
 }) {
   const uniqueLinkIds = Array.from(new Set(args.linkIds)).sort();
   const startDate = toDateInput(args.createdAt);
@@ -406,7 +645,7 @@ export async function getGoogleAnalyticsProjectPerformance(args: {
       metrics,
       dimensionFilter: filter,
       limit: Math.max(100, uniqueLinkIds.length * 10),
-    }),
+    }, args.accessToken),
     runGoogleAnalyticsReport(args.propertyId, {
       dateRanges: [{ startDate: trendStartDate, endDate: "today" }],
       dimensions: [{ name: "date" }],
@@ -414,7 +653,7 @@ export async function getGoogleAnalyticsProjectPerformance(args: {
       dimensionFilter: filter,
       orderBys: [{ dimension: { dimensionName: "date" } }],
       limit: 14,
-    }),
+    }, args.accessToken),
   ]);
 
   const allowed = new Set(uniqueLinkIds);
@@ -468,4 +707,48 @@ export async function getGoogleAnalyticsProjectPerformance(args: {
 
 export function isGoogleAnalyticsError(error: unknown): error is GoogleAnalyticsError {
   return error instanceof GoogleAnalyticsError;
+}
+
+export async function listGoogleAnalyticsProperties(accessToken: string) {
+  const properties: GoogleAnalyticsPropertyOption[] = [];
+  let pageToken: string | undefined;
+
+  do {
+    const url = new URL(`${GOOGLE_ANALYTICS_ADMIN_API}/accountSummaries`);
+    if (pageToken) url.searchParams.set("pageToken", pageToken);
+
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      cache: "no-store",
+    });
+    const body = (await res.json().catch(() => null)) as AccountSummariesResponse | null;
+
+    if (!res.ok) {
+      throw new GoogleAnalyticsError(
+        body?.error?.message || "Failed to list Google Analytics properties",
+        res.status || 502
+      );
+    }
+
+    for (const account of body?.accountSummaries ?? []) {
+      const accountId = account.account?.replace(/^accounts\//, "") ?? "";
+      for (const property of account.propertySummaries ?? []) {
+        const propertyId = property.property?.replace(/^properties\//, "") ?? "";
+        if (!propertyId) continue;
+        properties.push({
+          accountId,
+          accountName: account.displayName ?? accountId,
+          propertyId,
+          propertyName: property.displayName ?? propertyId,
+          propertyResourceName: property.property ?? `properties/${propertyId}`,
+        });
+      }
+    }
+
+    pageToken = body?.nextPageToken;
+  } while (pageToken);
+
+  return properties.sort((a, b) =>
+    `${a.accountName} ${a.propertyName}`.localeCompare(`${b.accountName} ${b.propertyName}`)
+  );
 }

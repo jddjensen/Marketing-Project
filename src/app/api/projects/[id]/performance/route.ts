@@ -3,6 +3,7 @@ import { CHANNEL_LABELS, CHANNEL_ORDER } from "@/lib/channels";
 import {
   buildGoogleAnalyticsProjectSettings,
   getGoogleAnalyticsProjectPerformance,
+  getUserGoogleAnalyticsAccessToken,
   isGoogleAnalyticsError,
   type GoogleAnalyticsProjectLinkMetrics,
 } from "@/lib/googleAnalytics";
@@ -86,6 +87,7 @@ export async function GET(
       .from("project_tracking_links")
       .select("id, platform, created_at")
       .eq("project_id", id)
+      .not("platform", "is", null)
       .order("created_at", { ascending: true }),
     supabase
       .from("projects")
@@ -102,11 +104,16 @@ export async function GET(
   if (projectError) return Response.json({ error: projectError.message }, { status: 500 });
   if (platformsError) return Response.json({ error: platformsError.message }, { status: 500 });
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   const linkRows = (links ?? []) as LinkRow[];
   const linkIds = linkRows.map((link) => link.id);
   const budget = parseBudget((project as ProjectRow | null)?.brief_budget ?? null);
-  const analytics = buildGoogleAnalyticsProjectSettings(
-    (project as ProjectRow | null)?.ga4_property_id ?? null
+  const analytics = await buildGoogleAnalyticsProjectSettings(
+    supabase,
+    (project as ProjectRow | null)?.ga4_property_id ?? null,
+    user?.id ?? null
   );
 
   let clickCounts = new Map<string, number>();
@@ -137,11 +144,16 @@ export async function GET(
 
   if (analytics.status === "ready" && analytics.ga4PropertyId && linkRows.length > 0) {
     try {
+      const accessToken =
+        analytics.authMode === "oauth" && user?.id
+          ? await getUserGoogleAnalyticsAccessToken(supabase, user.id)
+          : null;
       gaSummary = await getGoogleAnalyticsProjectPerformance({
         propertyId: analytics.ga4PropertyId,
         linkIds,
         createdAt: new Date(linkRows[0].created_at).getTime(),
         refresh,
+        accessToken,
       });
     } catch (error) {
       if (isGoogleAnalyticsError(error)) {
