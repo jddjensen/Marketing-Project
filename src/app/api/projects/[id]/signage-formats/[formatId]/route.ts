@@ -12,7 +12,7 @@ export async function DELETE(
   // Collect storage paths for media under this format so we can clean the bucket.
   const { data: mediaRows } = await supabase
     .from("media")
-    .select("storage_path")
+    .select("storage_path, poster_storage_path")
     .eq("project_id", id)
     .eq("signage_format_id", formatId);
 
@@ -26,7 +26,14 @@ export async function DELETE(
   if (count === 0) return Response.json({ error: "not found" }, { status: 404 });
 
   if (mediaRows && mediaRows.length > 0) {
-    await supabase.storage.from(CREATIVES_BUCKET).remove(mediaRows.map((r) => r.storage_path));
+    const paths = mediaRows.flatMap((r) =>
+      [r.storage_path, r.poster_storage_path].filter(
+        (path): path is string => typeof path === "string" && path.length > 0
+      )
+    );
+    if (paths.length > 0) {
+      await supabase.storage.from(CREATIVES_BUCKET).remove(paths);
+    }
   }
   return Response.json({ ok: true });
 }

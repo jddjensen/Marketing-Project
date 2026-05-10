@@ -127,6 +127,7 @@ export function TrackingLinksPanel({
 
   const updateLink = useCallback(
     async (id: string, patch: Partial<TrackingLink>) => {
+      const previousLink = (links ?? []).find((l) => l.id === id) ?? null;
       setLinks((prev) =>
         (prev ?? []).map((l) => (l.id === id ? { ...l, ...patch } : l))
       );
@@ -139,17 +140,31 @@ export function TrackingLinksPanel({
       if (patch.utmCampaign !== undefined) apiPatch.utmCampaign = patch.utmCampaign;
       if (patch.utmTerm !== undefined) apiPatch.utmTerm = patch.utmTerm;
       if (patch.utmContent !== undefined) apiPatch.utmContent = patch.utmContent;
+      if (patch.qrEnabled !== undefined) apiPatch.qrEnabled = patch.qrEnabled;
       const res = await fetch(`/api/projects/${projectId}/tracking-links/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(apiPatch),
       });
+      const body = (await res.json().catch(() => null)) as
+        | { link?: TrackingLink; error?: string }
+        | null;
       if (!res.ok) {
-        const body = (await res.json().catch(() => null)) as { error?: string } | null;
+        if (previousLink) {
+          setLinks((prev) =>
+            (prev ?? []).map((l) => (l.id === id ? previousLink : l))
+          );
+        }
         setError(body?.error ?? "update failed");
+        return;
+      }
+      if (body?.link) {
+        setLinks((prev) =>
+          (prev ?? []).map((l) => (l.id === id ? body.link! : l))
+        );
       }
     },
-    [projectId]
+    [links, projectId]
   );
 
   const deleteLink = useCallback(

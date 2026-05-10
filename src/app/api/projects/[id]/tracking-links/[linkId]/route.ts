@@ -52,6 +52,22 @@ function normalizeOptionalString(v: unknown): string | null | undefined {
   return t.length === 0 ? null : t;
 }
 
+function normalizeTrackingUrl(v: string): string | { error: string } {
+  const url = v.trim();
+  if (url.length === 0 || url.length > 2048) {
+    return { error: "url must be 1–2048 chars" };
+  }
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return { error: "url must be http(s)" };
+    }
+  } catch {
+    return { error: "url must be a valid http(s) URL" };
+  }
+  return url;
+}
+
 export async function PATCH(
   request: NextRequest,
   ctx: { params: Promise<{ id: string; linkId: string }> }
@@ -73,9 +89,9 @@ export async function PATCH(
   const patch: Record<string, unknown> = {};
 
   if (typeof body.url === "string") {
-    const url = body.url.trim();
-    if (url.length === 0 || url.length > 2048) {
-      return Response.json({ error: "url must be 1–2048 chars" }, { status: 400 });
+    const url = normalizeTrackingUrl(body.url);
+    if (typeof url !== "string") {
+      return Response.json({ error: url.error }, { status: 400 });
     }
     patch.url = url;
   }

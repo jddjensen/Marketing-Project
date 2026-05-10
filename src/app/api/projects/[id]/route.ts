@@ -316,7 +316,7 @@ export async function DELETE(
   // Collect storage paths for this project's media so we can clean the bucket.
   const { data: mediaRows } = await supabase
     .from("media")
-    .select("storage_path")
+    .select("storage_path, poster_storage_path")
     .eq("project_id", id);
 
   const { error, count } = await supabase
@@ -328,8 +328,14 @@ export async function DELETE(
   if (count === 0) return Response.json({ error: "not found" }, { status: 404 });
 
   if (mediaRows && mediaRows.length > 0) {
-    const paths = mediaRows.map((r) => r.storage_path);
-    await supabase.storage.from(CREATIVES_BUCKET).remove(paths);
+    const paths = mediaRows.flatMap((r) =>
+      [r.storage_path, r.poster_storage_path].filter(
+        (path): path is string => typeof path === "string" && path.length > 0
+      )
+    );
+    if (paths.length > 0) {
+      await supabase.storage.from(CREATIVES_BUCKET).remove(paths);
+    }
   }
 
   return Response.json({ ok: true });
