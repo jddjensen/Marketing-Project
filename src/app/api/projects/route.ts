@@ -57,8 +57,18 @@ export async function POST(request: NextRequest) {
   if (name.length === 0 || name.length > 120) {
     return Response.json({ error: "name must be 1–120 chars" }, { status: 400 });
   }
-  const description =
+  const descriptionRaw =
     typeof body.description === "string" ? body.description.trim() || null : null;
+  // Mirrors the cap on PATCH /api/projects/[id] so calendar tiles, project
+  // grid cards, and OG metadata don't have to defend against unbounded text.
+  const DESCRIPTION_MAX = 4000;
+  if (descriptionRaw !== null && descriptionRaw.length > DESCRIPTION_MAX) {
+    return Response.json(
+      { error: `description must be ${DESCRIPTION_MAX} characters or fewer` },
+      { status: 400 }
+    );
+  }
+  const description = descriptionRaw;
 
   const validSet = new Set<string>(VALID_PLATFORMS);
   let platforms: ValidPlatform[];

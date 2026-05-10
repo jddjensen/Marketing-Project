@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { CHANNEL_KEYS } from "@/lib/channels";
+import { isUuid } from "@/lib/ids";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { formatCreativeUtmTag, PLATFORM_DEFAULTS, type PlatformKey } from "@/lib/utm";
 
@@ -32,7 +33,7 @@ const TRACKING_LINK_COLS =
 function parseScope(request: NextRequest): Scope | { error: string } {
   const platform = request.nextUrl.searchParams.get("platform");
   const projectId = request.nextUrl.searchParams.get("projectId");
-  if (!projectId) return { error: "projectId required" };
+  if (!projectId || !isUuid(projectId)) return { error: "projectId required" };
   if (!platform || !VALID_PLATFORMS.has(platform)) {
     return { error: "invalid platform" };
   }
@@ -126,7 +127,9 @@ export async function POST(request: NextRequest) {
   if (
     !body ||
     typeof body.creativeId !== "string" ||
-    typeof body.landingPageId !== "string"
+    typeof body.landingPageId !== "string" ||
+    !isUuid(body.creativeId) ||
+    !isUuid(body.landingPageId)
   ) {
     return Response.json({ error: "creativeId and landingPageId required" }, { status: 400 });
   }
@@ -222,7 +225,9 @@ export async function DELETE(request: NextRequest) {
   const scope = parseScope(request);
   if ("error" in scope) return Response.json({ error: scope.error }, { status: 400 });
   const creativeId = request.nextUrl.searchParams.get("creativeId");
-  if (!creativeId) return Response.json({ error: "creativeId required" }, { status: 400 });
+  if (!creativeId || !isUuid(creativeId)) {
+    return Response.json({ error: "creativeId required" }, { status: 400 });
+  }
 
   const supabase = await createSupabaseServerClient();
   const { error, count } = await supabase

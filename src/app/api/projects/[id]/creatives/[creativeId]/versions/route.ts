@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { isUuid } from "@/lib/ids";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { signedMediaUrls } from "@/lib/storage";
 
@@ -8,6 +9,9 @@ export async function GET(
   ctx: { params: Promise<{ id: string; creativeId: string }> }
 ) {
   const { id: projectId, creativeId } = await ctx.params;
+  if (!isUuid(projectId) || !isUuid(creativeId)) {
+    return Response.json({ error: "not found" }, { status: 404 });
+  }
   const supabase = await createSupabaseServerClient();
 
   const { data, error } = await supabase

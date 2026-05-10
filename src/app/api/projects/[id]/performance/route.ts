@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { CHANNEL_LABELS, CHANNEL_ORDER } from "@/lib/channels";
+import { isUuid } from "@/lib/ids";
 import {
   buildGoogleAnalyticsProjectSettings,
   getGoogleAnalyticsProjectPerformance,
@@ -75,6 +76,7 @@ export async function GET(
   ctx: { params: Promise<{ id: string }> }
 ) {
   const { id } = await ctx.params;
+  if (!isUuid(id)) return Response.json({ error: "not found" }, { status: 404 });
   const refresh = request.nextUrl.searchParams.get("refresh") === "1";
   const supabase = await createSupabaseServerClient();
 

@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { CHANNEL_KEYS } from "@/lib/channels";
+import { isUuid } from "@/lib/ids";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const VALID_PLATFORMS = new Set<string>(CHANNEL_KEYS);
@@ -9,6 +10,7 @@ export async function GET(
   ctx: { params: Promise<{ id: string }> }
 ) {
   const { id } = await ctx.params;
+  if (!isUuid(id)) return Response.json({ error: "not found" }, { status: 404 });
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("project_platforms")
@@ -29,6 +31,7 @@ export async function POST(
   ctx: { params: Promise<{ id: string }> }
 ) {
   const { id } = await ctx.params;
+  if (!isUuid(id)) return Response.json({ error: "not found" }, { status: 404 });
   const body = (await request.json().catch(() => null)) as { platform?: unknown } | null;
   if (!body || typeof body.platform !== "string" || !VALID_PLATFORMS.has(body.platform)) {
     return Response.json({ error: "invalid platform" }, { status: 400 });
@@ -51,6 +54,7 @@ export async function DELETE(
   ctx: { params: Promise<{ id: string }> }
 ) {
   const { id } = await ctx.params;
+  if (!isUuid(id)) return Response.json({ error: "not found" }, { status: 404 });
   const platform = request.nextUrl.searchParams.get("platform");
   if (!platform || !VALID_PLATFORMS.has(platform)) {
     return Response.json({ error: "invalid platform" }, { status: 400 });

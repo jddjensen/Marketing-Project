@@ -428,6 +428,16 @@ export const CHANNEL_BY_KEY = Object.fromEntries(
   CHANNELS.map((channel) => [channel.key, channel])
 ) as Record<PlatformKey, ChannelMeta>;
 
+// True iff `ratio` is a configured slot key for `platform`. Signage isn't
+// covered here because its ratios are derived from the project's signage
+// format dimensions at runtime — callers validate signage ratios separately
+// (see expectedSignageRatio in @/lib/signage).
+export function isPlatformSlotKey(platform: PlatformKey, ratio: string): boolean {
+  const channel = CHANNEL_BY_KEY[platform];
+  if (!channel) return false;
+  return (channel.slots ?? []).some((slot) => slot.key === ratio);
+}
+
 export const PHYSICAL_CHANNEL_KEYS = ["signage", "flyers"] as const satisfies readonly PlatformKey[];
 const PHYSICAL_CHANNEL_SET = new Set<PlatformKey>(PHYSICAL_CHANNEL_KEYS);
 export const NON_PHYSICAL_CHANNEL_KEYS = CHANNELS.filter(

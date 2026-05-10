@@ -1,10 +1,13 @@
 import { NextRequest } from "next/server";
-import { CHANNEL_KEYS } from "@/lib/channels";
+import { CHANNEL_KEYS, isPlatformSlotKey } from "@/lib/channels";
+import { isUuid } from "@/lib/ids";
 import type { PlatformKey } from "@/lib/utm";
 import { platformSupportsTextOnly, validateCopy } from "@/lib/platformCopy";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const VALID_PLATFORMS = new Set<string>(CHANNEL_KEYS);
+// Loose shape gate; the per-platform slot check below catches "valid-looking
+// but unconfigured" ratios.
 const SLOT_PATTERN = /^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$/;
 
 // Create a text-only creative: copy with no associated file. Used for Email,
@@ -14,6 +17,7 @@ export async function POST(
   ctx: { params: Promise<{ id: string }> }
 ) {
   const { id: projectId } = await ctx.params;
+  if (!isUuid(projectId)) return Response.json({ error: "not found" }, { status: 404 });
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -41,6 +45,14 @@ export async function POST(
   }
   if (typeof ratio !== "string" || !SLOT_PATTERN.test(ratio)) {
     return Response.json({ error: "invalid slot key" }, { status: 400 });
+  }
+  // Text creatives are only created for non-signage channels (text-only flag),
+  // so a configured-slot check is enough — no signage branch needed here.
+  if (!isPlatformSlotKey(platform as PlatformKey, ratio)) {
+    return Response.json(
+      { error: `ratio '${ratio}' is not a valid slot for platform '${platform}'` },
+      { status: 400 }
+    );
   }
 
   const copyResult = validateCopy(platform as PlatformKey, copy);
@@ -71,6 +83,9 @@ export async function POST(
   let versionNum = 1;
   let archivedIds: string[] = [];
   if (typeof replaceCreativeId === "string" && replaceCreativeId.length > 0) {
+    if (!isUuid(replaceCreativeId)) {
+      return Response.json({ error: "invalid replaceCreativeId" }, { status: 400 });
+    }
     const { data: existing, error: existingError } = await supabase
       .from("media")
       .select("id, version_num, is_current, storage_path, poster_storage_path")

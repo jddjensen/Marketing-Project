@@ -5,6 +5,7 @@ import {
   getUserGoogleAnalyticsAccessToken,
   isGoogleAnalyticsError,
 } from "@/lib/googleAnalytics";
+import { isUuid } from "@/lib/ids";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export async function GET(
@@ -12,6 +13,9 @@ export async function GET(
   ctx: { params: Promise<{ id: string; linkId: string }> }
 ) {
   const { id, linkId } = await ctx.params;
+  if (!isUuid(id) || !isUuid(linkId)) {
+    return Response.json({ error: "not found" }, { status: 404 });
+  }
   const refresh = request.nextUrl.searchParams.get("refresh") === "1";
   const supabase = await createSupabaseServerClient();
 
@@ -26,8 +30,12 @@ export async function GET(
       supabase.from("projects").select("ga4_property_id").eq("id", id).maybeSingle(),
     ]);
 
-  if (linkError) return Response.json({ error: linkError.message }, { status: 500 });
-  if (projectError) return Response.json({ error: projectError.message }, { status: 500 });
+  // Don't echo Supabase/Postgres error text — it leaks column types and
+  // table-level details.
+  if (linkError) return Response.json({ error: "failed to load tracking link" }, { status: 500 });
+  if (projectError) {
+    return Response.json({ error: "failed to load project settings" }, { status: 500 });
+  }
   if (!link) return Response.json({ error: "not found" }, { status: 404 });
 
   const {

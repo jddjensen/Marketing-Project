@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { isUuid } from "@/lib/ids";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 // Restore an archived version: atomically set is_current=true on the chosen
@@ -11,6 +12,9 @@ export async function POST(
   ctx: { params: Promise<{ id: string; creativeId: string }> }
 ) {
   const { id: projectId, creativeId } = await ctx.params;
+  if (!isUuid(projectId) || !isUuid(creativeId)) {
+    return Response.json({ error: "not found" }, { status: 404 });
+  }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -20,6 +24,9 @@ export async function POST(
   const body = (await request.json().catch(() => null)) as { versionId?: unknown } | null;
   if (!body || typeof body.versionId !== "string" || body.versionId.length === 0) {
     return Response.json({ error: "versionId required" }, { status: 400 });
+  }
+  if (!isUuid(body.versionId)) {
+    return Response.json({ error: "invalid versionId" }, { status: 400 });
   }
 
   const { data, error } = await supabase.rpc("restore_creative_version", {

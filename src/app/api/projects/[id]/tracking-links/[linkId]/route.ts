@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { CHANNEL_KEYS } from "@/lib/channels";
+import { isUuid } from "@/lib/ids";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const VALID_PLATFORMS = CHANNEL_KEYS;
@@ -52,6 +53,9 @@ function normalizeOptionalString(v: unknown): string | null | undefined {
   return t.length === 0 ? null : t;
 }
 
+// Mirrors the DB constraint on `label` (1–120 chars when not null).
+const LABEL_MAX_LEN = 120;
+
 function normalizeTrackingUrl(v: string): string | { error: string } {
   const url = v.trim();
   if (url.length === 0 || url.length > 2048) {
@@ -73,6 +77,9 @@ export async function PATCH(
   ctx: { params: Promise<{ id: string; linkId: string }> }
 ) {
   const { id, linkId } = await ctx.params;
+  if (!isUuid(id) || !isUuid(linkId)) {
+    return Response.json({ error: "not found" }, { status: 404 });
+  }
   const body = (await request.json().catch(() => null)) as {
     url?: unknown;
     label?: unknown;
@@ -97,7 +104,15 @@ export async function PATCH(
   }
 
   const label = normalizeOptionalString(body.label);
-  if (label !== undefined) patch.label = label;
+  if (label !== undefined) {
+    if (label !== null && label.length > LABEL_MAX_LEN) {
+      return Response.json(
+        { error: `label must be ${LABEL_MAX_LEN} characters or fewer` },
+        { status: 400 }
+      );
+    }
+    patch.label = label;
+  }
 
   if (body.platform === null || body.platform === "") {
     patch.platform = null;
@@ -149,6 +164,9 @@ export async function DELETE(
   ctx: { params: Promise<{ id: string; linkId: string }> }
 ) {
   const { id, linkId } = await ctx.params;
+  if (!isUuid(id) || !isUuid(linkId)) {
+    return Response.json({ error: "not found" }, { status: 404 });
+  }
   const supabase = await createSupabaseServerClient();
   const { error, count } = await supabase
     .from("project_tracking_links")

@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { isUuid } from "@/lib/ids";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export async function GET(
@@ -6,6 +7,9 @@ export async function GET(
   ctx: { params: Promise<{ id: string; linkId: string }> }
 ) {
   const { id, linkId } = await ctx.params;
+  if (!isUuid(id) || !isUuid(linkId)) {
+    return Response.json({ error: "not found" }, { status: 404 });
+  }
   const supabase = await createSupabaseServerClient();
 
   // Confirm the link belongs to this project (cheap guard).

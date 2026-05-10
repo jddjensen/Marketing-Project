@@ -78,6 +78,15 @@ export async function POST(request: NextRequest) {
   if (!Number.isFinite(width) || width <= 0 || !Number.isFinite(height) || height <= 0) {
     return Response.json({ error: "width and height must be positive numbers" }, { status: 400 });
   }
+  // DB column is numeric(12,3); cap below the precision ceiling so the insert
+  // doesn't bubble up as a 500 when someone fat-fingers a dimension.
+  const MAX_DIMENSION = 1_000_000;
+  if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
+    return Response.json(
+      { error: `width and height must be ${MAX_DIMENSION.toLocaleString()} or less` },
+      { status: 400 }
+    );
+  }
   if (!VALID_UNITS.has(unit)) {
     return Response.json({ error: "invalid unit" }, { status: 400 });
   }

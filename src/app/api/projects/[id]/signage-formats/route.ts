@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { isUuid } from "@/lib/ids";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { signedMediaUrls } from "@/lib/storage";
 
@@ -31,6 +32,7 @@ export async function GET(
   ctx: { params: Promise<{ id: string }> }
 ) {
   const { id } = await ctx.params;
+  if (!isUuid(id)) return Response.json({ error: "not found" }, { status: 404 });
   const supabase = await createSupabaseServerClient();
 
   const { data: formats, error: fErr } = await supabase
@@ -94,6 +96,7 @@ export async function POST(
   ctx: { params: Promise<{ id: string }> }
 ) {
   const { id } = await ctx.params;
+  if (!isUuid(id)) return Response.json({ error: "not found" }, { status: 404 });
   const body = (await request.json().catch(() => null)) as {
     label?: unknown;
     presetKey?: unknown;
@@ -115,6 +118,15 @@ export async function POST(
   }
   if (!Number.isFinite(width) || width <= 0 || !Number.isFinite(height) || height <= 0) {
     return Response.json({ error: "width and height must be positive numbers" }, { status: 400 });
+  }
+  // DB column is numeric(12,3), so values >= 10^9 overflow precision and the
+  // insert errors out as a 500. Cap well below to leave headroom.
+  const MAX_DIMENSION = 1_000_000;
+  if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
+    return Response.json(
+      { error: `width and height must be ${MAX_DIMENSION.toLocaleString()} or less` },
+      { status: 400 }
+    );
   }
   if (!VALID_UNITS.has(unit)) {
     return Response.json({ error: "invalid unit" }, { status: 400 });

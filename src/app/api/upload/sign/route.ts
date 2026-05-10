@@ -1,10 +1,15 @@
 import { NextRequest } from "next/server";
-import { CHANNEL_KEYS } from "@/lib/channels";
+import { CHANNEL_KEYS, isPlatformSlotKey } from "@/lib/channels";
+import { isUuid } from "@/lib/ids";
+import type { PlatformKey } from "@/lib/utm";
+import { expectedSignageRatio } from "@/lib/signage";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { CREATIVES_BUCKET } from "@/lib/storage";
 import crypto from "crypto";
 
 const VALID_PLATFORMS = new Set<string>(CHANNEL_KEYS);
+// Loose shape gate; the per-platform slot check below catches "valid-looking
+// but unconfigured" ratios.
 const SLOT_PATTERN = /^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$/;
 const MAX_VIDEO_BYTES = 2 * 1024 * 1024 * 1024; // 2 GB
 const MAX_POSTER_BYTES = 5 * 1024 * 1024; // 5 MB
@@ -41,7 +46,7 @@ export async function POST(
 
   const { projectId, platform, ratio, kind, mimeType, fileSize, fileName, signageFormatId } = body;
 
-  if (typeof projectId !== "string" || projectId.length === 0) {
+  if (typeof projectId !== "string" || !isUuid(projectId)) {
     return Response.json({ error: "projectId required" }, { status: 400 });
   }
   if (typeof platform !== "string" || !VALID_PLATFORMS.has(platform)) {
@@ -49,6 +54,12 @@ export async function POST(
   }
   if (typeof ratio !== "string" || !SLOT_PATTERN.test(ratio)) {
     return Response.json({ error: "invalid slot key" }, { status: 400 });
+  }
+  if (platform !== "signage" && !isPlatformSlotKey(platform as PlatformKey, ratio)) {
+    return Response.json(
+      { error: `ratio '${ratio}' is not a valid slot for platform '${platform}'` },
+      { status: 400 }
+    );
   }
   if (kind !== "video" && kind !== "poster") {
     return Response.json({ error: "kind must be 'video' or 'poster'" }, { status: 400 });
@@ -103,17 +114,27 @@ export async function POST(
   // Signage validation.
   let formatId: string | null = null;
   if (platform === "signage") {
-    if (typeof signageFormatId !== "string" || signageFormatId.length === 0) {
+    if (typeof signageFormatId !== "string" || !isUuid(signageFormatId)) {
       return Response.json({ error: "signageFormatId required for signage" }, { status: 400 });
     }
     const { data: format, error: formatError } = await supabase
       .from("signage_formats")
-      .select("id")
+      .select("id, width, height")
       .eq("id", signageFormatId)
       .eq("project_id", projectId)
       .maybeSingle();
     if (formatError || !format) {
       return Response.json({ error: "signage format not found for project" }, { status: 404 });
+    }
+    const expected = expectedSignageRatio({
+      width: Number(format.width),
+      height: Number(format.height),
+    });
+    if (ratio !== expected) {
+      return Response.json(
+        { error: `ratio '${ratio}' does not match signage format dimensions (expected '${expected}')` },
+        { status: 400 }
+      );
     }
     formatId = signageFormatId;
   } else if (typeof signageFormatId === "string" && signageFormatId.length > 0) {

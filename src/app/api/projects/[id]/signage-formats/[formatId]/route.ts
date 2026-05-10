@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { isUuid } from "@/lib/ids";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { CREATIVES_BUCKET } from "@/lib/storage";
 
@@ -7,6 +8,9 @@ export async function DELETE(
   ctx: { params: Promise<{ id: string; formatId: string }> }
 ) {
   const { id, formatId } = await ctx.params;
+  if (!isUuid(id) || !isUuid(formatId)) {
+    return Response.json({ error: "not found" }, { status: 404 });
+  }
   const supabase = await createSupabaseServerClient();
 
   // Collect storage paths for media under this format so we can clean the bucket.

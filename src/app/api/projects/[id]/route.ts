@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { serializeCampaignBrief } from "@/lib/campaignBrief";
+import { isUuid } from "@/lib/ids";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { CREATIVES_BUCKET } from "@/lib/storage";
 
@@ -111,6 +112,7 @@ export async function GET(
   ctx: { params: Promise<{ id: string }> }
 ) {
   const { id } = await ctx.params;
+  if (!isUuid(id)) return Response.json({ error: "not found" }, { status: 404 });
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("projects")
@@ -128,6 +130,7 @@ export async function PATCH(
   ctx: { params: Promise<{ id: string }> }
 ) {
   const { id } = await ctx.params;
+  if (!isUuid(id)) return Response.json({ error: "not found" }, { status: 404 });
   const body = (await request.json().catch(() => null)) as {
     name?: unknown;
     description?: unknown;
@@ -160,7 +163,14 @@ export async function PATCH(
     patch.name = name;
   }
   if (typeof body.description === "string") {
-    patch.description = body.description.trim() || null;
+    const trimmed = body.description.trim();
+    if (trimmed.length > 4000) {
+      return Response.json(
+        { error: "description must be 4000 characters or fewer" },
+        { status: 400 }
+      );
+    }
+    patch.description = trimmed || null;
   }
   if (typeof body.archive === "boolean") {
     patch.archived_at = body.archive ? new Date().toISOString() : null;
@@ -311,6 +321,7 @@ export async function DELETE(
   ctx: { params: Promise<{ id: string }> }
 ) {
   const { id } = await ctx.params;
+  if (!isUuid(id)) return Response.json({ error: "not found" }, { status: 404 });
   const supabase = await createSupabaseServerClient();
 
   // Collect storage paths for this project's media so we can clean the bucket.

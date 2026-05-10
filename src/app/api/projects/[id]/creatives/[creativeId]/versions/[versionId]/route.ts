@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { isUuid } from "@/lib/ids";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { PlatformKey } from "@/lib/utm";
 import { validateCopy } from "@/lib/platformCopy";
@@ -10,6 +11,9 @@ export async function PATCH(
   ctx: { params: Promise<{ id: string; creativeId: string; versionId: string }> }
 ) {
   const { id: projectId, creativeId, versionId } = await ctx.params;
+  if (!isUuid(projectId) || !isUuid(creativeId) || !isUuid(versionId)) {
+    return Response.json({ error: "not found" }, { status: 404 });
+  }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -60,6 +64,9 @@ export async function DELETE(
   ctx: { params: Promise<{ id: string; creativeId: string; versionId: string }> }
 ) {
   const { id: projectId, creativeId, versionId } = await ctx.params;
+  if (!isUuid(projectId) || !isUuid(creativeId) || !isUuid(versionId)) {
+    return Response.json({ error: "not found" }, { status: 404 });
+  }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },

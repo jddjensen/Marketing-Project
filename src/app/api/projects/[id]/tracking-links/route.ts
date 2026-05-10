@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { CHANNEL_KEYS } from "@/lib/channels";
 import { buildGoogleAnalyticsProjectSettings } from "@/lib/googleAnalytics";
+import { isUuid } from "@/lib/ids";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const VALID_PLATFORMS = CHANNEL_KEYS;
@@ -50,6 +51,7 @@ export async function GET(
   ctx: { params: Promise<{ id: string }> }
 ) {
   const { id } = await ctx.params;
+  if (!isUuid(id)) return Response.json({ error: "not found" }, { status: 404 });
   const supabase = await createSupabaseServerClient();
   const [{ data, error }, { data: project, error: projectError }] = await Promise.all([
     supabase
@@ -86,11 +88,16 @@ function normalizeOptionalString(v: unknown): string | null | undefined {
   return t.length === 0 ? null : t;
 }
 
+// The DB column is `text check (label between 1 and 120)`. Without a pre-check
+// the constraint violation surfaces as a 500.
+const LABEL_MAX_LEN = 120;
+
 export async function POST(
   request: NextRequest,
   ctx: { params: Promise<{ id: string }> }
 ) {
   const { id } = await ctx.params;
+  if (!isUuid(id)) return Response.json({ error: "not found" }, { status: 404 });
   const body = (await request.json().catch(() => null)) as {
     url?: unknown;
     label?: unknown;
@@ -126,6 +133,14 @@ export async function POST(
     platform = body.platform as ValidPlatform;
   }
 
+  const label = normalizeOptionalString(body.label) ?? null;
+  if (label !== null && label.length > LABEL_MAX_LEN) {
+    return Response.json(
+      { error: `label must be ${LABEL_MAX_LEN} characters or fewer` },
+      { status: 400 }
+    );
+  }
+
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -134,7 +149,7 @@ export async function POST(
   const insert: Record<string, unknown> = {
     project_id: id,
     url,
-    label: normalizeOptionalString(body.label) ?? null,
+    label,
     platform,
     utm_source: normalizeOptionalString(body.utmSource) ?? null,
     utm_medium: normalizeOptionalString(body.utmMedium) ?? null,
