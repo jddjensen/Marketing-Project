@@ -1,11 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 
 type Mode = "login" | "register";
+
+// Demo bypass: when pointed at local Supabase, auto-sign-in with the seeded
+// admin account so an investor demo can skip the login screen entirely.
+const DEMO_BYPASS_EMAIL = "admin@example.com";
+const DEMO_BYPASS_PASSWORD = "password123";
+function isLocalSupabase(): boolean {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+  return /^https?:\/\/(127\.0\.0\.1|localhost)(:|\/|$)/.test(url);
+}
 
 export function AuthForm({ mode }: { mode: Mode }) {
   const router = useRouter();
@@ -20,6 +29,29 @@ export function AuthForm({ mode }: { mode: Mode }) {
   const title = isRegister ? "Create your account" : "Sign in";
   const cta = isRegister ? "Create account" : "Sign in";
   const incomingError = searchParams.get("error");
+  const demoBypass = !isRegister && isLocalSupabase() && searchParams.get("bypass") !== "0";
+  const bypassFiredRef = useRef(false);
+
+  useEffect(() => {
+    if (!demoBypass || bypassFiredRef.current) return;
+    bypassFiredRef.current = true;
+    (async () => {
+      setSubmitting(true);
+      const supabase = createSupabaseBrowserClient();
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: DEMO_BYPASS_EMAIL,
+        password: DEMO_BYPASS_PASSWORD,
+      });
+      if (signInError) {
+        setError(`demo auto-login failed: ${signInError.message}`);
+        setSubmitting(false);
+        return;
+      }
+      const next = searchParams.get("next") ?? "/";
+      router.replace(next);
+      router.refresh();
+    })();
+  }, [demoBypass, router, searchParams]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -60,6 +92,15 @@ export function AuthForm({ mode }: { mode: Mode }) {
   // Once they've signed up, swap the form for a clean confirmation panel.
   if (confirmEmailSent) {
     return <ConfirmEmailSent email={confirmEmailSent} />;
+  }
+
+  // Demo bypass: hide the form entirely while the auto-login is running.
+  if (demoBypass && !error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 px-6">
+        <div className="text-sm text-zinc-500">Signing you in…</div>
+      </div>
+    );
   }
 
   return (
