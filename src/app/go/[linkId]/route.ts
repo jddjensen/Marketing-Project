@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { isUuid } from "@/lib/ids";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { buildUtmUrl, type PlatformKey } from "@/lib/utm";
 
@@ -19,6 +20,9 @@ export async function GET(
   ctx: { params: Promise<{ linkId: string }> }
 ) {
   const { linkId } = await ctx.params;
+  if (!isUuid(linkId)) {
+    return new Response("Not found", { status: 404 });
+  }
   const supabase = await createSupabaseServerClient();
 
   const { data } = await supabase

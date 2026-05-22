@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { isUuid } from "@/lib/ids";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { CREATIVES_BUCKET } from "@/lib/storage";
 
@@ -26,7 +27,7 @@ export async function POST(request: NextRequest) {
   if (!body) return Response.json({ error: "body required" }, { status: 400 });
 
   const { projectId, paths } = body;
-  if (typeof projectId !== "string" || projectId.length === 0) {
+  if (typeof projectId !== "string" || !isUuid(projectId)) {
     return Response.json({ error: "projectId required" }, { status: 400 });
   }
   if (!Array.isArray(paths) || paths.length === 0) {
@@ -39,6 +40,9 @@ export async function POST(request: NextRequest) {
   const safe: string[] = [];
   for (const p of paths) {
     if (typeof p !== "string" || p.length === 0) continue;
+    // Reject any traversal/absolute components — Supabase Storage doesn't
+    // resolve ".." but defense in depth costs nothing.
+    if (p.includes("..") || p.startsWith("/")) continue;
     if (!p.startsWith(`${projectId}/`)) continue;
     safe.push(p);
   }

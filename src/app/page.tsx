@@ -28,6 +28,15 @@ export default function Home() {
       </header>
       <ProjectsGrid />
       <CommunicationPlatforms />
+      <footer className="max-w-7xl mx-auto px-6 py-6 border-t border-zinc-200 dark:border-zinc-800 text-xs text-zinc-500 flex justify-end">
+        <Link
+          href="/privacy"
+          transitionTypes={["nav-forward"]}
+          className="hover:text-zinc-700 dark:hover:text-zinc-300"
+        >
+          Privacy
+        </Link>
+      </footer>
     </div>
   );
 }

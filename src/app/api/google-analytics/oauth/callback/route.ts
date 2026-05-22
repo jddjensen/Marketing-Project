@@ -4,6 +4,7 @@ import {
   exchangeGoogleAnalyticsOAuthCode,
   isGoogleAnalyticsError,
 } from "@/lib/googleAnalytics";
+import { isUuid } from "@/lib/ids";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const STATE_COOKIE = "ga_oauth_state";
@@ -24,7 +25,11 @@ function decodeStateCookie(value: string | undefined) {
 }
 
 function redirectPath(projectId: string | null, status: "connected" | "error", reason?: string) {
-  const path = projectId ? `/projects/${projectId}` : "/";
+  // Only build a /projects/<id> path when the id is a real UUID — the cookie
+  // is httpOnly, but defense in depth keeps tampered values from being
+  // interpolated into a redirect target.
+  const safeProjectId = projectId && isUuid(projectId) ? projectId : null;
+  const path = safeProjectId ? `/projects/${safeProjectId}` : "/";
   const params = new URLSearchParams({ ga: status });
   if (reason) params.set("reason", reason);
   return `${path}?${params.toString()}`;
@@ -53,7 +58,10 @@ export async function GET(request: NextRequest) {
 
   const providerError = request.nextUrl.searchParams.get("error");
   if (providerError) {
-    return redirectWithClearedCookie(request, redirectPath(projectId, "error", providerError));
+    // Constrain to the standard OAuth2 error tokens so the reason in the
+    // resulting URL can't be arbitrarily reflected by a malicious flow.
+    const safe = /^[a-zA-Z0-9_-]{1,64}$/.test(providerError) ? providerError : "provider";
+    return redirectWithClearedCookie(request, redirectPath(projectId, "error", safe));
   }
 
   const code = request.nextUrl.searchParams.get("code");

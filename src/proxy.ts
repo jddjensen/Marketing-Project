@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 
-const PUBLIC_PATHS = new Set(["/login", "/register", "/auth/callback"]);
+const PUBLIC_PATHS = new Set(["/login", "/register", "/auth/callback", "/privacy"]);
 const PUBLIC_PREFIXES = ["/test-assets"];
 
 export async function proxy(request: NextRequest) {
