@@ -1,0 +1,16 @@
+node_modules
+.next
+out
+build
+dist
+coverage
+playwright-report
+test-results
+.vercel
+*.lock
+package-lock.json
+public
+supabase/.branches
+supabase/.temp
+next-env.d.ts
+tsconfig.tsbuildinfo
