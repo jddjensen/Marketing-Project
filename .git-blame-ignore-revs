@@ -1,0 +1,6 @@
+# Revisions to skip in `git blame` output.
+# Enable locally with:
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# chore: format codebase with Prettier
+02e4f77
