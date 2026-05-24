@@ -23,12 +23,17 @@ function serialize(p: ProjectRow) {
     createdAt: new Date(p.created_at).getTime(),
     updatedAt: new Date(p.updated_at).getTime(),
     archivedAt: p.archived_at ? new Date(p.archived_at).getTime() : null,
-    trackingLinksLocation: (p.tracking_links_location as "project_tab" | "platform_panel" | "both") ?? "both",
+    trackingLinksLocation:
+      (p.tracking_links_location as
+        | "project_tab"
+        | "platform_panel"
+        | "both") ?? "both",
   };
 }
 
 export async function GET(request: NextRequest) {
-  const includeArchived = request.nextUrl.searchParams.get("includeArchived") === "1";
+  const includeArchived =
+    request.nextUrl.searchParams.get("includeArchived") === "1";
   const supabase = await createSupabaseServerClient();
   let query = supabase
     .from("projects")
@@ -36,7 +41,8 @@ export async function GET(request: NextRequest) {
     .order("updated_at", { ascending: false });
   if (!includeArchived) query = query.is("archived_at", null);
   const { data, error } = await query;
-  if (error) return Response.json({ error: "failed to load projects" }, { status: 500 });
+  if (error)
+    return Response.json({ error: "failed to load projects" }, { status: 500 });
   return Response.json({ projects: (data ?? []).map(serialize) });
 }
 
@@ -55,10 +61,15 @@ export async function POST(request: NextRequest) {
   }
   const name = body.name.trim();
   if (name.length === 0 || name.length > 120) {
-    return Response.json({ error: "name must be 1–120 chars" }, { status: 400 });
+    return Response.json(
+      { error: "name must be 1–120 chars" },
+      { status: 400 }
+    );
   }
   const descriptionRaw =
-    typeof body.description === "string" ? body.description.trim() || null : null;
+    typeof body.description === "string"
+      ? body.description.trim() || null
+      : null;
   // Mirrors the cap on PATCH /api/projects/[id] so calendar tiles, project
   // grid cards, and OG metadata don't have to defend against unbounded text.
   const DESCRIPTION_MAX = 4000;

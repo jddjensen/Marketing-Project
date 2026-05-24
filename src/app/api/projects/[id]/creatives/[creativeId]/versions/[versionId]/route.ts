@@ -8,7 +8,9 @@ import { CREATIVES_BUCKET } from "@/lib/storage";
 // Edit copy on a single version without re-uploading the file.
 export async function PATCH(
   request: NextRequest,
-  ctx: { params: Promise<{ id: string; creativeId: string; versionId: string }> }
+  ctx: {
+    params: Promise<{ id: string; creativeId: string; versionId: string }>;
+  }
 ) {
   const { id: projectId, creativeId, versionId } = await ctx.params;
   if (!isUuid(projectId) || !isUuid(creativeId) || !isUuid(versionId)) {
@@ -20,7 +22,9 @@ export async function PATCH(
   } = await supabase.auth.getUser();
   if (!user) return Response.json({ error: "unauthorized" }, { status: 401 });
 
-  const body = (await request.json().catch(() => null)) as { copy?: unknown } | null;
+  const body = (await request.json().catch(() => null)) as {
+    copy?: unknown;
+  } | null;
   if (!body) return Response.json({ error: "body required" }, { status: 400 });
 
   // Find the row + verify it belongs to this project + creative.
@@ -34,7 +38,8 @@ export async function PATCH(
   if (rowError) {
     return Response.json({ error: "lookup failed" }, { status: 500 });
   }
-  if (!row) return Response.json({ error: "version not found" }, { status: 404 });
+  if (!row)
+    return Response.json({ error: "version not found" }, { status: 404 });
 
   const result = validateCopy(row.platform as PlatformKey, body.copy);
   if (!result.ok) {
@@ -61,7 +66,9 @@ export async function PATCH(
 // remove the current version, replace it instead).
 export async function DELETE(
   _request: NextRequest,
-  ctx: { params: Promise<{ id: string; creativeId: string; versionId: string }> }
+  ctx: {
+    params: Promise<{ id: string; creativeId: string; versionId: string }>;
+  }
 ) {
   const { id: projectId, creativeId, versionId } = await ctx.params;
   if (!isUuid(projectId) || !isUuid(creativeId) || !isUuid(versionId)) {
@@ -80,11 +87,16 @@ export async function DELETE(
     .eq("project_id", projectId)
     .eq("creative_id", creativeId)
     .maybeSingle();
-  if (rowError) return Response.json({ error: "lookup failed" }, { status: 500 });
-  if (!row) return Response.json({ error: "version not found" }, { status: 404 });
+  if (rowError)
+    return Response.json({ error: "lookup failed" }, { status: 500 });
+  if (!row)
+    return Response.json({ error: "version not found" }, { status: 404 });
   if (row.is_current) {
     return Response.json(
-      { error: "cannot delete the current version — replace it or restore another version first" },
+      {
+        error:
+          "cannot delete the current version — replace it or restore another version first",
+      },
       { status: 400 }
     );
   }
@@ -97,7 +109,8 @@ export async function DELETE(
     .from("media")
     .delete()
     .eq("id", versionId);
-  if (deleteError) return Response.json({ error: "delete failed" }, { status: 500 });
+  if (deleteError)
+    return Response.json({ error: "delete failed" }, { status: 500 });
 
   if (paths.length > 0) {
     await supabase.storage.from(CREATIVES_BUCKET).remove(paths);

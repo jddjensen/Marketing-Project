@@ -32,7 +32,8 @@ export async function GET(
   ctx: { params: Promise<{ id: string }> }
 ) {
   const { id } = await ctx.params;
-  if (!isUuid(id)) return Response.json({ error: "not found" }, { status: 404 });
+  if (!isUuid(id))
+    return Response.json({ error: "not found" }, { status: 404 });
   const supabase = await createSupabaseServerClient();
 
   const { data: formats, error: fErr } = await supabase
@@ -40,7 +41,11 @@ export async function GET(
     .select("id, label, preset_key, width, height, unit, created_at")
     .eq("project_id", id)
     .order("created_at", { ascending: true });
-  if (fErr) return Response.json({ error: "failed to load signage formats" }, { status: 500 });
+  if (fErr)
+    return Response.json(
+      { error: "failed to load signage formats" },
+      { status: 500 }
+    );
 
   const { data: media, error: mErr } = await supabase
     .from("media")
@@ -51,7 +56,8 @@ export async function GET(
     .eq("platform", "signage")
     .eq("is_current", true)
     .order("uploaded_at", { ascending: false });
-  if (mErr) return Response.json({ error: "failed to load media" }, { status: 500 });
+  if (mErr)
+    return Response.json({ error: "failed to load media" }, { status: 500 });
 
   const mediaRows = (media ?? []).filter((row) => row.signage_format_id);
   const allPaths: string[] = [];
@@ -63,10 +69,12 @@ export async function GET(
 
   const mediaByFormat: Record<string, Array<Record<string, unknown>>> = {};
   for (const row of mediaRows) {
-    const url = row.storage_path ? urlMap.get(row.storage_path) ?? null : null;
+    const url = row.storage_path
+      ? (urlMap.get(row.storage_path) ?? null)
+      : null;
     if (row.kind !== "text" && !url) continue;
     const posterUrl = row.poster_storage_path
-      ? urlMap.get(row.poster_storage_path) ?? null
+      ? (urlMap.get(row.poster_storage_path) ?? null)
       : null;
     const formatKey = row.signage_format_id as string;
     const bucket = mediaByFormat[formatKey] ?? (mediaByFormat[formatKey] = []);
@@ -96,7 +104,8 @@ export async function POST(
   ctx: { params: Promise<{ id: string }> }
 ) {
   const { id } = await ctx.params;
-  if (!isUuid(id)) return Response.json({ error: "not found" }, { status: 404 });
+  if (!isUuid(id))
+    return Response.json({ error: "not found" }, { status: 404 });
   const body = (await request.json().catch(() => null)) as {
     label?: unknown;
     presetKey?: unknown;
@@ -108,23 +117,41 @@ export async function POST(
   if (!body) return Response.json({ error: "body required" }, { status: 400 });
 
   const label = typeof body.label === "string" ? body.label.trim() : "";
-  const width = typeof body.width === "number" ? body.width : Number(body.width);
-  const height = typeof body.height === "number" ? body.height : Number(body.height);
+  const width =
+    typeof body.width === "number" ? body.width : Number(body.width);
+  const height =
+    typeof body.height === "number" ? body.height : Number(body.height);
   const unit = typeof body.unit === "string" ? body.unit : "";
-  const presetKey = typeof body.presetKey === "string" && body.presetKey.length > 0 ? body.presetKey : null;
+  const presetKey =
+    typeof body.presetKey === "string" && body.presetKey.length > 0
+      ? body.presetKey
+      : null;
 
   if (label.length === 0 || label.length > 120) {
-    return Response.json({ error: "label is required (1-120 chars)" }, { status: 400 });
+    return Response.json(
+      { error: "label is required (1-120 chars)" },
+      { status: 400 }
+    );
   }
-  if (!Number.isFinite(width) || width <= 0 || !Number.isFinite(height) || height <= 0) {
-    return Response.json({ error: "width and height must be positive numbers" }, { status: 400 });
+  if (
+    !Number.isFinite(width) ||
+    width <= 0 ||
+    !Number.isFinite(height) ||
+    height <= 0
+  ) {
+    return Response.json(
+      { error: "width and height must be positive numbers" },
+      { status: 400 }
+    );
   }
   // DB column is numeric(12,3), so values >= 10^9 overflow precision and the
   // insert errors out as a 500. Cap well below to leave headroom.
   const MAX_DIMENSION = 1_000_000;
   if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
     return Response.json(
-      { error: `width and height must be ${MAX_DIMENSION.toLocaleString()} or less` },
+      {
+        error: `width and height must be ${MAX_DIMENSION.toLocaleString()} or less`,
+      },
       { status: 400 }
     );
   }

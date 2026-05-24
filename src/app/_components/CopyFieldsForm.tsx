@@ -83,7 +83,7 @@ function CopyFieldInput({
       {field.type === "textarea" ? (
         <textarea
           rows={textareaRows}
-          className="input-tactile mt-1 w-full leading-relaxed resize-y"
+          className="input-tactile mt-1 w-full resize-y leading-relaxed"
           value={v}
           maxLength={field.maxLength}
           onChange={(e) => onChange(e.target.value)}
@@ -98,25 +98,34 @@ function CopyFieldInput({
         />
       )}
       {field.hint && (
-        <div className="text-[10px] text-zinc-500 mt-1 leading-snug">{field.hint}</div>
+        <div className="mt-1 text-[10px] leading-snug text-zinc-500">
+          {field.hint}
+        </div>
       )}
     </label>
   );
 }
 
-function FieldHeader({ field, length }: { field: CopyField; length: number | null }) {
+function FieldHeader({
+  field,
+  length,
+}: {
+  field: CopyField;
+  length: number | null;
+}) {
   return (
-    <div className="flex items-center justify-between text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+    <div className="flex items-center justify-between text-[11px] font-medium tracking-wide text-zinc-500 uppercase">
       <span>
         {field.label}
-        {field.required && <span className="text-red-500 ml-0.5">*</span>}
+        {field.required && <span className="ml-0.5 text-red-500">*</span>}
       </span>
       {length != null && field.maxLength != null && (
         <span
           className={`tabular-nums ${
             length > field.maxLength
               ? "text-red-500"
-              : field.recommendedLength != null && length > field.recommendedLength
+              : field.recommendedLength != null &&
+                  length > field.recommendedLength
                 ? "text-amber-500"
                 : "text-zinc-400"
           }`}
@@ -141,12 +150,12 @@ function ListField({
   const min = field.minItems ?? 0;
   return (
     <div>
-      <div className="flex items-center justify-between text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+      <div className="flex items-center justify-between text-[11px] font-medium tracking-wide text-zinc-500 uppercase">
         <span>
           {field.label}
-          {field.required && <span className="text-red-500 ml-0.5">*</span>}
+          {field.required && <span className="ml-0.5 text-red-500">*</span>}
         </span>
-        <span className="tabular-nums text-zinc-400">
+        <span className="text-zinc-400 tabular-nums">
           {items.length}
           {Number.isFinite(max) ? `/${max}` : ""}
           {min > 0 && items.length < min ? ` (min ${min})` : ""}
@@ -169,7 +178,7 @@ function ListField({
             <button
               type="button"
               onClick={() => onChange(items.filter((_, idx) => idx !== i))}
-              className="apple-tap text-[11px] text-zinc-500 hover:text-red-500 px-2"
+              className="apple-tap px-2 text-[11px] text-zinc-500 hover:text-red-500"
               aria-label={`Remove ${field.label} ${i + 1}`}
             >
               ×
@@ -187,7 +196,9 @@ function ListField({
         )}
       </div>
       {field.hint && (
-        <div className="text-[10px] text-zinc-500 mt-1 leading-snug">{field.hint}</div>
+        <div className="mt-1 text-[10px] leading-snug text-zinc-500">
+          {field.hint}
+        </div>
       )}
     </div>
   );

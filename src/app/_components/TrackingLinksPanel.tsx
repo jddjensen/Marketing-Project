@@ -65,13 +65,19 @@ export function TrackingLinksPanel({
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [qrFor, setQrFor] = useState<{ id: string; label: string; url: string } | null>(null);
+  const [qrFor, setQrFor] = useState<{
+    id: string;
+    label: string;
+    url: string;
+  } | null>(null);
 
   useEffect(() => {
     let active = true;
 
     async function loadLinks() {
-      const res = await fetch(`/api/projects/${projectId}/tracking-links`, { cache: "no-store" });
+      const res = await fetch(`/api/projects/${projectId}/tracking-links`, {
+        cache: "no-store",
+      });
       const body = (await res.json()) as {
         links?: TrackingLink[];
         analytics?: AnalyticsSettings;
@@ -102,7 +108,11 @@ export function TrackingLinksPanel({
   }, [links, platform]);
 
   const createLink = useCallback(
-    async (input: { url: string; label?: string; platform?: PlatformKey | null }) => {
+    async (input: {
+      url: string;
+      label?: string;
+      platform?: PlatformKey | null;
+    }) => {
       setError(null);
       const res = await fetch(`/api/projects/${projectId}/tracking-links`, {
         method: "POST",
@@ -114,7 +124,10 @@ export function TrackingLinksPanel({
           utmCampaign: slugify(projectName),
         }),
       });
-      const body = (await res.json()) as { link?: TrackingLink; error?: string };
+      const body = (await res.json()) as {
+        link?: TrackingLink;
+        error?: string;
+      };
       if (!res.ok || !body.link) {
         setError(body.error ?? "failed to create");
         return;
@@ -137,18 +150,24 @@ export function TrackingLinksPanel({
       if (patch.platform !== undefined) apiPatch.platform = patch.platform;
       if (patch.utmSource !== undefined) apiPatch.utmSource = patch.utmSource;
       if (patch.utmMedium !== undefined) apiPatch.utmMedium = patch.utmMedium;
-      if (patch.utmCampaign !== undefined) apiPatch.utmCampaign = patch.utmCampaign;
+      if (patch.utmCampaign !== undefined)
+        apiPatch.utmCampaign = patch.utmCampaign;
       if (patch.utmTerm !== undefined) apiPatch.utmTerm = patch.utmTerm;
-      if (patch.utmContent !== undefined) apiPatch.utmContent = patch.utmContent;
+      if (patch.utmContent !== undefined)
+        apiPatch.utmContent = patch.utmContent;
       if (patch.qrEnabled !== undefined) apiPatch.qrEnabled = patch.qrEnabled;
-      const res = await fetch(`/api/projects/${projectId}/tracking-links/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(apiPatch),
-      });
-      const body = (await res.json().catch(() => null)) as
-        | { link?: TrackingLink; error?: string }
-        | null;
+      const res = await fetch(
+        `/api/projects/${projectId}/tracking-links/${id}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(apiPatch),
+        }
+      );
+      const body = (await res.json().catch(() => null)) as {
+        link?: TrackingLink;
+        error?: string;
+      } | null;
       if (!res.ok) {
         if (previousLink) {
           setLinks((prev) =>
@@ -170,7 +189,9 @@ export function TrackingLinksPanel({
   const deleteLink = useCallback(
     async (id: string) => {
       setLinks((prev) => (prev ?? []).filter((l) => l.id !== id));
-      await fetch(`/api/projects/${projectId}/tracking-links/${id}`, { method: "DELETE" });
+      await fetch(`/api/projects/${projectId}/tracking-links/${id}`, {
+        method: "DELETE",
+      });
     },
     [projectId]
   );
@@ -201,9 +222,10 @@ export function TrackingLinksPanel({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ga4PropertyId: trimmed || null }),
     });
-    const body = (await res.json().catch(() => null)) as
-      | { error?: string; project?: { ga4PropertyId?: string | null } }
-      | null;
+    const body = (await res.json().catch(() => null)) as {
+      error?: string;
+      project?: { ga4PropertyId?: string | null };
+    } | null;
 
     setSavingAnalytics(false);
     if (!res.ok) {
@@ -228,12 +250,15 @@ export function TrackingLinksPanel({
 
   return (
     <section>
-      <div className="flex items-center justify-between mb-4">
+      <div className="mb-4 flex items-center justify-between">
         <div>
-          <h2 className="text-sm font-medium uppercase tracking-wide text-zinc-500">
-            {heading ?? (platform ? `${CHANNEL_LABELS[platform]} tracking links` : "Tracking links")}
+          <h2 className="text-sm font-medium tracking-wide text-zinc-500 uppercase">
+            {heading ??
+              (platform
+                ? `${CHANNEL_LABELS[platform]} tracking links`
+                : "Tracking links")}
           </h2>
-          <p className="text-xs text-zinc-500 mt-1">
+          <p className="mt-1 text-xs text-zinc-500">
             {platform
               ? `UTM-tagged URLs for ${CHANNEL_LABELS[platform]}. Use the tracked link copy action when you want click reporting in the unified dashboard.`
               : "Build UTM-tagged destination URLs for every channel. Use tracked links for digital placements and QR codes for print/offline placements so performance rolls up in one place."}
@@ -242,14 +267,14 @@ export function TrackingLinksPanel({
         <button
           type="button"
           onClick={() => setAdding(true)}
-          className="text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 border border-zinc-200 dark:border-zinc-800 rounded-md px-2 py-1"
+          className="rounded-md border border-zinc-200 px-2 py-1 text-xs text-zinc-500 hover:text-zinc-900 dark:border-zinc-800 dark:hover:text-zinc-100"
         >
           + Add landing page
         </button>
       </div>
 
       {error && (
-        <div className="mb-3 rounded-md border border-red-300 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200 px-3 py-2 text-sm">
+        <div className="mb-3 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
           {error}
         </div>
       )}
@@ -337,16 +362,20 @@ function LinkRow({
   const built = buildUtmUrl({ ...link, id: link.id }, projectName);
   const defaults = link.platform ? PLATFORM_DEFAULTS[link.platform] : null;
   const isOffline = ["signage", "flyers", "digital-signage"].includes(
-    (pinnedPlatform ?? link.platform) ?? ""
+    pinnedPlatform ?? link.platform ?? ""
   );
   const qrRedirectUrl =
-    typeof window !== "undefined" ? `${window.location.origin}/qr/${link.id}` : `/qr/${link.id}`;
+    typeof window !== "undefined"
+      ? `${window.location.origin}/qr/${link.id}`
+      : `/qr/${link.id}`;
   const trackedRedirectUrl =
-    typeof window !== "undefined" ? `${window.location.origin}/go/${link.id}` : `/go/${link.id}`;
+    typeof window !== "undefined"
+      ? `${window.location.origin}/go/${link.id}`
+      : `/go/${link.id}`;
 
   return (
-    <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 space-y-3">
-      <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-2">
+    <div className="space-y-3 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto_auto]">
         <input
           type="text"
           defaultValue={link.label ?? ""}
@@ -362,7 +391,12 @@ function LinkRow({
           <select
             value={link.platform ?? ""}
             onChange={(e) =>
-              onChange({ platform: e.target.value === "" ? null : (e.target.value as PlatformKey) })
+              onChange({
+                platform:
+                  e.target.value === ""
+                    ? null
+                    : (e.target.value as PlatformKey),
+              })
             }
             className="select-tactile text-sm"
             aria-label="Channel"
@@ -378,7 +412,7 @@ function LinkRow({
         <button
           type="button"
           onClick={onDelete}
-          className="rounded-md text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 px-3"
+          className="rounded-md px-3 text-xs text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40"
           aria-label="Delete tracking link"
         >
           Remove
@@ -397,7 +431,7 @@ function LinkRow({
         className="input-tactile w-full"
       />
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
         <UtmField
           label="Source"
           defaultValue={link.utmSource ?? ""}
@@ -430,9 +464,16 @@ function LinkRow({
         />
       </div>
 
-      <div className="rounded-lg bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 p-2.5 flex items-center gap-2">
-        <div className="flex-1 min-w-0 text-xs font-mono text-zinc-700 dark:text-zinc-300 truncate" title={built}>
-          {built || <span className="italic text-zinc-400">Enter a URL to build your tracking link</span>}
+      <div className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-zinc-50 p-2.5 dark:border-zinc-800 dark:bg-zinc-950">
+        <div
+          className="min-w-0 flex-1 truncate font-mono text-xs text-zinc-700 dark:text-zinc-300"
+          title={built}
+        >
+          {built || (
+            <span className="text-zinc-400 italic">
+              Enter a URL to build your tracking link
+            </span>
+          )}
         </div>
         {isOffline && !link.qrEnabled && (
           <button
@@ -440,7 +481,7 @@ function LinkRow({
             disabled={!built}
             onClick={() => onChange({ qrEnabled: true })}
             title="Generate a trackable QR code for this link"
-            className="shrink-0 rounded-md border border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-200 text-xs font-medium px-3 py-1.5 disabled:opacity-40 hover:border-zinc-500 dark:hover:border-zinc-500"
+            className="shrink-0 rounded-md border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:border-zinc-500 disabled:opacity-40 dark:border-zinc-700 dark:text-zinc-200 dark:hover:border-zinc-500"
           >
             Generate QR
           </button>
@@ -449,7 +490,7 @@ function LinkRow({
           type="button"
           disabled={!built}
           onClick={() => onCopy(`${link.id}:tracked`, trackedRedirectUrl)}
-          className="shrink-0 rounded-md bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 text-xs font-medium px-3 py-1.5 disabled:opacity-40 hover:opacity-90"
+          className="shrink-0 rounded-md bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900"
         >
           {copiedId === `${link.id}:tracked` ? "Copied" : "Copy tracked link"}
         </button>
@@ -457,13 +498,16 @@ function LinkRow({
           type="button"
           disabled={!built}
           onClick={() => onCopy(`${link.id}:destination`, built)}
-          className="shrink-0 rounded-md border border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-200 text-xs font-medium px-3 py-1.5 disabled:opacity-40 hover:border-zinc-500 dark:hover:border-zinc-500"
+          className="shrink-0 rounded-md border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:border-zinc-500 disabled:opacity-40 dark:border-zinc-700 dark:text-zinc-200 dark:hover:border-zinc-500"
         >
-          {copiedId === `${link.id}:destination` ? "Copied" : "Copy destination"}
+          {copiedId === `${link.id}:destination`
+            ? "Copied"
+            : "Copy destination"}
         </button>
       </div>
-      <div className="text-[11px] text-zinc-500 -mt-1">
-        Tracked clicks use <span className="font-mono">/go/{link.id}</span>; the landing page still receives the full UTM-tagged destination.
+      <div className="-mt-1 text-[11px] text-zinc-500">
+        Tracked clicks use <span className="font-mono">/go/{link.id}</span>; the
+        landing page still receives the full UTM-tagged destination.
       </div>
 
       {isOffline && link.qrEnabled && (
@@ -582,42 +626,46 @@ function QrBlock({
   };
 
   return (
-    <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-3">
+    <div className="rounded-lg border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
       <div className="flex items-start gap-3">
         <button
           type="button"
           onClick={onOpenPreview}
           aria-label="Open QR preview"
-          className="shrink-0 rounded-md border border-zinc-200 dark:border-zinc-800 bg-white p-2 hover:border-zinc-400"
+          className="shrink-0 rounded-md border border-zinc-200 bg-white p-2 hover:border-zinc-400 dark:border-zinc-800"
           dangerouslySetInnerHTML={svg ? { __html: svg } : undefined}
         >
-          {!svg && <span className="block w-[160px] h-[160px] text-[11px] text-zinc-400 grid place-items-center">Rendering…</span>}
+          {!svg && (
+            <span className="block grid h-[160px] w-[160px] place-items-center text-[11px] text-zinc-400">
+              Rendering…
+            </span>
+          )}
         </button>
-        <div className="flex-1 min-w-0 space-y-2">
+        <div className="min-w-0 flex-1 space-y-2">
           <div className="flex items-center justify-between gap-2">
-            <div className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+            <div className="text-xs font-medium tracking-wide text-zinc-500 uppercase">
               QR code · {label}
             </div>
             <div className="flex items-center gap-1">
               <button
                 type="button"
                 onClick={onOpenPreview}
-                className="text-xs rounded-md border border-zinc-200 dark:border-zinc-800 px-2 py-1 hover:border-zinc-400"
+                className="rounded-md border border-zinc-200 px-2 py-1 text-xs hover:border-zinc-400 dark:border-zinc-800"
               >
                 Preview &amp; download
               </button>
               <button
                 type="button"
                 onClick={onRemove}
-                className="text-xs rounded-md text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 px-2 py-1"
+                className="rounded-md px-2 py-1 text-xs text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40"
               >
                 Remove QR
               </button>
             </div>
           </div>
-          <div className="rounded-md bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 px-2.5 py-1.5 flex items-center gap-2">
+          <div className="flex items-center gap-2 rounded-md border border-zinc-200 bg-zinc-50 px-2.5 py-1.5 dark:border-zinc-800 dark:bg-zinc-950">
             <div
-              className="flex-1 min-w-0 text-[11px] font-mono text-zinc-600 dark:text-zinc-400 truncate"
+              className="min-w-0 flex-1 truncate font-mono text-[11px] text-zinc-600 dark:text-zinc-400"
               title={redirectUrl}
             >
               {redirectUrl}
@@ -625,7 +673,7 @@ function QrBlock({
             <button
               type="button"
               onClick={copyRedirect}
-              className="shrink-0 rounded border border-zinc-300 dark:border-zinc-700 text-[11px] font-medium px-2 py-0.5 hover:border-zinc-500"
+              className="shrink-0 rounded border border-zinc-300 px-2 py-0.5 text-[11px] font-medium hover:border-zinc-500 dark:border-zinc-700"
             >
               {copied ? "Copied" : "Copy link"}
             </button>
@@ -647,17 +695,11 @@ function ScanStats({
   const lastLabel = summary?.lastAt ? relativeTime(summary.lastAt) : "never";
   return (
     <div className="grid grid-cols-3 gap-2 text-center">
-      <Stat
-        label="Total scans"
-        value={summary ? String(summary.total) : "…"}
-      />
-      <Stat
-        label="Last 24h"
-        value={summary ? String(summary.last24h) : "…"}
-      />
+      <Stat label="Total scans" value={summary ? String(summary.total) : "…"} />
+      <Stat label="Last 24h" value={summary ? String(summary.last24h) : "…"} />
       <Stat label="Last scan" value={summary ? lastLabel : "…"} />
       {generatedAt && (
-        <div className="col-span-3 text-[11px] text-zinc-500 text-center">
+        <div className="col-span-3 text-center text-[11px] text-zinc-500">
           Live · polling every 5s · QR generated {relativeTime(generatedAt)}
         </div>
       )}
@@ -708,21 +750,23 @@ function GoogleAnalyticsSettingsCard({
   }
 
   return (
-    <div className="mb-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 space-y-3">
+    <div className="mb-4 space-y-3 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h3 className="text-sm font-medium uppercase tracking-wide text-zinc-500">
+          <h3 className="text-sm font-medium tracking-wide text-zinc-500 uppercase">
             Google Analytics 4
           </h3>
-          <p className="text-xs text-zinc-500 mt-1">{helpText}</p>
+          <p className="mt-1 text-xs text-zinc-500">{helpText}</p>
         </div>
-        <div className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-medium ${toneClass}`}>
+        <div
+          className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-medium ${toneClass}`}
+        >
           {statusLabel}
         </div>
       </div>
 
       <form
-        className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2"
+        className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto]"
         onSubmit={(e) => {
           e.preventDefault();
           if (!valid || saving || !hasChanges) return;
@@ -730,14 +774,16 @@ function GoogleAnalyticsSettingsCard({
         }}
       >
         <label className="block">
-          <span className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+          <span className="text-[11px] font-medium tracking-wide text-zinc-500 uppercase">
             GA4 Property ID
           </span>
           <input
             type="text"
             inputMode="numeric"
             value={propertyId}
-            onChange={(e) => onPropertyIdChange(e.target.value.replace(/[^\d]/g, ""))}
+            onChange={(e) =>
+              onPropertyIdChange(e.target.value.replace(/[^\d]/g, ""))
+            }
             placeholder="e.g. 123456789"
             className="input-tactile mt-1 w-full"
           />
@@ -746,7 +792,7 @@ function GoogleAnalyticsSettingsCard({
           <button
             type="submit"
             disabled={!valid || saving || !hasChanges}
-            className="apple-tap rounded-md bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 px-4 py-2 text-sm font-medium disabled:opacity-50 hover:opacity-90"
+            className="apple-tap rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900"
           >
             {saving ? "Saving…" : trimmed ? "Save property" : "Clear property"}
           </button>
@@ -787,9 +833,10 @@ function GoogleAnalyticsBlock({
         `/api/projects/${projectId}/tracking-links/${linkId}/analytics${suffix}`,
         { cache: "no-store" }
       );
-      const body = (await res.json().catch(() => null)) as
-        | { summary?: AnalyticsSummary | null; error?: string }
-        | null;
+      const body = (await res.json().catch(() => null)) as {
+        summary?: AnalyticsSummary | null;
+        error?: string;
+      } | null;
 
       if (!res.ok) {
         setError(body?.error ?? "failed to load Google Analytics data");
@@ -809,12 +856,16 @@ function GoogleAnalyticsBlock({
     let active = true;
 
     async function initialLoad() {
-      const res = await fetch(`/api/projects/${projectId}/tracking-links/${linkId}/analytics`, {
-        cache: "no-store",
-      });
-      const body = (await res.json().catch(() => null)) as
-        | { summary?: AnalyticsSummary | null; error?: string }
-        | null;
+      const res = await fetch(
+        `/api/projects/${projectId}/tracking-links/${linkId}/analytics`,
+        {
+          cache: "no-store",
+        }
+      );
+      const body = (await res.json().catch(() => null)) as {
+        summary?: AnalyticsSummary | null;
+        error?: string;
+      } | null;
 
       if (!active) return;
       if (!res.ok) {
@@ -834,62 +885,75 @@ function GoogleAnalyticsBlock({
     };
   }, [linkId, projectId]);
 
-  const maxSessions = Math.max(...(summary?.trend.map((point) => point.sessions) ?? [0]), 1);
+  const maxSessions = Math.max(
+    ...(summary?.trend.map((point) => point.sessions) ?? [0]),
+    1
+  );
 
   return (
-    <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 p-3 space-y-3">
+    <div className="space-y-3 rounded-lg border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-950">
       <div className="flex items-center justify-between gap-2">
         <div>
-          <div className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+          <div className="text-xs font-medium tracking-wide text-zinc-500 uppercase">
             Google Analytics 4
           </div>
           <div className="text-[11px] text-zinc-500">
             From {new Date(createdAt).toLocaleDateString()} forward
-            {summary?.lastSyncedAt ? ` · synced ${relativeTime(summary.lastSyncedAt)}` : ""}
+            {summary?.lastSyncedAt
+              ? ` · synced ${relativeTime(summary.lastSyncedAt)}`
+              : ""}
           </div>
         </div>
         <button
           type="button"
           onClick={() => void loadSummary(true)}
           disabled={loading || refreshing}
-          className="shrink-0 rounded-md border border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-200 text-xs font-medium px-3 py-1.5 disabled:opacity-40 hover:border-zinc-500 dark:hover:border-zinc-500"
+          className="shrink-0 rounded-md border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:border-zinc-500 disabled:opacity-40 dark:border-zinc-700 dark:text-zinc-200 dark:hover:border-zinc-500"
         >
           {refreshing ? "Refreshing…" : "Refresh"}
         </button>
       </div>
 
       {error ? (
-        <div className="rounded-md border border-red-300 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200 px-3 py-2 text-sm">
+        <div className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
           {error}
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
-            <Stat label="Sessions" value={loading ? "…" : String(summary?.sessions ?? 0)} />
+          <div className="grid grid-cols-2 gap-2 text-center sm:grid-cols-4">
+            <Stat
+              label="Sessions"
+              value={loading ? "…" : String(summary?.sessions ?? 0)}
+            />
             <Stat
               label="Engaged"
               value={loading ? "…" : String(summary?.engagedSessions ?? 0)}
             />
-            <Stat label="Views" value={loading ? "…" : String(summary?.views ?? 0)} />
+            <Stat
+              label="Views"
+              value={loading ? "…" : String(summary?.views ?? 0)}
+            />
             <Stat
               label="Key events"
               value={loading ? "…" : String(summary?.keyEvents ?? 0)}
             />
           </div>
 
-          <div className="rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-2.5">
-            <div className="text-[11px] uppercase tracking-wide text-zinc-500 mb-2">
+          <div className="rounded-md border border-zinc-200 bg-white p-2.5 dark:border-zinc-800 dark:bg-zinc-900">
+            <div className="mb-2 text-[11px] tracking-wide text-zinc-500 uppercase">
               Sessions trend
             </div>
             {loading ? (
-              <div className="h-16 grid place-items-center text-xs text-zinc-500">Loading…</div>
+              <div className="grid h-16 place-items-center text-xs text-zinc-500">
+                Loading…
+              </div>
             ) : summary?.trend.length ? (
               <>
-                <div className="h-16 flex items-end gap-1">
+                <div className="flex h-16 items-end gap-1">
                   {summary.trend.map((point) => (
                     <div
                       key={point.date}
-                      className="flex-1 rounded-t-sm bg-sky-500/80 dark:bg-sky-400/80 min-h-1"
+                      className="min-h-1 flex-1 rounded-t-sm bg-sky-500/80 dark:bg-sky-400/80"
                       style={{
                         height: `${Math.max(8, Math.round((point.sessions / maxSessions) * 100))}%`,
                       }}
@@ -916,9 +980,11 @@ function GoogleAnalyticsBlock({
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-md border border-zinc-200 dark:border-zinc-800 py-1.5">
+    <div className="rounded-md border border-zinc-200 py-1.5 dark:border-zinc-800">
       <div className="text-sm font-semibold">{value}</div>
-      <div className="text-[10px] uppercase tracking-wide text-zinc-500">{label}</div>
+      <div className="text-[10px] tracking-wide text-zinc-500 uppercase">
+        {label}
+      </div>
     </div>
   );
 }
@@ -941,7 +1007,10 @@ function formatTrendDate(value: string | undefined) {
   if (!value) return "";
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return value;
-  return parsed.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  return parsed.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  });
 }
 
 function UtmField({
@@ -957,7 +1026,7 @@ function UtmField({
 }) {
   return (
     <label className="block">
-      <span className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+      <span className="text-[11px] font-medium tracking-wide text-zinc-500 uppercase">
         {label}
       </span>
       <input
@@ -982,9 +1051,9 @@ function EmptyState({
   platform?: PlatformKey;
 }) {
   return (
-    <div className="rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 bg-white/40 dark:bg-zinc-900/40 py-10 flex flex-col items-center text-center">
+    <div className="flex flex-col items-center rounded-xl border border-dashed border-zinc-300 bg-white/40 py-10 text-center dark:border-zinc-700 dark:bg-zinc-900/40">
       <div className="font-semibold">No tracking links yet</div>
-      <p className="text-sm text-zinc-500 mt-1 max-w-sm">
+      <p className="mt-1 max-w-sm text-sm text-zinc-500">
         {platform
           ? `Add a landing page to generate a UTM-tagged link for ${CHANNEL_LABELS[platform]}.`
           : "Add a landing page and we’ll build a UTM-tagged URL you can copy into each platform."}
@@ -992,7 +1061,7 @@ function EmptyState({
       <button
         type="button"
         onClick={onAdd}
-        className="apple-tap mt-4 rounded-lg bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 px-4 py-2 text-sm font-medium hover:opacity-90"
+        className="apple-tap mt-4 rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:opacity-90 dark:bg-zinc-100 dark:text-zinc-900"
       >
         + Add landing page
       </button>
@@ -1026,7 +1095,8 @@ function QrDialog({
         if (!cancelled) setSvg(out);
       })
       .catch((e: unknown) => {
-        if (!cancelled) setError(e instanceof Error ? e.message : "failed to render QR");
+        if (!cancelled)
+          setError(e instanceof Error ? e.message : "failed to render QR");
       });
     return () => {
       cancelled = true;
@@ -1079,27 +1149,28 @@ function QrDialog({
     <div
       role="dialog"
       aria-modal="true"
-      className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4"
+      className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
-        className="modal-surface w-full max-w-md rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-5 shadow-[var(--shadow-lift)]"
+        className="modal-surface w-full max-w-md rounded-xl border border-zinc-200 bg-white p-5 shadow-[var(--shadow-lift)] dark:border-zinc-800 dark:bg-zinc-900"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="font-semibold text-lg">QR code</h2>
-        <p className="text-sm text-zinc-500 mt-1">
-          Scans are tracked and counted in real time. The code encodes a short redirect URL
-          that forwards to your landing page with the full UTM attribution attached.
+        <h2 className="text-lg font-semibold">QR code</h2>
+        <p className="mt-1 text-sm text-zinc-500">
+          Scans are tracked and counted in real time. The code encodes a short
+          redirect URL that forwards to your landing page with the full UTM
+          attribution attached.
         </p>
 
         {error ? (
-          <div className="mt-4 rounded-md border border-red-300 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200 px-3 py-2 text-sm">
+          <div className="mt-4 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
             {error}
           </div>
         ) : (
           <div
             ref={mountRef}
-            className="mt-4 flex items-center justify-center rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white p-4"
+            className="mt-4 flex items-center justify-center rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800"
             aria-label="QR code preview"
             dangerouslySetInnerHTML={svg ? { __html: svg } : undefined}
           >
@@ -1107,7 +1178,7 @@ function QrDialog({
           </div>
         )}
 
-        <div className="mt-3 rounded-md bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 px-3 py-2 text-[11px] font-mono text-zinc-600 dark:text-zinc-400 break-all">
+        <div className="mt-3 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 font-mono text-[11px] break-all text-zinc-600 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-400">
           {url}
         </div>
 
@@ -1115,7 +1186,7 @@ function QrDialog({
           <button
             type="button"
             onClick={onClose}
-            className="text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 px-3 py-2"
+            className="px-3 py-2 text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
           >
             Close
           </button>
@@ -1123,7 +1194,7 @@ function QrDialog({
             type="button"
             disabled={!svg}
             onClick={downloadSvg}
-            className="apple-tap rounded-md border border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 px-3 py-2 text-sm font-medium disabled:opacity-40 hover:border-zinc-500"
+            className="apple-tap rounded-md border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-900 hover:border-zinc-500 disabled:opacity-40 dark:border-zinc-700 dark:text-zinc-100"
           >
             Download SVG
           </button>
@@ -1131,7 +1202,7 @@ function QrDialog({
             type="button"
             disabled={!svg}
             onClick={downloadPng}
-            className="apple-tap rounded-md bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 px-3 py-2 text-sm font-medium disabled:opacity-40 hover:opacity-90"
+            className="apple-tap rounded-md bg-zinc-900 px-3 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900"
           >
             Download PNG
           </button>
@@ -1147,26 +1218,32 @@ function AddLinkDialog({
   pinnedPlatform,
 }: {
   onClose: () => void;
-  onSubmit: (input: { url: string; label?: string; platform?: PlatformKey | null }) => void;
+  onSubmit: (input: {
+    url: string;
+    label?: string;
+    platform?: PlatformKey | null;
+  }) => void;
   pinnedPlatform?: PlatformKey;
 }) {
   const [url, setUrl] = useState("");
   const [label, setLabel] = useState("");
-  const [platform, setPlatform] = useState<PlatformKey | "">(pinnedPlatform ?? "");
+  const [platform, setPlatform] = useState<PlatformKey | "">(
+    pinnedPlatform ?? ""
+  );
 
   return (
     <div
       role="dialog"
       aria-modal="true"
-      className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4"
+      className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
-        className="modal-surface w-full max-w-md rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-5 shadow-[var(--shadow-lift)]"
+        className="modal-surface w-full max-w-md rounded-xl border border-zinc-200 bg-white p-5 shadow-[var(--shadow-lift)] dark:border-zinc-800 dark:bg-zinc-900"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="font-semibold text-lg">Add landing page</h2>
-        <p className="text-sm text-zinc-500 mt-1">
+        <h2 className="text-lg font-semibold">Add landing page</h2>
+        <p className="mt-1 text-sm text-zinc-500">
           Drop a destination URL. You can fine-tune UTMs on the row afterward.
         </p>
         <form
@@ -1183,7 +1260,9 @@ function AddLinkDialog({
           }}
         >
           <div>
-            <label className="text-xs font-medium uppercase tracking-wide text-zinc-500">URL</label>
+            <label className="text-xs font-medium tracking-wide text-zinc-500 uppercase">
+              URL
+            </label>
             <input
               autoFocus
               type="url"
@@ -1195,8 +1274,9 @@ function AddLinkDialog({
             />
           </div>
           <div>
-            <label className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-              Label <span className="text-zinc-400 normal-case">(optional)</span>
+            <label className="text-xs font-medium tracking-wide text-zinc-500 uppercase">
+              Label{" "}
+              <span className="text-zinc-400 normal-case">(optional)</span>
             </label>
             <input
               type="text"
@@ -1209,12 +1289,14 @@ function AddLinkDialog({
           </div>
           {!pinnedPlatform && (
             <div>
-              <label className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+              <label className="text-xs font-medium tracking-wide text-zinc-500 uppercase">
                 Channel
               </label>
               <select
                 value={platform}
-                onChange={(e) => setPlatform(e.target.value as PlatformKey | "")}
+                onChange={(e) =>
+                  setPlatform(e.target.value as PlatformKey | "")
+                }
                 className="select-tactile mt-1 w-full"
               >
                 <option value="">All channels</option>
@@ -1230,14 +1312,14 @@ function AddLinkDialog({
             <button
               type="button"
               onClick={onClose}
-              className="text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 px-3 py-2"
+              className="px-3 py-2 text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={url.trim().length === 0}
-              className="apple-tap rounded-md bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 px-4 py-2 text-sm font-medium disabled:opacity-50 hover:opacity-90"
+              className="apple-tap rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900"
             >
               Add
             </button>

@@ -39,7 +39,9 @@ function serialize(r: LinkRow) {
     utmTerm: r.utm_term,
     utmContent: r.utm_content,
     qrEnabled: r.qr_enabled,
-    qrGeneratedAt: r.qr_generated_at ? new Date(r.qr_generated_at).getTime() : null,
+    qrGeneratedAt: r.qr_generated_at
+      ? new Date(r.qr_generated_at).getTime()
+      : null,
     createdAt: new Date(r.created_at).getTime(),
     updatedAt: new Date(r.updated_at).getTime(),
   };
@@ -173,7 +175,12 @@ export async function DELETE(
     .delete({ count: "exact" })
     .eq("id", linkId)
     .eq("project_id", id);
-  if (error) return Response.json({ error: "failed to delete tracking link" }, { status: 500 });
-  if (count === 0) return Response.json({ error: "not found" }, { status: 404 });
+  if (error)
+    return Response.json(
+      { error: "failed to delete tracking link" },
+      { status: 500 }
+    );
+  if (count === 0)
+    return Response.json({ error: "not found" }, { status: 404 });
   return Response.json({ ok: true });
 }

@@ -20,7 +20,10 @@ export async function GET(request: NextRequest) {
 
   if (error) {
     return NextResponse.redirect(
-      new URL(`/login?error=${encodeURIComponent("confirmation_failed")}`, origin)
+      new URL(
+        `/login?error=${encodeURIComponent("confirmation_failed")}`,
+        origin
+      )
     );
   }
 

@@ -25,7 +25,11 @@ function firstCopySnippet(copy: Record<string, unknown> | null): string {
     if (typeof value === "string" && value.trim().length > 0) {
       return value.length > 180 ? `${value.slice(0, 180)}...` : value;
     }
-    if (Array.isArray(value) && value.length > 0 && typeof value[0] === "string") {
+    if (
+      Array.isArray(value) &&
+      value.length > 0 &&
+      typeof value[0] === "string"
+    ) {
       return value[0] as string;
     }
   }
@@ -64,10 +68,13 @@ export function CampaignMoodboardReview({
 
     async function loadMedia() {
       setError(null);
-      const res = await fetch(`/api/projects/${projectId}/media`, { cache: "no-store" });
-      const body = (await res.json().catch(() => null)) as
-        | { items?: MoodboardItem[]; error?: string }
-        | null;
+      const res = await fetch(`/api/projects/${projectId}/media`, {
+        cache: "no-store",
+      });
+      const body = (await res.json().catch(() => null)) as {
+        items?: MoodboardItem[];
+        error?: string;
+      } | null;
       if (!active) return;
       if (!res.ok) {
         setError(body?.error ?? "failed to load project media");
@@ -131,7 +138,7 @@ export function CampaignMoodboardReview({
       >
         <div className="flex shrink-0 items-center justify-between gap-4 border-b border-white/10 px-5 py-4">
           <div className="min-w-0">
-            <h2 className="truncate text-sm font-semibold uppercase tracking-wide text-zinc-300">
+            <h2 className="truncate text-sm font-semibold tracking-wide text-zinc-300 uppercase">
               Campaign Moodboard
             </h2>
             <p className="mt-1 truncate text-xs text-zinc-500">{projectName}</p>
@@ -174,7 +181,8 @@ export function CampaignMoodboardReview({
             <div>
               <div className="text-lg font-semibold">No campaign media yet</div>
               <p className="mt-1 max-w-sm text-sm text-zinc-500">
-                Upload creative to any channel and it will appear here for review.
+                Upload creative to any channel and it will appear here for
+                review.
               </p>
             </div>
           </div>
@@ -193,26 +201,28 @@ export function CampaignMoodboardReview({
                 <MoodboardVisual item={activeItem} priority />
               </div>
               <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent p-5">
-                <div className="text-xs font-medium uppercase tracking-wide text-zinc-400">
+                <div className="text-xs font-medium tracking-wide text-zinc-400 uppercase">
                   {itemMeta(activeItem)}
                 </div>
                 <div className="mt-1 line-clamp-2 text-2xl font-semibold">
                   {displayName(activeItem)}
                 </div>
                 <div className="mt-2 text-xs text-zinc-400">
-                  Auto-advancing every few seconds. Click the creative to move faster.
+                  Auto-advancing every few seconds. Click the creative to move
+                  faster.
                 </div>
               </div>
             </button>
 
-            <div className="min-h-0 overflow-y-auto border-t border-white/10 bg-zinc-950 p-4 lg:border-l lg:border-t-0">
+            <div className="min-h-0 overflow-y-auto border-t border-white/10 bg-zinc-950 p-4 lg:border-t-0 lg:border-l">
               <div className="mb-3 flex items-center justify-between gap-2">
                 <div>
-                  <div className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+                  <div className="text-xs font-semibold tracking-wide text-zinc-400 uppercase">
                     Project Collateral
                   </div>
                   <div className="mt-0.5 text-[11px] text-zinc-500">
-                    {orderedItems.length} current item{orderedItems.length === 1 ? "" : "s"}
+                    {orderedItems.length} current item
+                    {orderedItems.length === 1 ? "" : "s"}
                   </div>
                 </div>
                 <div className="text-[11px] text-zinc-500">
@@ -235,13 +245,17 @@ export function CampaignMoodboardReview({
                         : "border-white/10 hover:border-white/30"
                     }`}
                   >
-                    <div className={`${aspectClassForAsset(item.ratio)} overflow-hidden rounded-md bg-zinc-900`}>
+                    <div
+                      className={`${aspectClassForAsset(item.ratio)} overflow-hidden rounded-md bg-zinc-900`}
+                    >
                       <MoodboardVisual item={item} compact />
                     </div>
                     <div className="mt-1.5 truncate text-[11px] font-medium text-zinc-300">
                       {displayName(item)}
                     </div>
-                    <div className="truncate text-[10px] text-zinc-500">{itemMeta(item)}</div>
+                    <div className="truncate text-[10px] text-zinc-500">
+                      {itemMeta(item)}
+                    </div>
                   </button>
                 ))}
               </div>
@@ -268,10 +282,16 @@ function MoodboardVisual({
     return (
       <div className="flex h-full w-full items-center justify-center rounded-md bg-zinc-900 px-4 text-center">
         <div>
-          <div className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">
+          <div className="text-[10px] font-medium tracking-wide text-zinc-500 uppercase">
             Text creative
           </div>
-          <div className={compact ? "mt-1 line-clamp-4 text-xs text-zinc-300" : "mt-3 max-w-xl text-2xl font-semibold text-zinc-100"}>
+          <div
+            className={
+              compact
+                ? "mt-1 line-clamp-4 text-xs text-zinc-300"
+                : "mt-3 max-w-xl text-2xl font-semibold text-zinc-100"
+            }
+          >
             {firstCopySnippet(item.copy)}
           </div>
         </div>
@@ -294,5 +314,11 @@ function MoodboardVisual({
   }
 
   // eslint-disable-next-line @next/next/no-img-element
-  return <img src={visualUrl} alt={item.name ?? ""} className="h-full w-full object-contain" />;
+  return (
+    <img
+      src={visualUrl}
+      alt={item.name ?? ""}
+      className="h-full w-full object-contain"
+    />
+  );
 }

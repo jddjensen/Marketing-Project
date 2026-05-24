@@ -383,7 +383,11 @@ export function validateCopy(
   for (const field of fields) {
     const v = input[field.key];
 
-    if (field.type === "text" || field.type === "textarea" || field.type === "select") {
+    if (
+      field.type === "text" ||
+      field.type === "textarea" ||
+      field.type === "select"
+    ) {
       if (v == null || v === "") {
         if (field.required) {
           return { ok: false, error: `${field.label} is required` };
@@ -441,7 +445,11 @@ export function validateCopy(
       if (field.required && items.length === 0) {
         return { ok: false, error: `${field.label} is required` };
       }
-      if (field.minItems != null && items.length > 0 && items.length < field.minItems) {
+      if (
+        field.minItems != null &&
+        items.length > 0 &&
+        items.length < field.minItems
+      ) {
         return {
           ok: false,
           error: `${field.label} needs at least ${field.minItems} items`,

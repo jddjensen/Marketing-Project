@@ -23,7 +23,8 @@ export async function GET(
     .eq("creative_id", creativeId)
     .order("version_num", { ascending: false });
 
-  if (error) return Response.json({ error: "failed to load versions" }, { status: 500 });
+  if (error)
+    return Response.json({ error: "failed to load versions" }, { status: 500 });
   if (!data || data.length === 0) {
     return Response.json({ error: "creative not found" }, { status: 404 });
   }
@@ -42,9 +43,9 @@ export async function GET(
     platform: row.platform,
     ratio: row.ratio,
     kind: row.kind,
-    url: row.storage_path ? urlMap.get(row.storage_path) ?? null : null,
+    url: row.storage_path ? (urlMap.get(row.storage_path) ?? null) : null,
     posterUrl: row.poster_storage_path
-      ? urlMap.get(row.poster_storage_path) ?? null
+      ? (urlMap.get(row.poster_storage_path) ?? null)
       : null,
     name: row.original_name,
     copy: (row.copy as Record<string, unknown> | null) ?? null,

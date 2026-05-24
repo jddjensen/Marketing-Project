@@ -26,8 +26,13 @@ export async function DELETE(
     .eq("id", formatId)
     .eq("project_id", id);
 
-  if (error) return Response.json({ error: "failed to delete signage format" }, { status: 500 });
-  if (count === 0) return Response.json({ error: "not found" }, { status: 404 });
+  if (error)
+    return Response.json(
+      { error: "failed to delete signage format" },
+      { status: 500 }
+    );
+  if (count === 0)
+    return Response.json({ error: "not found" }, { status: 404 });
 
   if (mediaRows && mediaRows.length > 0) {
     const paths = mediaRows.flatMap((r) =>

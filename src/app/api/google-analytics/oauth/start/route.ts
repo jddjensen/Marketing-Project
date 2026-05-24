@@ -34,18 +34,25 @@ export async function GET(request: NextRequest) {
       state: nonce,
     });
     const response = NextResponse.redirect(url);
-    response.cookies.set(STATE_COOKIE, encodeStateCookie({ nonce, projectId }), {
-      httpOnly: true,
-      maxAge: 10 * 60,
-      path: COOKIE_PATH,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-    });
+    response.cookies.set(
+      STATE_COOKIE,
+      encodeStateCookie({ nonce, projectId }),
+      {
+        httpOnly: true,
+        maxAge: 10 * 60,
+        path: COOKIE_PATH,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+      }
+    );
     return response;
   } catch (error) {
     if (isGoogleAnalyticsError(error)) {
       return Response.json({ error: error.message }, { status: error.status });
     }
-    return Response.json({ error: "failed to start Google Analytics connection" }, { status: 500 });
+    return Response.json(
+      { error: "failed to start Google Analytics connection" },
+      { status: 500 }
+    );
   }
 }

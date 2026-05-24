@@ -50,7 +50,10 @@ export function CreativeCopyPanel({
           body: JSON.stringify({ copy: draft }),
         }
       );
-      const body = (await res.json().catch(() => ({}))) as { copy?: CopyValue; error?: string };
+      const body = (await res.json().catch(() => ({}))) as {
+        copy?: CopyValue;
+        error?: string;
+      };
       if (!res.ok) {
         setError(body.error ?? "save failed");
         return;
@@ -62,11 +65,11 @@ export function CreativeCopyPanel({
   };
 
   return (
-    <div className="rounded-md border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/40 text-xs">
+    <div className="rounded-md border border-zinc-200 bg-zinc-50 text-xs dark:border-zinc-800 dark:bg-zinc-950/40">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="apple-tap w-full flex items-center justify-between gap-2 px-3 py-2 text-left text-zinc-700 dark:text-zinc-200"
+        className="apple-tap flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-zinc-700 dark:text-zinc-200"
         aria-expanded={open ? "true" : "false"}
       >
         <span className="font-medium">Copy</span>
@@ -78,15 +81,19 @@ export function CreativeCopyPanel({
         </span>
       </button>
       {open && (
-        <div className="px-3 pb-3 pt-1 border-t border-zinc-200 dark:border-zinc-800">
+        <div className="border-t border-zinc-200 px-3 pt-1 pb-3 dark:border-zinc-800">
           <CopyFieldsForm fields={fields} value={draft} onChange={setDraft} />
-          {error && <div className="text-[11px] text-red-600 dark:text-red-400 mt-2">{error}</div>}
-          <div className="flex justify-end mt-3">
+          {error && (
+            <div className="mt-2 text-[11px] text-red-600 dark:text-red-400">
+              {error}
+            </div>
+          )}
+          <div className="mt-3 flex justify-end">
             <button
               type="button"
               onClick={save}
               disabled={saving}
-              className="apple-tap rounded-md bg-(--accent) text-white px-3 py-1.5 text-xs font-medium disabled:opacity-50"
+              className="apple-tap rounded-md bg-(--accent) px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
             >
               {saving ? "Saving…" : "Save copy"}
             </button>

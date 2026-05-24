@@ -53,7 +53,11 @@ export function uploadWithProgress<T = unknown>(
           parsed = null;
         }
       }
-      resolve({ status: xhr.status, ok: xhr.status >= 200 && xhr.status < 300, body: parsed });
+      resolve({
+        status: xhr.status,
+        ok: xhr.status >= 200 && xhr.status < 300,
+        body: parsed,
+      });
     };
 
     xhr.onerror = () => reject(new Error("network error"));
@@ -64,7 +68,9 @@ export function uploadWithProgress<T = unknown>(
         reject(new DOMException("aborted", "AbortError"));
         return;
       }
-      options.signal.addEventListener("abort", () => xhr.abort(), { once: true });
+      options.signal.addEventListener("abort", () => xhr.abort(), {
+        once: true,
+      });
     }
 
     xhr.send(body as XMLHttpRequestBodyInit);

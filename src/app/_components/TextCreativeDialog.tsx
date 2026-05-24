@@ -60,7 +60,7 @@ export function TextCreativeDialog({
 
   return (
     <div
-      className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4"
+      className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 backdrop-blur-sm"
       data-state={closing ? "closed" : "open"}
       role="dialog"
       aria-modal="true"
@@ -68,31 +68,36 @@ export function TextCreativeDialog({
       onClick={requestClose}
     >
       <div
-        className="modal-surface w-full max-w-lg max-h-[85vh] overflow-hidden rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-2xl flex flex-col"
+        className="modal-surface flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-2xl dark:border-zinc-800 dark:bg-zinc-900"
         data-state={closing ? "closed" : "open"}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="px-5 py-4 border-b border-zinc-200 dark:border-zinc-800">
+        <div className="border-b border-zinc-200 px-5 py-4 dark:border-zinc-800">
           <h2 className="text-sm font-semibold">New text creative</h2>
-          <p className="text-xs text-zinc-500 mt-0.5">
+          <p className="mt-0.5 text-xs text-zinc-500">
             For {ratioLabel} — copy only, no media file.
           </p>
         </div>
 
         <div className="flex-1 overflow-y-auto p-5">
-          <CopyFieldsForm fields={fields} value={draft} onChange={setDraft} textareaRows={4} />
+          <CopyFieldsForm
+            fields={fields}
+            value={draft}
+            onChange={setDraft}
+            textareaRows={4}
+          />
           {error && (
-            <div className="mt-3 rounded-md border border-red-300 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200 px-3 py-2 text-xs">
+            <div className="mt-3 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-xs text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
               {error}
             </div>
           )}
         </div>
 
-        <div className="px-5 py-3 border-t border-zinc-200 dark:border-zinc-800 flex items-center justify-end gap-2">
+        <div className="flex items-center justify-end gap-2 border-t border-zinc-200 px-5 py-3 dark:border-zinc-800">
           <button
             type="button"
             onClick={requestClose}
-            className="apple-tap text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 px-3 py-2"
+            className="apple-tap px-3 py-2 text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
           >
             Cancel
           </button>
@@ -100,7 +105,7 @@ export function TextCreativeDialog({
             type="button"
             onClick={submit}
             disabled={saving}
-            className="apple-tap rounded-md bg-(--accent) text-white px-4 py-2 text-sm font-medium disabled:opacity-50"
+            className="apple-tap rounded-md bg-(--accent) px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
           >
             {saving ? "Saving…" : "Save creative"}
           </button>

@@ -1,6 +1,7 @@
 # Create Airtable Formula
 
 ## Trigger
+
 When user asks to create a new Airtable formula.
 
 ## Steps
@@ -14,8 +15,8 @@ When user asks to create a new Airtable formula.
    - Simple calculation → Direct operators
    - Conditional logic → IF or SWITCH
    - Text manipulation → String functions
-   - Date calculations → DATETIME_* functions
-   - Array operations → ARRAY* functions
+   - Date calculations → DATETIME\_\* functions
+   - Array operations → ARRAY\* functions
 
 3. **Build incrementally**
    - Start with core logic
@@ -23,16 +24,17 @@ When user asks to create a new Airtable formula.
    - Format output if needed
 
 4. **Common patterns**
+
    ```
    // Safe division
    IF({Divisor}=0, BLANK(), {Value}/{Divisor})
-   
+
    // Conditional text
    IF({Status}="Done", "✅", IF({Status}="In Progress", "🔄", "⬜"))
-   
+
    // Date difference in days
    DATETIME_DIFF({End}, {Start}, 'days')
-   
+
    // Join unique values
    ARRAYJOIN(ARRAYUNIQUE({Tags}), ", ")
    ```

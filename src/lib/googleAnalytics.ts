@@ -1,11 +1,18 @@
 import { createSign } from "node:crypto";
 
-export const GOOGLE_ANALYTICS_SCOPE = "https://www.googleapis.com/auth/analytics.readonly";
+export const GOOGLE_ANALYTICS_SCOPE =
+  "https://www.googleapis.com/auth/analytics.readonly";
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const GOOGLE_ANALYTICS_DATA_API = "https://analyticsdata.googleapis.com/v1beta";
-const GOOGLE_ANALYTICS_ADMIN_API = "https://analyticsadmin.googleapis.com/v1beta";
+const GOOGLE_ANALYTICS_ADMIN_API =
+  "https://analyticsadmin.googleapis.com/v1beta";
 const GOOGLE_OAUTH_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
-const GOOGLE_OAUTH_SCOPES = ["openid", "email", "profile", GOOGLE_ANALYTICS_SCOPE];
+const GOOGLE_OAUTH_SCOPES = [
+  "openid",
+  "email",
+  "profile",
+  GOOGLE_ANALYTICS_SCOPE,
+];
 const SUMMARY_CACHE_TTL_MS = 15 * 60 * 1000;
 const ACCESS_TOKEN_SAFETY_MS = 60 * 1000;
 
@@ -158,7 +165,9 @@ function readServiceAccountCredentials(): ServiceAccountCredentials | null {
   const inlineJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON?.trim();
   if (inlineJson) {
     try {
-      const parsed = JSON.parse(inlineJson) as Partial<ServiceAccountCredentials>;
+      const parsed = JSON.parse(
+        inlineJson
+      ) as Partial<ServiceAccountCredentials>;
       if (parsed.client_email && parsed.private_key) {
         return {
           client_email: parsed.client_email,
@@ -246,10 +255,14 @@ export async function exchangeGoogleAnalyticsOAuthCode(args: {
     cache: "no-store",
   });
 
-  const body = (await res.json().catch(() => null)) as GoogleOAuthTokenResponse | null;
+  const body = (await res
+    .json()
+    .catch(() => null)) as GoogleOAuthTokenResponse | null;
   if (!res.ok || !body?.access_token || !body.expires_in) {
     throw new GoogleAnalyticsError(
-      body?.error_description || body?.error || "Failed to connect Google Analytics",
+      body?.error_description ||
+        body?.error ||
+        "Failed to connect Google Analytics",
       res.status || 502
     );
   }
@@ -262,7 +275,9 @@ export function decodeGoogleAccountEmail(idToken: string | undefined) {
   const payload = idToken.split(".")[1];
   if (!payload) return null;
   try {
-    const parsed = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as {
+    const parsed = JSON.parse(
+      Buffer.from(payload, "base64url").toString("utf8")
+    ) as {
       email?: unknown;
     };
     return typeof parsed.email === "string" ? parsed.email : null;
@@ -272,7 +287,11 @@ export function decodeGoogleAccountEmail(idToken: string | undefined) {
 }
 
 async function loadGoogleAnalyticsConnection(
-  supabase: Awaited<ReturnType<typeof import("@/lib/supabase/server").createSupabaseServerClient>>,
+  supabase: Awaited<
+    ReturnType<
+      typeof import("@/lib/supabase/server").createSupabaseServerClient
+    >
+  >,
   userId: string
 ) {
   const { data, error } = await supabase
@@ -282,20 +301,30 @@ async function loadGoogleAnalyticsConnection(
     .maybeSingle();
 
   if (error) {
-    throw new GoogleAnalyticsError("Failed to load Google Analytics connection", 500);
+    throw new GoogleAnalyticsError(
+      "Failed to load Google Analytics connection",
+      500
+    );
   }
 
   return (data ?? null) as GoogleAnalyticsConnectionRow | null;
 }
 
 export async function buildGoogleAnalyticsProjectSettings(
-  supabase: Awaited<ReturnType<typeof import("@/lib/supabase/server").createSupabaseServerClient>>,
+  supabase: Awaited<
+    ReturnType<
+      typeof import("@/lib/supabase/server").createSupabaseServerClient
+    >
+  >,
   ga4PropertyId: string | null,
   userId: string | null
 ): Promise<GoogleAnalyticsProjectSettings> {
-  const serviceCredentialsConfigured = getGoogleAnalyticsCredentialsConfigured();
+  const serviceCredentialsConfigured =
+    getGoogleAnalyticsCredentialsConfigured();
   const oauthConfigured = getGoogleAnalyticsOAuthConfigured();
-  const connection = userId ? await loadGoogleAnalyticsConnection(supabase, userId) : null;
+  const connection = userId
+    ? await loadGoogleAnalyticsConnection(supabase, userId)
+    : null;
   const connected = Boolean(connection);
   const authMode: GoogleAnalyticsAuthMode = connected
     ? "oauth"
@@ -346,13 +375,19 @@ function buildJwtAssertion(credentials: ServiceAccountCredentials) {
 }
 
 async function getGoogleAccessToken() {
-  if (accessTokenCache && accessTokenCache.expiresAt > Date.now() + ACCESS_TOKEN_SAFETY_MS) {
+  if (
+    accessTokenCache &&
+    accessTokenCache.expiresAt > Date.now() + ACCESS_TOKEN_SAFETY_MS
+  ) {
     return accessTokenCache.token;
   }
 
   const credentials = readServiceAccountCredentials();
   if (!credentials) {
-    throw new GoogleAnalyticsError("Google Analytics credentials are not configured", 503);
+    throw new GoogleAnalyticsError(
+      "Google Analytics credentials are not configured",
+      503
+    );
   }
 
   const res = await fetch(credentials.token_uri || GOOGLE_TOKEN_URL, {
@@ -365,13 +400,18 @@ async function getGoogleAccessToken() {
     cache: "no-store",
   });
 
-  const body = (await res.json().catch(() => null)) as
-    | { access_token?: string; expires_in?: number; error_description?: string; error?: string }
-    | null;
+  const body = (await res.json().catch(() => null)) as {
+    access_token?: string;
+    expires_in?: number;
+    error_description?: string;
+    error?: string;
+  } | null;
 
   if (!res.ok || !body?.access_token || !body.expires_in) {
     throw new GoogleAnalyticsError(
-      body?.error_description || body?.error || "Failed to authenticate with Google Analytics",
+      body?.error_description ||
+        body?.error ||
+        "Failed to authenticate with Google Analytics",
       res.status || 502
     );
   }
@@ -385,20 +425,33 @@ async function getGoogleAccessToken() {
 }
 
 export async function getUserGoogleAnalyticsAccessToken(
-  supabase: Awaited<ReturnType<typeof import("@/lib/supabase/server").createSupabaseServerClient>>,
+  supabase: Awaited<
+    ReturnType<
+      typeof import("@/lib/supabase/server").createSupabaseServerClient
+    >
+  >,
   userId: string
 ) {
   const connection = await loadGoogleAnalyticsConnection(supabase, userId);
   if (!connection) {
-    throw new GoogleAnalyticsError("Connect Google Analytics before loading GA4 data", 401);
+    throw new GoogleAnalyticsError(
+      "Connect Google Analytics before loading GA4 data",
+      401
+    );
   }
 
-  if (new Date(connection.token_expires_at).getTime() > Date.now() + ACCESS_TOKEN_SAFETY_MS) {
+  if (
+    new Date(connection.token_expires_at).getTime() >
+    Date.now() + ACCESS_TOKEN_SAFETY_MS
+  ) {
     return connection.access_token;
   }
 
   if (!connection.refresh_token) {
-    throw new GoogleAnalyticsError("Reconnect Google Analytics to refresh access", 401);
+    throw new GoogleAnalyticsError(
+      "Reconnect Google Analytics to refresh access",
+      401
+    );
   }
 
   const config = readGoogleOAuthConfig();
@@ -418,10 +471,14 @@ export async function getUserGoogleAnalyticsAccessToken(
     cache: "no-store",
   });
 
-  const body = (await res.json().catch(() => null)) as GoogleOAuthTokenResponse | null;
+  const body = (await res
+    .json()
+    .catch(() => null)) as GoogleOAuthTokenResponse | null;
   if (!res.ok || !body?.access_token || !body.expires_in) {
     throw new GoogleAnalyticsError(
-      body?.error_description || body?.error || "Failed to refresh Google Analytics access",
+      body?.error_description ||
+        body?.error ||
+        "Failed to refresh Google Analytics access",
       res.status || 502
     );
   }
@@ -445,15 +502,18 @@ async function runGoogleAnalyticsReport(
   accessToken?: string | null
 ) {
   const token = accessToken ?? (await getGoogleAccessToken());
-  const res = await fetch(`${GOOGLE_ANALYTICS_DATA_API}/properties/${propertyId}:runReport`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-    cache: "no-store",
-  });
+  const res = await fetch(
+    `${GOOGLE_ANALYTICS_DATA_API}/properties/${propertyId}:runReport`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+      cache: "no-store",
+    }
+  );
 
   const payload = (await res.json().catch(() => null)) as
     | (RunReportResponse & { error?: { message?: string } })
@@ -536,7 +596,9 @@ export async function getGoogleAnalyticsLinkSummary(args: {
   accessToken?: string | null;
 }) {
   const totalStartDate = toDateInput(args.createdAt);
-  const trendStartDate = toDateInput(Math.max(args.createdAt, Date.now() - 13 * 24 * 60 * 60 * 1000));
+  const trendStartDate = toDateInput(
+    Math.max(args.createdAt, Date.now() - 13 * 24 * 60 * 60 * 1000)
+  );
   const cacheKey = `${args.propertyId}:${args.linkId}:${totalStartDate}`;
 
   if (!args.refresh) {
@@ -555,19 +617,27 @@ export async function getGoogleAnalyticsLinkSummary(args: {
 
   const filter = buildLandingPageFilter(args.linkId);
   const [totalsReport, trendReport] = await Promise.all([
-    runGoogleAnalyticsReport(args.propertyId, {
-      dateRanges: [{ startDate: totalStartDate, endDate: "today" }],
-      metrics,
-      dimensionFilter: filter,
-    }, args.accessToken),
-    runGoogleAnalyticsReport(args.propertyId, {
-      dateRanges: [{ startDate: trendStartDate, endDate: "today" }],
-      dimensions: [{ name: "date" }],
-      metrics,
-      dimensionFilter: filter,
-      orderBys: [{ dimension: { dimensionName: "date" } }],
-      limit: 14,
-    }, args.accessToken),
+    runGoogleAnalyticsReport(
+      args.propertyId,
+      {
+        dateRanges: [{ startDate: totalStartDate, endDate: "today" }],
+        metrics,
+        dimensionFilter: filter,
+      },
+      args.accessToken
+    ),
+    runGoogleAnalyticsReport(
+      args.propertyId,
+      {
+        dateRanges: [{ startDate: trendStartDate, endDate: "today" }],
+        dimensions: [{ name: "date" }],
+        metrics,
+        dimensionFilter: filter,
+        orderBys: [{ dimension: { dimensionName: "date" } }],
+        limit: 14,
+      },
+      args.accessToken
+    ),
   ]);
 
   const totalRow = totalsReport.rows?.[0];
@@ -639,28 +709,38 @@ export async function getGoogleAnalyticsProjectPerformance(args: {
 
   const filter = buildTrackingLinksFilter(uniqueLinkIds);
   const [byLinkReport, trendReport] = await Promise.all([
-    runGoogleAnalyticsReport(args.propertyId, {
-      dateRanges: [{ startDate, endDate: "today" }],
-      dimensions: [{ name: "landingPagePlusQueryString" }],
-      metrics,
-      dimensionFilter: filter,
-      limit: Math.max(100, uniqueLinkIds.length * 10),
-    }, args.accessToken),
-    runGoogleAnalyticsReport(args.propertyId, {
-      dateRanges: [{ startDate: trendStartDate, endDate: "today" }],
-      dimensions: [{ name: "date" }],
-      metrics,
-      dimensionFilter: filter,
-      orderBys: [{ dimension: { dimensionName: "date" } }],
-      limit: 14,
-    }, args.accessToken),
+    runGoogleAnalyticsReport(
+      args.propertyId,
+      {
+        dateRanges: [{ startDate, endDate: "today" }],
+        dimensions: [{ name: "landingPagePlusQueryString" }],
+        metrics,
+        dimensionFilter: filter,
+        limit: Math.max(100, uniqueLinkIds.length * 10),
+      },
+      args.accessToken
+    ),
+    runGoogleAnalyticsReport(
+      args.propertyId,
+      {
+        dateRanges: [{ startDate: trendStartDate, endDate: "today" }],
+        dimensions: [{ name: "date" }],
+        metrics,
+        dimensionFilter: filter,
+        orderBys: [{ dimension: { dimensionName: "date" } }],
+        limit: 14,
+      },
+      args.accessToken
+    ),
   ]);
 
   const allowed = new Set(uniqueLinkIds);
   const byLink: Record<string, GoogleAnalyticsProjectLinkMetrics> = {};
 
   for (const row of byLinkReport.rows ?? []) {
-    const linkId = extractLinkIdFromLandingPage(row.dimensionValues?.[0]?.value);
+    const linkId = extractLinkIdFromLandingPage(
+      row.dimensionValues?.[0]?.value
+    );
     if (!linkId || !allowed.has(linkId)) continue;
     const current = byLink[linkId] ?? emptyProjectMetrics();
     current.sessions += parseMetric(row, 0);
@@ -672,7 +752,9 @@ export async function getGoogleAnalyticsProjectPerformance(args: {
     byLink[linkId] = current;
   }
 
-  const totals = Object.values(byLink).reduce<GoogleAnalyticsProjectLinkMetrics>(
+  const totals = Object.values(
+    byLink
+  ).reduce<GoogleAnalyticsProjectLinkMetrics>(
     (acc, row) => ({
       sessions: acc.sessions + row.sessions,
       engagedSessions: acc.engagedSessions + row.engagedSessions,
@@ -705,7 +787,9 @@ export async function getGoogleAnalyticsProjectPerformance(args: {
   return value;
 }
 
-export function isGoogleAnalyticsError(error: unknown): error is GoogleAnalyticsError {
+export function isGoogleAnalyticsError(
+  error: unknown
+): error is GoogleAnalyticsError {
   return error instanceof GoogleAnalyticsError;
 }
 
@@ -721,7 +805,9 @@ export async function listGoogleAnalyticsProperties(accessToken: string) {
       headers: { Authorization: `Bearer ${accessToken}` },
       cache: "no-store",
     });
-    const body = (await res.json().catch(() => null)) as AccountSummariesResponse | null;
+    const body = (await res
+      .json()
+      .catch(() => null)) as AccountSummariesResponse | null;
 
     if (!res.ok) {
       throw new GoogleAnalyticsError(
@@ -733,7 +819,8 @@ export async function listGoogleAnalyticsProperties(accessToken: string) {
     for (const account of body?.accountSummaries ?? []) {
       const accountId = account.account?.replace(/^accounts\//, "") ?? "";
       for (const property of account.propertySummaries ?? []) {
-        const propertyId = property.property?.replace(/^properties\//, "") ?? "";
+        const propertyId =
+          property.property?.replace(/^properties\//, "") ?? "";
         if (!propertyId) continue;
         properties.push({
           accountId,
@@ -749,6 +836,8 @@ export async function listGoogleAnalyticsProperties(accessToken: string) {
   } while (pageToken);
 
   return properties.sort((a, b) =>
-    `${a.accountName} ${a.propertyName}`.localeCompare(`${b.accountName} ${b.propertyName}`)
+    `${a.accountName} ${a.propertyName}`.localeCompare(
+      `${b.accountName} ${b.propertyName}`
+    )
   );
 }

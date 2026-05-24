@@ -14,7 +14,11 @@ type LandingPage = {
 
 type AnalyticsSettings = {
   ga4PropertyId: string | null;
-  status: "ready" | "property_missing" | "account_not_connected" | "credentials_missing";
+  status:
+    | "ready"
+    | "property_missing"
+    | "account_not_connected"
+    | "credentials_missing";
   credentialsConfigured: boolean;
   oauthConfigured: boolean;
   connected: boolean;
@@ -30,11 +34,7 @@ type AnalyticsProperty = {
   propertyResourceName: string;
 };
 
-export function LandingPagesPanel({
-  projectId,
-}: {
-  projectId: string;
-}) {
+export function LandingPagesPanel({ projectId }: { projectId: string }) {
   const [pages, setPages] = useState<LandingPage[] | null>(null);
   const [analytics, setAnalytics] = useState<AnalyticsSettings | null>(null);
   const [properties, setProperties] = useState<AnalyticsProperty[]>([]);
@@ -46,14 +46,14 @@ export function LandingPagesPanel({
   const [error, setError] = useState<string | null>(null);
 
   const loadPages = useCallback(async () => {
-    const res = await fetch(`/api/projects/${projectId}/tracking-links`, { cache: "no-store" });
-    const body = (await res.json().catch(() => null)) as
-      | {
-          links?: LandingPage[];
-          analytics?: AnalyticsSettings;
-          error?: string;
-        }
-      | null;
+    const res = await fetch(`/api/projects/${projectId}/tracking-links`, {
+      cache: "no-store",
+    });
+    const body = (await res.json().catch(() => null)) as {
+      links?: LandingPage[];
+      analytics?: AnalyticsSettings;
+      error?: string;
+    } | null;
 
     if (!res.ok) {
       setError(body?.error ?? "failed to load landing pages");
@@ -76,14 +76,19 @@ export function LandingPagesPanel({
   const loadProperties = useCallback(async () => {
     setLoadingProperties(true);
     setPropertyError(null);
-    const res = await fetch("/api/google-analytics/properties", { cache: "no-store" });
-    const body = (await res.json().catch(() => null)) as
-      | { properties?: AnalyticsProperty[]; error?: string }
-      | null;
+    const res = await fetch("/api/google-analytics/properties", {
+      cache: "no-store",
+    });
+    const body = (await res.json().catch(() => null)) as {
+      properties?: AnalyticsProperty[];
+      error?: string;
+    } | null;
 
     setLoadingProperties(false);
     if (!res.ok) {
-      setPropertyError(body?.error ?? "failed to load Google Analytics properties");
+      setPropertyError(
+        body?.error ?? "failed to load Google Analytics properties"
+      );
       setProperties([]);
       return;
     }
@@ -111,9 +116,10 @@ export function LandingPagesPanel({
           platform: null,
         }),
       });
-      const body = (await res.json().catch(() => null)) as
-        | { link?: LandingPage; error?: string }
-        | null;
+      const body = (await res.json().catch(() => null)) as {
+        link?: LandingPage;
+        error?: string;
+      } | null;
       if (!res.ok || !body?.link) {
         setError(body?.error ?? "failed to add landing page");
         return;
@@ -126,14 +132,23 @@ export function LandingPagesPanel({
 
   const updatePage = useCallback(
     async (id: string, patch: Partial<Pick<LandingPage, "url" | "label">>) => {
-      setPages((prev) => (prev ?? []).map((page) => (page.id === id ? { ...page, ...patch } : page)));
-      const res = await fetch(`/api/projects/${projectId}/tracking-links/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(patch),
-      });
+      setPages((prev) =>
+        (prev ?? []).map((page) =>
+          page.id === id ? { ...page, ...patch } : page
+        )
+      );
+      const res = await fetch(
+        `/api/projects/${projectId}/tracking-links/${id}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(patch),
+        }
+      );
       if (!res.ok) {
-        const body = (await res.json().catch(() => null)) as { error?: string } | null;
+        const body = (await res.json().catch(() => null)) as {
+          error?: string;
+        } | null;
         setError(body?.error ?? "failed to update landing page");
         await loadPages();
       }
@@ -145,12 +160,17 @@ export function LandingPagesPanel({
     async (id: string) => {
       const previous = pages ?? [];
       setPages((prev) => (prev ?? []).filter((page) => page.id !== id));
-      const res = await fetch(`/api/projects/${projectId}/tracking-links/${id}`, {
-        method: "DELETE",
-      });
+      const res = await fetch(
+        `/api/projects/${projectId}/tracking-links/${id}`,
+        {
+          method: "DELETE",
+        }
+      );
       if (!res.ok) {
         setPages(previous);
-        const body = (await res.json().catch(() => null)) as { error?: string } | null;
+        const body = (await res.json().catch(() => null)) as {
+          error?: string;
+        } | null;
         setError(body?.error ?? "failed to delete landing page");
       }
     },
@@ -171,9 +191,10 @@ export function LandingPagesPanel({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ga4PropertyId: trimmed || null }),
     });
-    const body = (await res.json().catch(() => null)) as
-      | { error?: string; project?: { ga4PropertyId?: string | null } }
-      | null;
+    const body = (await res.json().catch(() => null)) as {
+      error?: string;
+      project?: { ga4PropertyId?: string | null };
+    } | null;
 
     setSavingAnalytics(false);
     if (!res.ok) {
@@ -202,9 +223,13 @@ export function LandingPagesPanel({
 
   const disconnectGoogleAnalytics = useCallback(async () => {
     setError(null);
-    const res = await fetch("/api/google-analytics/disconnect", { method: "DELETE" });
+    const res = await fetch("/api/google-analytics/disconnect", {
+      method: "DELETE",
+    });
     if (!res.ok) {
-      const body = (await res.json().catch(() => null)) as { error?: string } | null;
+      const body = (await res.json().catch(() => null)) as {
+        error?: string;
+      } | null;
       setError(body?.error ?? "failed to disconnect Google Analytics");
       return;
     }
@@ -230,27 +255,27 @@ export function LandingPagesPanel({
 
   return (
     <section>
-      <div className="flex items-center justify-between mb-4">
+      <div className="mb-4 flex items-center justify-between">
         <div>
-          <h2 className="text-sm font-medium uppercase tracking-wide text-zinc-500">
+          <h2 className="text-sm font-medium tracking-wide text-zinc-500 uppercase">
             Landing pages
           </h2>
-          <p className="text-xs text-zinc-500 mt-1">
-            Save plain destinations here. Channel source and creative tags are attached later when
-            a creative selects a landing page.
+          <p className="mt-1 text-xs text-zinc-500">
+            Save plain destinations here. Channel source and creative tags are
+            attached later when a creative selects a landing page.
           </p>
         </div>
         <button
           type="button"
           onClick={() => setAdding(true)}
-          className="text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 border border-zinc-200 dark:border-zinc-800 rounded-md px-2 py-1"
+          className="rounded-md border border-zinc-200 px-2 py-1 text-xs text-zinc-500 hover:text-zinc-900 dark:border-zinc-800 dark:hover:text-zinc-100"
         >
           + Add landing page
         </button>
       </div>
 
       {error && (
-        <div className="mb-3 rounded-md border border-red-300 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200 px-3 py-2 text-sm">
+        <div className="mb-3 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
           {error}
         </div>
       )}
@@ -306,8 +331,8 @@ function LandingPageRow({
   onDelete: () => void;
 }) {
   return (
-    <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 space-y-3">
-      <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2">
+    <div className="space-y-3 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto]">
         <input
           type="text"
           defaultValue={page.label ?? ""}
@@ -315,14 +340,15 @@ function LandingPageRow({
           maxLength={120}
           onBlur={(e) => {
             const value = e.target.value.trim();
-            if (value !== (page.label ?? "")) onChange({ label: value || null });
+            if (value !== (page.label ?? ""))
+              onChange({ label: value || null });
           }}
           className="input-tactile"
         />
         <button
           type="button"
           onClick={onDelete}
-          className="rounded-md text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 px-3"
+          className="rounded-md px-3 text-xs text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40"
           aria-label="Delete landing page"
         >
           Remove
@@ -346,15 +372,16 @@ function LandingPageRow({
 
 function EmptyLandingPages({ onAdd }: { onAdd: () => void }) {
   return (
-    <div className="rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 bg-white/40 dark:bg-zinc-900/40 py-10 flex flex-col items-center text-center">
+    <div className="flex flex-col items-center rounded-xl border border-dashed border-zinc-300 bg-white/40 py-10 text-center dark:border-zinc-700 dark:bg-zinc-900/40">
       <div className="font-semibold">No landing pages yet</div>
-      <p className="text-sm text-zinc-500 mt-1 max-w-sm">
-        Add the destination pages once. Each creative can choose one later and get the right source.
+      <p className="mt-1 max-w-sm text-sm text-zinc-500">
+        Add the destination pages once. Each creative can choose one later and
+        get the right source.
       </p>
       <button
         type="button"
         onClick={onAdd}
-        className="apple-tap mt-4 rounded-lg bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 px-4 py-2 text-sm font-medium hover:opacity-90"
+        className="apple-tap mt-4 rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:opacity-90 dark:bg-zinc-100 dark:text-zinc-900"
       >
         + Add landing page
       </button>
@@ -376,16 +403,17 @@ function AddLandingPageDialog({
     <div
       role="dialog"
       aria-modal="true"
-      className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4"
+      className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
-        className="modal-surface w-full max-w-md rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-5 shadow-[var(--shadow-lift)]"
+        className="modal-surface w-full max-w-md rounded-xl border border-zinc-200 bg-white p-5 shadow-[var(--shadow-lift)] dark:border-zinc-800 dark:bg-zinc-900"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="font-semibold text-lg">Add landing page</h2>
-        <p className="text-sm text-zinc-500 mt-1">
-          Add the destination only. Source gets attached when creative is assigned.
+        <h2 className="text-lg font-semibold">Add landing page</h2>
+        <p className="mt-1 text-sm text-zinc-500">
+          Add the destination only. Source gets attached when creative is
+          assigned.
         </p>
         <form
           className="mt-4 space-y-3"
@@ -400,7 +428,9 @@ function AddLandingPageDialog({
           }}
         >
           <label className="block">
-            <span className="text-xs font-medium uppercase tracking-wide text-zinc-500">URL</span>
+            <span className="text-xs font-medium tracking-wide text-zinc-500 uppercase">
+              URL
+            </span>
             <input
               autoFocus
               type="url"
@@ -412,8 +442,9 @@ function AddLandingPageDialog({
             />
           </label>
           <label className="block">
-            <span className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-              Label <span className="text-zinc-400 normal-case">(optional)</span>
+            <span className="text-xs font-medium tracking-wide text-zinc-500 uppercase">
+              Label{" "}
+              <span className="text-zinc-400 normal-case">(optional)</span>
             </span>
             <input
               type="text"
@@ -428,14 +459,14 @@ function AddLandingPageDialog({
             <button
               type="button"
               onClick={onClose}
-              className="text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 px-3 py-2"
+              className="px-3 py-2 text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={url.trim().length === 0}
-              className="apple-tap rounded-md bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 px-4 py-2 text-sm font-medium disabled:opacity-50 hover:opacity-90"
+              className="apple-tap rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900"
             >
               Add
             </button>
@@ -510,20 +541,25 @@ function GoogleAnalyticsSettingsCard({
   }
 
   return (
-    <div className="mb-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 space-y-3">
+    <div className="mb-4 space-y-3 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h3 className="text-sm font-medium uppercase tracking-wide text-zinc-500">
+          <h3 className="text-sm font-medium tracking-wide text-zinc-500 uppercase">
             Google Analytics 4
           </h3>
-          <p className="text-xs text-zinc-500 mt-1">{helpText}</p>
+          <p className="mt-1 text-xs text-zinc-500">{helpText}</p>
           {settings?.accountEmail && (
-            <p className="text-xs text-zinc-500 mt-1">
-              Connected as <span className="font-medium text-zinc-700 dark:text-zinc-200">{settings.accountEmail}</span>
+            <p className="mt-1 text-xs text-zinc-500">
+              Connected as{" "}
+              <span className="font-medium text-zinc-700 dark:text-zinc-200">
+                {settings.accountEmail}
+              </span>
             </p>
           )}
         </div>
-        <div className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-medium ${toneClass}`}>
+        <div
+          className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-medium ${toneClass}`}
+        >
           {statusLabel}
         </div>
       </div>
@@ -532,7 +568,7 @@ function GoogleAnalyticsSettingsCard({
         {settings?.oauthConfigured && !settings.connected && (
           <a
             href={`/api/google-analytics/oauth/start?projectId=${encodeURIComponent(projectId)}`}
-            className="apple-tap rounded-md bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 px-3 py-2 text-sm font-medium hover:opacity-90"
+            className="apple-tap rounded-md bg-zinc-900 px-3 py-2 text-sm font-medium text-white hover:opacity-90 dark:bg-zinc-100 dark:text-zinc-900"
           >
             Connect Google Analytics
           </a>
@@ -550,7 +586,7 @@ function GoogleAnalyticsSettingsCard({
             <button
               type="button"
               onClick={onDisconnect}
-              className="text-sm text-zinc-500 hover:text-red-600 dark:hover:text-red-400 px-2 py-2"
+              className="px-2 py-2 text-sm text-zinc-500 hover:text-red-600 dark:hover:text-red-400"
             >
               Disconnect
             </button>
@@ -559,7 +595,7 @@ function GoogleAnalyticsSettingsCard({
       </div>
 
       <form
-        className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2"
+        className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto]"
         onSubmit={(e) => {
           e.preventDefault();
           if (!valid || saving || !hasChanges) return;
@@ -567,7 +603,7 @@ function GoogleAnalyticsSettingsCard({
         }}
       >
         <label className="block">
-          <span className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+          <span className="text-[11px] font-medium tracking-wide text-zinc-500 uppercase">
             GA4 Property
           </span>
           {settings?.connected ? (
@@ -580,7 +616,8 @@ function GoogleAnalyticsSettingsCard({
               <option value="">Select a GA4 property</option>
               {properties.map((property) => (
                 <option key={property.propertyId} value={property.propertyId}>
-                  {property.propertyName} · {property.accountName} · {property.propertyId}
+                  {property.propertyName} · {property.accountName} ·{" "}
+                  {property.propertyId}
                 </option>
               ))}
             </select>
@@ -589,7 +626,9 @@ function GoogleAnalyticsSettingsCard({
               type="text"
               inputMode="numeric"
               value={propertyId}
-              onChange={(e) => onPropertyIdChange(e.target.value.replace(/[^\d]/g, ""))}
+              onChange={(e) =>
+                onPropertyIdChange(e.target.value.replace(/[^\d]/g, ""))
+              }
               placeholder="e.g. 123456789"
               className="input-tactile mt-1 w-full"
             />
@@ -599,7 +638,7 @@ function GoogleAnalyticsSettingsCard({
           <button
             type="submit"
             disabled={!valid || saving || !hasChanges}
-            className="apple-tap rounded-md bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 px-4 py-2 text-sm font-medium disabled:opacity-50 hover:opacity-90"
+            className="apple-tap rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900"
           >
             {saving ? "Saving…" : trimmed ? "Save property" : "Clear property"}
           </button>
@@ -612,13 +651,18 @@ function GoogleAnalyticsSettingsCard({
         </div>
       )}
       {propertyError && (
-        <div className="text-xs text-red-600 dark:text-red-400">{propertyError}</div>
-      )}
-      {settings?.connected && !loadingProperties && properties.length === 0 && !propertyError && (
-        <div className="text-xs text-zinc-500">
-          No GA4 properties were found for this Google account.
+        <div className="text-xs text-red-600 dark:text-red-400">
+          {propertyError}
         </div>
       )}
+      {settings?.connected &&
+        !loadingProperties &&
+        properties.length === 0 &&
+        !propertyError && (
+          <div className="text-xs text-zinc-500">
+            No GA4 properties were found for this Google account.
+          </div>
+        )}
     </div>
   );
 }

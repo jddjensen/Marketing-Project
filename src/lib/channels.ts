@@ -57,12 +57,17 @@ export const CHANNEL_CATEGORY_LABELS: Record<ChannelCategoryKey, string> = {
   "on-site-print": "On-Site & Print",
 };
 
-export const CHANNEL_CATEGORY_DESCRIPTIONS: Record<ChannelCategoryKey, string> = {
-  "owned-direct": "Channels the aquarium directly controls, from the website to outbound messaging.",
-  "paid-media": "Paid platform channels where the channel owns multiple ad sizes or placements.",
-  "distribution-pr": "Broadcast, partner, influencer, and publicity channels that distribute campaign stories.",
-  "on-site-print": "On-campus screens, installed signage, and printed handouts used inside the aquarium footprint.",
-};
+export const CHANNEL_CATEGORY_DESCRIPTIONS: Record<ChannelCategoryKey, string> =
+  {
+    "owned-direct":
+      "Channels the aquarium directly controls, from the website to outbound messaging.",
+    "paid-media":
+      "Paid platform channels where the channel owns multiple ad sizes or placements.",
+    "distribution-pr":
+      "Broadcast, partner, influencer, and publicity channels that distribute campaign stories.",
+    "on-site-print":
+      "On-campus screens, installed signage, and printed handouts used inside the aquarium footprint.",
+  };
 
 export const CHANNELS: ChannelMeta[] = [
   {
@@ -71,9 +76,16 @@ export const CHANNELS: ChannelMeta[] = [
     desc: "Aquarium web placements and owned site surfaces",
     category: "owned-direct",
     inventoryDescription: "Aquarium-owned web placements and content surfaces.",
-    inventoryItems: ["Hero Slider", "Pop Up", "Landing Page", "Blog", "Habitat Slider"],
+    inventoryItems: [
+      "Hero Slider",
+      "Pop Up",
+      "Landing Page",
+      "Blog",
+      "Habitat Slider",
+    ],
     boardTitle: "Website — Campaign Media",
-    boardSubtitle: "Homepage, landing, popup, blog, and habitat placements for aquarium web content.",
+    boardSubtitle:
+      "Homepage, landing, popup, blog, and habitat placements for aquarium web content.",
     slots: [
       {
         key: "hero-slider",
@@ -82,7 +94,12 @@ export const CHANNELS: ChannelMeta[] = [
         hint: "Homepage hero rotation",
         recommended: true,
       },
-      { key: "pop-up", label: "Pop Up", aspect: "aspect-[4/5]", hint: "Modal or overlay promo" },
+      {
+        key: "pop-up",
+        label: "Pop Up",
+        aspect: "aspect-[4/5]",
+        hint: "Modal or overlay promo",
+      },
       {
         key: "landing-page",
         label: "Landing Page",
@@ -90,7 +107,12 @@ export const CHANNELS: ChannelMeta[] = [
         hint: "Campaign landing page creative",
         recommended: true,
       },
-      { key: "blog", label: "Blog", aspect: "aspect-[4/3]", hint: "Blog header or article promo" },
+      {
+        key: "blog",
+        label: "Blog",
+        aspect: "aspect-[4/3]",
+        hint: "Blog header or article promo",
+      },
       {
         key: "habitat-slider",
         label: "Habitat Slider",
@@ -116,7 +138,12 @@ export const CHANNELS: ChannelMeta[] = [
         hint: "One-off email sends",
         recommended: true,
       },
-      { key: "flow", label: "Flow", aspect: "aspect-[4/5]", hint: "Automated lifecycle email creative" },
+      {
+        key: "flow",
+        label: "Flow",
+        aspect: "aspect-[4/5]",
+        hint: "Automated lifecycle email creative",
+      },
     ],
   },
   {
@@ -127,7 +154,8 @@ export const CHANNELS: ChannelMeta[] = [
     inventoryDescription: "Text message campaigns and automated flows.",
     inventoryItems: ["Campaign", "Flow"],
     boardTitle: "SMS — Campaign Media",
-    boardSubtitle: "Campaign and flow messaging assets for aquarium SMS programs.",
+    boardSubtitle:
+      "Campaign and flow messaging assets for aquarium SMS programs.",
     slots: [
       {
         key: "campaign",
@@ -136,7 +164,12 @@ export const CHANNELS: ChannelMeta[] = [
         hint: "Broadcast SMS and MMS campaigns",
         recommended: true,
       },
-      { key: "flow", label: "Flow", aspect: "aspect-[9/16]", hint: "Automated text message flows" },
+      {
+        key: "flow",
+        label: "Flow",
+        aspect: "aspect-[9/16]",
+        hint: "Automated text message flows",
+      },
     ],
   },
   {
@@ -144,10 +177,12 @@ export const CHANNELS: ChannelMeta[] = [
     name: "Internal Messaging",
     desc: "Team Talk and Front Desk FAQ",
     category: "owned-direct",
-    inventoryDescription: "Internal staff communication and operational references.",
+    inventoryDescription:
+      "Internal staff communication and operational references.",
     inventoryItems: ["Team Talk", "Front Desk FAQ"],
     boardTitle: "Internal Messaging — Campaign Media",
-    boardSubtitle: "Assets and references for Team Talk and Front Desk FAQ communication.",
+    boardSubtitle:
+      "Assets and references for Team Talk and Front Desk FAQ communication.",
     slots: [
       {
         key: "team-talk",
@@ -169,10 +204,18 @@ export const CHANNELS: ChannelMeta[] = [
     name: "Meta",
     desc: "Meta is a channel; feed, Reels, Stories, and video live inside it",
     category: "paid-media",
-    inventoryDescription: "Paid Meta placements grouped inside one top-level channel.",
-    inventoryItems: ["4:5 Feed", "9:16 Stories/Reels", "1:1 Square", "1.91:1 Landscape", "16:9 Horizontal"],
+    inventoryDescription:
+      "Paid Meta placements grouped inside one top-level channel.",
+    inventoryItems: [
+      "4:5 Feed",
+      "9:16 Stories/Reels",
+      "1:1 Square",
+      "1.91:1 Landscape",
+      "16:9 Horizontal",
+    ],
     boardTitle: "Meta — Campaign Media",
-    boardSubtitle: "Meta is a channel. Feed, Reels, Stories, and in-stream sizes live here under one shared campaign surface.",
+    boardSubtitle:
+      "Meta is a channel. Feed, Reels, Stories, and in-stream sizes live here under one shared campaign surface.",
     trackingEnabled: true,
     slots: [
       {
@@ -189,9 +232,24 @@ export const CHANNELS: ChannelMeta[] = [
         hint: "Stories, Reels, full-screen vertical — 1080×1920",
         recommended: true,
       },
-      { key: "1x1", label: "1:1 Square", aspect: "aspect-square", hint: "Carousel, Explore, fallback — 1080×1080" },
-      { key: "1.91x1", label: "1.91:1 Landscape", aspect: "aspect-[1.91/1]", hint: "Link preview / landscape fallback — 1200×628" },
-      { key: "16x9", label: "16:9 Horizontal", aspect: "aspect-video", hint: "In-stream video — 1920×1080" },
+      {
+        key: "1x1",
+        label: "1:1 Square",
+        aspect: "aspect-square",
+        hint: "Carousel, Explore, fallback — 1080×1080",
+      },
+      {
+        key: "1.91x1",
+        label: "1.91:1 Landscape",
+        aspect: "aspect-[1.91/1]",
+        hint: "Link preview / landscape fallback — 1200×628",
+      },
+      {
+        key: "16x9",
+        label: "16:9 Horizontal",
+        aspect: "aspect-video",
+        hint: "In-stream video — 1920×1080",
+      },
     ],
   },
   {
@@ -199,10 +257,12 @@ export const CHANNELS: ChannelMeta[] = [
     name: "TikTok",
     desc: "In-Feed, TopView, and Spark Ads",
     category: "paid-media",
-    inventoryDescription: "Paid TikTok placements grouped by supported aspect ratio.",
+    inventoryDescription:
+      "Paid TikTok placements grouped by supported aspect ratio.",
     inventoryItems: ["9:16 Vertical", "1:1 Square", "16:9 Horizontal"],
     boardTitle: "TikTok — Campaign Media",
-    boardSubtitle: "TikTok is a channel. 9:16 is the lead format, with supported square and horizontal variants grouped under it.",
+    boardSubtitle:
+      "TikTok is a channel. 9:16 is the lead format, with supported square and horizontal variants grouped under it.",
     slots: [
       {
         key: "9x16",
@@ -211,8 +271,18 @@ export const CHANNELS: ChannelMeta[] = [
         hint: "In-Feed, TopView, Spark Ads — 1080×1920 export / 540×960 min",
         recommended: true,
       },
-      { key: "1x1", label: "1:1 Square", aspect: "aspect-square", hint: "Supported — 640×640 min" },
-      { key: "16x9", label: "16:9 Horizontal", aspect: "aspect-video", hint: "Supported — 960×540 min" },
+      {
+        key: "1x1",
+        label: "1:1 Square",
+        aspect: "aspect-square",
+        hint: "Supported — 640×640 min",
+      },
+      {
+        key: "16x9",
+        label: "16:9 Horizontal",
+        aspect: "aspect-video",
+        hint: "Supported — 960×540 min",
+      },
     ],
   },
   {
@@ -220,10 +290,18 @@ export const CHANNELS: ChannelMeta[] = [
     name: "YouTube",
     desc: "Paid YouTube video and Shorts creative",
     category: "paid-media",
-    inventoryDescription: "Paid YouTube placements grouped by ad format and ratio.",
-    inventoryItems: ["16:9 Horizontal", "9:16 Shorts", "1:1 Square", "Thumbnail", "Companion Banner"],
+    inventoryDescription:
+      "Paid YouTube placements grouped by ad format and ratio.",
+    inventoryItems: [
+      "16:9 Horizontal",
+      "9:16 Shorts",
+      "1:1 Square",
+      "Thumbnail",
+      "Companion Banner",
+    ],
     boardTitle: "YouTube — Campaign Media",
-    boardSubtitle: "YouTube is a channel. In-Stream, Shorts, and square discovery placements are grouped here by format.",
+    boardSubtitle:
+      "YouTube is a channel. In-Stream, Shorts, and square discovery placements are grouped here by format.",
     slots: [
       {
         key: "16x9",
@@ -263,10 +341,17 @@ export const CHANNELS: ChannelMeta[] = [
     name: "Google Search",
     desc: "Search image assets, logos, and terms",
     category: "paid-media",
-    inventoryDescription: "Search creative and keyword support grouped inside one channel.",
-    inventoryItems: ["1:1 Square Image", "1.91:1 Landscape Image", "1:1 Business Logo", "Search Terms"],
+    inventoryDescription:
+      "Search creative and keyword support grouped inside one channel.",
+    inventoryItems: [
+      "1:1 Square Image",
+      "1.91:1 Landscape Image",
+      "1:1 Business Logo",
+      "Search Terms",
+    ],
     boardTitle: "Google Search — Campaign Media",
-    boardSubtitle: "Google Search is a channel. Image assets, logos, and search terms are grouped together here.",
+    boardSubtitle:
+      "Google Search is a channel. Image assets, logos, and search terms are grouped together here.",
     slots: [
       {
         key: "1x1",
@@ -296,12 +381,19 @@ export const CHANNELS: ChannelMeta[] = [
     name: "OTT",
     desc: "Office and streaming network placements",
     category: "distribution-pr",
-    inventoryDescription: "Video placements across office and streaming networks.",
+    inventoryDescription:
+      "Video placements across office and streaming networks.",
     inventoryItems: ["Office", "Streaming Network 1", "Streaming Network 2"],
     boardTitle: "OTT — Campaign Media",
-    boardSubtitle: "Office and streaming network placements for aquarium OTT creative.",
+    boardSubtitle:
+      "Office and streaming network placements for aquarium OTT creative.",
     slots: [
-      { key: "office", label: "Office", aspect: "aspect-video", hint: "Internal OTT office placement" },
+      {
+        key: "office",
+        label: "Office",
+        aspect: "aspect-video",
+        hint: "Internal OTT office placement",
+      },
       {
         key: "streaming-network-1",
         label: "Streaming Network 1",
@@ -323,11 +415,22 @@ export const CHANNELS: ChannelMeta[] = [
     desc: "Influencers, partner YouTube, regional, and national PR",
     category: "distribution-pr",
     inventoryDescription: "Earned and partner-facing publicity channels.",
-    inventoryItems: ["Partner YouTube", "Influencers", "Regional (Utah)", "National"],
+    inventoryItems: [
+      "Partner YouTube",
+      "Influencers",
+      "Regional (Utah)",
+      "National",
+    ],
     boardTitle: "PR — Campaign Media",
-    boardSubtitle: "Partner YouTube, influencer, regional Utah, and national PR collateral.",
+    boardSubtitle:
+      "Partner YouTube, influencer, regional Utah, and national PR collateral.",
     slots: [
-      { key: "youtube", label: "Partner YouTube", aspect: "aspect-video", hint: "PR and earned YouTube placements" },
+      {
+        key: "youtube",
+        label: "Partner YouTube",
+        aspect: "aspect-video",
+        hint: "PR and earned YouTube placements",
+      },
       {
         key: "influencers",
         label: "Influencers",
@@ -341,7 +444,12 @@ export const CHANNELS: ChannelMeta[] = [
         aspect: "aspect-[4/5]",
         hint: "Regional press and partner outreach",
       },
-      { key: "national", label: "National", aspect: "aspect-[4/5]", hint: "National PR assets and distribution" },
+      {
+        key: "national",
+        label: "National",
+        aspect: "aspect-[4/5]",
+        hint: "National PR assets and distribution",
+      },
     ],
   },
   {
@@ -352,7 +460,8 @@ export const CHANNELS: ChannelMeta[] = [
     inventoryDescription: "On-site digital screens across the aquarium campus.",
     inventoryItems: ["Admission", "Info Desk", "On Campus"],
     boardTitle: "Digital Signage — Campaign Media",
-    boardSubtitle: "Admission, Info Desk, and on-campus digital screen creative for the aquarium.",
+    boardSubtitle:
+      "Admission, Info Desk, and on-campus digital screen creative for the aquarium.",
     slots: [
       {
         key: "admission",
@@ -361,8 +470,18 @@ export const CHANNELS: ChannelMeta[] = [
         hint: "Entrance and admissions screens",
         recommended: true,
       },
-      { key: "info-desk", label: "Info Desk", aspect: "aspect-video", hint: "Information desk digital signage" },
-      { key: "on-campus", label: "On Campus", aspect: "aspect-video", hint: "General on-campus screen network" },
+      {
+        key: "info-desk",
+        label: "Info Desk",
+        aspect: "aspect-video",
+        hint: "Information desk digital signage",
+      },
+      {
+        key: "on-campus",
+        label: "On Campus",
+        aspect: "aspect-video",
+        hint: "General on-campus screen network",
+      },
     ],
   },
   {
@@ -370,7 +489,8 @@ export const CHANNELS: ChannelMeta[] = [
     name: "Physical Signage",
     desc: "Parking lot, H-Frames, A-Frame, banners, billboards, and custom blueprints",
     category: "on-site-print",
-    inventoryDescription: "Printed and installed signage throughout the aquarium footprint.",
+    inventoryDescription:
+      "Printed and installed signage throughout the aquarium footprint.",
     inventoryItems: [
       "Parking Lot",
       "H-Frames",
@@ -389,10 +509,16 @@ export const CHANNELS: ChannelMeta[] = [
     name: "Flyers",
     desc: "Letter flyers, half-sheets, tabloid handouts",
     category: "on-site-print",
-    inventoryDescription: "Printed handouts and leave-behinds for guests and partners.",
-    inventoryItems: ["8.5 × 11 Letter", "5.5 × 8.5 Half-Sheet", "11 × 17 Tabloid"],
+    inventoryDescription:
+      "Printed handouts and leave-behinds for guests and partners.",
+    inventoryItems: [
+      "8.5 × 11 Letter",
+      "5.5 × 8.5 Half-Sheet",
+      "11 × 17 Tabloid",
+    ],
     boardTitle: "Flyers — Campaign Media",
-    boardSubtitle: "Upload print-ready flyer creative by size. Letter is the safest default; add tracked destinations or QR-ready links for distribution pieces.",
+    boardSubtitle:
+      "Upload print-ready flyer creative by size. Letter is the safest default; add tracked destinations or QR-ready links for distribution pieces.",
     trackingEnabled: true,
     slots: [
       {
@@ -432,13 +558,19 @@ export const CHANNEL_BY_KEY = Object.fromEntries(
 // covered here because its ratios are derived from the project's signage
 // format dimensions at runtime — callers validate signage ratios separately
 // (see expectedSignageRatio in @/lib/signage).
-export function isPlatformSlotKey(platform: PlatformKey, ratio: string): boolean {
+export function isPlatformSlotKey(
+  platform: PlatformKey,
+  ratio: string
+): boolean {
   const channel = CHANNEL_BY_KEY[platform];
   if (!channel) return false;
   return (channel.slots ?? []).some((slot) => slot.key === ratio);
 }
 
-export const PHYSICAL_CHANNEL_KEYS = ["signage", "flyers"] as const satisfies readonly PlatformKey[];
+export const PHYSICAL_CHANNEL_KEYS = [
+  "signage",
+  "flyers",
+] as const satisfies readonly PlatformKey[];
 const PHYSICAL_CHANNEL_SET = new Set<PlatformKey>(PHYSICAL_CHANNEL_KEYS);
 export const NON_PHYSICAL_CHANNEL_KEYS = CHANNELS.filter(
   (channel) => !PHYSICAL_CHANNEL_SET.has(channel.key)

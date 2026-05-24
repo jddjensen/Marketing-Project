@@ -23,9 +23,7 @@ const VIDEO_MIME = new Map<string, { ext: string }>([
 // for files (especially video) that are too large to flow through a
 // serverless function (Vercel caps request bodies at ~4.5 MB regardless of
 // tier). The client uploads, then calls /api/upload/finalize with the path.
-export async function POST(
-  request: NextRequest
-) {
+export async function POST(request: NextRequest) {
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -44,7 +42,16 @@ export async function POST(
   } | null;
   if (!body) return Response.json({ error: "body required" }, { status: 400 });
 
-  const { projectId, platform, ratio, kind, mimeType, fileSize, fileName, signageFormatId } = body;
+  const {
+    projectId,
+    platform,
+    ratio,
+    kind,
+    mimeType,
+    fileSize,
+    fileName,
+    signageFormatId,
+  } = body;
 
   if (typeof projectId !== "string" || !isUuid(projectId)) {
     return Response.json({ error: "projectId required" }, { status: 400 });
@@ -55,20 +62,35 @@ export async function POST(
   if (typeof ratio !== "string" || !SLOT_PATTERN.test(ratio)) {
     return Response.json({ error: "invalid slot key" }, { status: 400 });
   }
-  if (platform !== "signage" && !isPlatformSlotKey(platform as PlatformKey, ratio)) {
+  if (
+    platform !== "signage" &&
+    !isPlatformSlotKey(platform as PlatformKey, ratio)
+  ) {
     return Response.json(
-      { error: `ratio '${ratio}' is not a valid slot for platform '${platform}'` },
+      {
+        error: `ratio '${ratio}' is not a valid slot for platform '${platform}'`,
+      },
       { status: 400 }
     );
   }
   if (kind !== "video" && kind !== "poster") {
-    return Response.json({ error: "kind must be 'video' or 'poster'" }, { status: 400 });
+    return Response.json(
+      { error: "kind must be 'video' or 'poster'" },
+      { status: 400 }
+    );
   }
   if (typeof mimeType !== "string" || mimeType.length === 0) {
     return Response.json({ error: "mimeType required" }, { status: 400 });
   }
-  if (typeof fileSize !== "number" || !Number.isFinite(fileSize) || fileSize <= 0) {
-    return Response.json({ error: "fileSize must be a positive number" }, { status: 400 });
+  if (
+    typeof fileSize !== "number" ||
+    !Number.isFinite(fileSize) ||
+    fileSize <= 0
+  ) {
+    return Response.json(
+      { error: "fileSize must be a positive number" },
+      { status: 400 }
+    );
   }
   if (typeof fileName !== "string" || fileName.length === 0) {
     return Response.json({ error: "fileName required" }, { status: 400 });
@@ -86,14 +108,23 @@ export async function POST(
       );
     }
     if (fileSize > MAX_VIDEO_BYTES) {
-      return Response.json({ error: "video too large (max 2GB)" }, { status: 400 });
+      return Response.json(
+        { error: "video too large (max 2GB)" },
+        { status: 400 }
+      );
     }
   } else {
     if (mimeType !== "image/jpeg") {
-      return Response.json({ error: "poster must be image/jpeg" }, { status: 400 });
+      return Response.json(
+        { error: "poster must be image/jpeg" },
+        { status: 400 }
+      );
     }
     if (fileSize > MAX_POSTER_BYTES) {
-      return Response.json({ error: "poster too large (max 5MB)" }, { status: 400 });
+      return Response.json(
+        { error: "poster too large (max 5MB)" },
+        { status: 400 }
+      );
     }
   }
 
@@ -106,16 +137,23 @@ export async function POST(
   if (projectError) {
     return Response.json({ error: "project lookup failed" }, { status: 500 });
   }
-  if (!project) return Response.json({ error: "project not found" }, { status: 404 });
+  if (!project)
+    return Response.json({ error: "project not found" }, { status: 404 });
   if (project.archived_at) {
-    return Response.json({ error: "cannot upload to an archived project" }, { status: 400 });
+    return Response.json(
+      { error: "cannot upload to an archived project" },
+      { status: 400 }
+    );
   }
 
   // Signage validation.
   let formatId: string | null = null;
   if (platform === "signage") {
     if (typeof signageFormatId !== "string" || !isUuid(signageFormatId)) {
-      return Response.json({ error: "signageFormatId required for signage" }, { status: 400 });
+      return Response.json(
+        { error: "signageFormatId required for signage" },
+        { status: 400 }
+      );
     }
     const { data: format, error: formatError } = await supabase
       .from("signage_formats")
@@ -124,7 +162,10 @@ export async function POST(
       .eq("project_id", projectId)
       .maybeSingle();
     if (formatError || !format) {
-      return Response.json({ error: "signage format not found for project" }, { status: 404 });
+      return Response.json(
+        { error: "signage format not found for project" },
+        { status: 404 }
+      );
     }
     const expected = expectedSignageRatio({
       width: Number(format.width),
@@ -132,12 +173,17 @@ export async function POST(
     });
     if (ratio !== expected) {
       return Response.json(
-        { error: `ratio '${ratio}' does not match signage format dimensions (expected '${expected}')` },
+        {
+          error: `ratio '${ratio}' does not match signage format dimensions (expected '${expected}')`,
+        },
         { status: 400 }
       );
     }
     formatId = signageFormatId;
-  } else if (typeof signageFormatId === "string" && signageFormatId.length > 0) {
+  } else if (
+    typeof signageFormatId === "string" &&
+    signageFormatId.length > 0
+  ) {
     return Response.json(
       { error: "signageFormatId only valid for signage platform" },
       { status: 400 }
@@ -148,7 +194,8 @@ export async function POST(
   // so the existing reader logic that looks for `<videoPath>.poster.jpg` still
   // works (the client passes both paths to /finalize so the relationship is
   // recorded in the DB column too).
-  const ext = kind === "video" ? VIDEO_MIME.get(mimeType as string)!.ext : ".poster.jpg";
+  const ext =
+    kind === "video" ? VIDEO_MIME.get(mimeType as string)!.ext : ".poster.jpg";
   const safeName =
     kind === "video"
       ? `${Date.now()}-${crypto.randomBytes(6).toString("hex")}${ext}`
@@ -164,7 +211,10 @@ export async function POST(
     .createSignedUploadUrl(storagePath);
 
   if (signError || !signed) {
-    return Response.json({ error: "could not create signed upload url" }, { status: 500 });
+    return Response.json(
+      { error: "could not create signed upload url" },
+      { status: 500 }
+    );
   }
 
   return Response.json({

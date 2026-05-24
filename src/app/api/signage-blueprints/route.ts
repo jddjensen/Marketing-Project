@@ -40,7 +40,10 @@ export async function GET() {
     .order("created_at", { ascending: false });
 
   if (error) {
-    return Response.json({ error: "failed to load blueprints" }, { status: 500 });
+    return Response.json(
+      { error: "failed to load blueprints" },
+      { status: 500 }
+    );
   }
 
   return Response.json({ blueprints: (data ?? []).map(serialize) });
@@ -68,22 +71,37 @@ export async function POST(request: NextRequest) {
   }
 
   const label = typeof body.label === "string" ? body.label.trim() : "";
-  const width = typeof body.width === "number" ? body.width : Number(body.width);
-  const height = typeof body.height === "number" ? body.height : Number(body.height);
+  const width =
+    typeof body.width === "number" ? body.width : Number(body.width);
+  const height =
+    typeof body.height === "number" ? body.height : Number(body.height);
   const unit = typeof body.unit === "string" ? body.unit : "";
 
   if (label.length === 0 || label.length > 120) {
-    return Response.json({ error: "label is required (1-120 chars)" }, { status: 400 });
+    return Response.json(
+      { error: "label is required (1-120 chars)" },
+      { status: 400 }
+    );
   }
-  if (!Number.isFinite(width) || width <= 0 || !Number.isFinite(height) || height <= 0) {
-    return Response.json({ error: "width and height must be positive numbers" }, { status: 400 });
+  if (
+    !Number.isFinite(width) ||
+    width <= 0 ||
+    !Number.isFinite(height) ||
+    height <= 0
+  ) {
+    return Response.json(
+      { error: "width and height must be positive numbers" },
+      { status: 400 }
+    );
   }
   // DB column is numeric(12,3); cap below the precision ceiling so the insert
   // doesn't bubble up as a 500 when someone fat-fingers a dimension.
   const MAX_DIMENSION = 1_000_000;
   if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
     return Response.json(
-      { error: `width and height must be ${MAX_DIMENSION.toLocaleString()} or less` },
+      {
+        error: `width and height must be ${MAX_DIMENSION.toLocaleString()} or less`,
+      },
       { status: 400 }
     );
   }

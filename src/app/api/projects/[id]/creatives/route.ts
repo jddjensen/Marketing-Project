@@ -17,7 +17,8 @@ export async function POST(
   ctx: { params: Promise<{ id: string }> }
 ) {
   const { id: projectId } = await ctx.params;
-  if (!isUuid(projectId)) return Response.json({ error: "not found" }, { status: 404 });
+  if (!isUuid(projectId))
+    return Response.json({ error: "not found" }, { status: 404 });
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -50,7 +51,9 @@ export async function POST(
   // so a configured-slot check is enough — no signage branch needed here.
   if (!isPlatformSlotKey(platform as PlatformKey, ratio)) {
     return Response.json(
-      { error: `ratio '${ratio}' is not a valid slot for platform '${platform}'` },
+      {
+        error: `ratio '${ratio}' is not a valid slot for platform '${platform}'`,
+      },
       { status: 400 }
     );
   }
@@ -61,7 +64,10 @@ export async function POST(
   }
   // Text creatives must actually have copy.
   if (Object.keys(copyResult.value).length === 0) {
-    return Response.json({ error: "copy is required for text creatives" }, { status: 400 });
+    return Response.json(
+      { error: "copy is required for text creatives" },
+      { status: 400 }
+    );
   }
 
   // Project must exist and not be archived.
@@ -73,9 +79,13 @@ export async function POST(
   if (projectError) {
     return Response.json({ error: "project lookup failed" }, { status: 500 });
   }
-  if (!project) return Response.json({ error: "project not found" }, { status: 404 });
+  if (!project)
+    return Response.json({ error: "project not found" }, { status: 404 });
   if (project.archived_at) {
-    return Response.json({ error: "cannot create in an archived project" }, { status: 400 });
+    return Response.json(
+      { error: "cannot create in an archived project" },
+      { status: 400 }
+    );
   }
 
   // Replace flow.
@@ -84,7 +94,10 @@ export async function POST(
   let archivedIds: string[] = [];
   if (typeof replaceCreativeId === "string" && replaceCreativeId.length > 0) {
     if (!isUuid(replaceCreativeId)) {
-      return Response.json({ error: "invalid replaceCreativeId" }, { status: 400 });
+      return Response.json(
+        { error: "invalid replaceCreativeId" },
+        { status: 400 }
+      );
     }
     const { data: existing, error: existingError } = await supabase
       .from("media")
@@ -93,7 +106,10 @@ export async function POST(
       .eq("project_id", projectId)
       .order("version_num", { ascending: false });
     if (existingError) {
-      return Response.json({ error: "creative lookup failed" }, { status: 500 });
+      return Response.json(
+        { error: "creative lookup failed" },
+        { status: 500 }
+      );
     }
     if (!existing || existing.length === 0) {
       return Response.json({ error: "creative not found" }, { status: 404 });
@@ -123,14 +139,19 @@ export async function POST(
   const { data: inserted, error: insertError } = await supabase
     .from("media")
     .insert(insertRow)
-    .select("id, creative_id, version_num, platform, ratio, kind, copy, uploaded_at")
+    .select(
+      "id, creative_id, version_num, platform, ratio, kind, copy, uploaded_at"
+    )
     .single();
   if (insertError || !inserted) {
     // 23505 = unique violation on the partial index that ensures only one
     // is_current=true row per creative_id. A concurrent replace beat us.
     if (insertError && (insertError as { code?: string }).code === "23505") {
       return Response.json(
-        { error: "another version of this creative was just published — refresh and retry" },
+        {
+          error:
+            "another version of this creative was just published — refresh and retry",
+        },
         { status: 409 }
       );
     }
@@ -154,13 +175,20 @@ export async function POST(
         .delete()
         .in("id", archivedIds);
       if (deleteErr) {
-        console.warn("text-creative: archive-delete failed; keeping storage", deleteErr.message);
+        console.warn(
+          "text-creative: archive-delete failed; keeping storage",
+          deleteErr.message
+        );
       } else if (paths.length > 0) {
         const { error: removeErr } = await supabase.storage
           .from("creatives")
           .remove(paths);
         if (removeErr) {
-          console.warn("text-creative: storage cleanup failed", paths, removeErr.message);
+          console.warn(
+            "text-creative: storage cleanup failed",
+            paths,
+            removeErr.message
+          );
         }
       }
     } else {

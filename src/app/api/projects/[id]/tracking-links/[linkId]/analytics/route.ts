@@ -19,22 +19,35 @@ export async function GET(
   const refresh = request.nextUrl.searchParams.get("refresh") === "1";
   const supabase = await createSupabaseServerClient();
 
-  const [{ data: link, error: linkError }, { data: project, error: projectError }] =
-    await Promise.all([
-      supabase
-        .from("project_tracking_links")
-        .select("id, created_at")
-        .eq("id", linkId)
-        .eq("project_id", id)
-        .maybeSingle(),
-      supabase.from("projects").select("ga4_property_id").eq("id", id).maybeSingle(),
-    ]);
+  const [
+    { data: link, error: linkError },
+    { data: project, error: projectError },
+  ] = await Promise.all([
+    supabase
+      .from("project_tracking_links")
+      .select("id, created_at")
+      .eq("id", linkId)
+      .eq("project_id", id)
+      .maybeSingle(),
+    supabase
+      .from("projects")
+      .select("ga4_property_id")
+      .eq("id", id)
+      .maybeSingle(),
+  ]);
 
   // Don't echo Supabase/Postgres error text — it leaks column types and
   // table-level details.
-  if (linkError) return Response.json({ error: "failed to load tracking link" }, { status: 500 });
+  if (linkError)
+    return Response.json(
+      { error: "failed to load tracking link" },
+      { status: 500 }
+    );
   if (projectError) {
-    return Response.json({ error: "failed to load project settings" }, { status: 500 });
+    return Response.json(
+      { error: "failed to load project settings" },
+      { status: 500 }
+    );
   }
   if (!link) return Response.json({ error: "not found" }, { status: 404 });
 
@@ -66,9 +79,15 @@ export async function GET(
     return Response.json({ analytics, summary });
   } catch (error) {
     if (isGoogleAnalyticsError(error)) {
-      return Response.json({ error: error.message, analytics }, { status: error.status });
+      return Response.json(
+        { error: error.message, analytics },
+        { status: error.status }
+      );
     }
 
-    return Response.json({ error: "Failed to load Google Analytics data", analytics }, { status: 500 });
+    return Response.json(
+      { error: "Failed to load Google Analytics data", analytics },
+      { status: 500 }
+    );
   }
 }

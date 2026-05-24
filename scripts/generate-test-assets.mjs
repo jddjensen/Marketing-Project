@@ -3,7 +3,10 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import sharp from "sharp";
 
-const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const rootDir = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  ".."
+);
 const outputDir = path.join(rootDir, "public", "test-assets");
 const mediaDir = path.join(outputDir, "media");
 
@@ -20,8 +23,22 @@ const slots = [
   ["email", "Email", "flow", "Flow", 1080, 1350],
   ["sms", "SMS", "campaign", "Campaign", 1080, 1920],
   ["sms", "SMS", "flow", "Flow", 1080, 1920],
-  ["internal-messaging", "Internal Messaging", "team-talk", "Team Talk", 1200, 900],
-  ["internal-messaging", "Internal Messaging", "front-desk-faq", "Front Desk FAQ", 1200, 900],
+  [
+    "internal-messaging",
+    "Internal Messaging",
+    "team-talk",
+    "Team Talk",
+    1200,
+    900,
+  ],
+  [
+    "internal-messaging",
+    "Internal Messaging",
+    "front-desk-faq",
+    "Front Desk FAQ",
+    1200,
+    900,
+  ],
 
   // Paid media
   ["meta", "Meta", "4x5", "4:5 Feed", 1080, 1350],
@@ -38,8 +55,22 @@ const slots = [
   ["youtube", "YouTube", "youtube-thumbnail", "Thumbnail", 1920, 1080],
   ["youtube", "YouTube", "companion-banner", "Companion Banner", 1500, 300],
   ["google-search", "Google Search", "1x1", "1:1 Square Image", 1200, 1200],
-  ["google-search", "Google Search", "1.91x1", "1.91:1 Landscape Image", 1200, 628],
-  ["google-search", "Google Search", "logo-1x1", "1:1 Business Logo", 1200, 1200],
+  [
+    "google-search",
+    "Google Search",
+    "1.91x1",
+    "1.91:1 Landscape Image",
+    1200,
+    628,
+  ],
+  [
+    "google-search",
+    "Google Search",
+    "logo-1x1",
+    "1:1 Business Logo",
+    1200,
+    1200,
+  ],
 
   // Distribution and PR
   ["ott", "OTT", "office", "Office", 1920, 1080],
@@ -59,11 +90,39 @@ const slots = [
   ["flyers", "Flyers", "11x17", "11 x 17 Tabloid", 1100, 1700],
 
   // Physical signage uses project-created formats, so these match common presets.
-  ["signage", "Physical Signage", "billboard-highway-default", "Billboard Highway Default", 1920, 560],
-  ["signage", "Physical Signage", "billboard-poster", "Billboard Poster", 1600, 800],
+  [
+    "signage",
+    "Physical Signage",
+    "billboard-highway-default",
+    "Billboard Highway Default",
+    1920,
+    560,
+  ],
+  [
+    "signage",
+    "Physical Signage",
+    "billboard-poster",
+    "Billboard Poster",
+    1600,
+    800,
+  ],
   ["signage", "Physical Signage", "aframe", "A-Frame Sidewalk Sign", 800, 1200],
-  ["signage", "Physical Signage", "hframe-standard", "H-Frame Standard", 900, 1200],
-  ["signage", "Physical Signage", "poster-standard", "Poster Standard", 900, 1200],
+  [
+    "signage",
+    "Physical Signage",
+    "hframe-standard",
+    "H-Frame Standard",
+    900,
+    1200,
+  ],
+  [
+    "signage",
+    "Physical Signage",
+    "poster-standard",
+    "Poster Standard",
+    900,
+    1200,
+  ],
 ];
 
 const palette = [
@@ -80,10 +139,12 @@ const palette = [
 const copyPayloads = {
   website: {
     headline: "Meet the ocean after dark",
-    subhead: "A limited-run evening event built for families, members, and first-time guests.",
+    subhead:
+      "A limited-run evening event built for families, members, and first-time guests.",
     body: "Use this copy to test website creative fields and landing page selection.",
     cta: "Plan your visit",
-    altText: "Guests walking through a glowing aquarium gallery during an evening event.",
+    altText:
+      "Guests walking through a glowing aquarium gallery during an evening event.",
   },
   email: {
     subject: "Ocean Nights tickets are live",
@@ -93,7 +154,8 @@ const copyPayloads = {
     cta: "Get tickets",
   },
   sms: {
-    message: "Ocean Nights is live. Reserve your evening aquarium visit today: {{short_link}}",
+    message:
+      "Ocean Nights is live. Reserve your evening aquarium visit today: {{short_link}}",
     shortLink: "{{short_link}}",
   },
   "internal-messaging": {
@@ -101,23 +163,30 @@ const copyPayloads = {
     body: "Guests may ask about event hours, ticket availability, member discounts, and parking.",
   },
   meta: {
-    primaryText: "See the aquarium glow after dark with limited Ocean Nights tickets.",
+    primaryText:
+      "See the aquarium glow after dark with limited Ocean Nights tickets.",
     headline: "Ocean Nights is here",
     description: "Limited evening tickets",
     cta: "learn_more",
   },
   tiktok: {
-    caption: "The aquarium looks different after dark. Ocean Nights tickets are live.",
+    caption:
+      "The aquarium looks different after dark. Ocean Nights tickets are live.",
     displayName: "Aquarium Test",
     cta: "learn_more",
   },
   youtube: {
     title: "Ocean Nights at the Aquarium",
-    description: "A test video creative for campaign review, UTM generation, and dashboard validation.",
+    description:
+      "A test video creative for campaign review, UTM generation, and dashboard validation.",
     tags: ["aquarium", "family", "event", "ocean"],
   },
   "google-search": {
-    headlines: ["Aquarium After Dark", "Ocean Nights Tickets", "Plan Your Visit"],
+    headlines: [
+      "Aquarium After Dark",
+      "Ocean Nights Tickets",
+      "Plan Your Visit",
+    ],
     descriptions: [
       "Reserve tickets for a limited evening aquarium experience.",
       "Explore glowing habitats, family activities, and member perks.",
@@ -187,11 +256,13 @@ function assetSvg({ index, platformName, slot, label, width, height }) {
   const isTall = height / width >= 1.35;
   const pad = Math.round(Math.min(width, height) * 0.06);
   const hairline = Math.max(3, Math.round(Math.min(width, height) * 0.005));
-  const titleSize = Math.round(Math.min(width, height) * (isWide ? 0.085 : isTall ? 0.08 : 0.09));
+  const titleSize = Math.round(
+    Math.min(width, height) * (isWide ? 0.085 : isTall ? 0.08 : 0.09)
+  );
   const metaSize = Math.round(Math.min(width, height) * 0.035);
   const smallSize = Math.round(Math.min(width, height) * 0.024);
   const centerY = height / 2;
-  const lineMax = Math.max(14, Math.floor(width / titleSize * 1.6));
+  const lineMax = Math.max(14, Math.floor((width / titleSize) * 1.6));
   const labelLines = wrapText(label, lineMax);
   const textBlockHeight = labelLines.length * titleSize * 1.05;
   const textStartY = centerY - textBlockHeight / 2 + titleSize * 0.75;
@@ -341,12 +412,20 @@ async function main() {
     });
   }
 
-  await writeFile(path.join(outputDir, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
-  await writeFile(path.join(outputDir, "copy-payloads.json"), `${JSON.stringify(copyPayloads, null, 2)}\n`);
+  await writeFile(
+    path.join(outputDir, "manifest.json"),
+    `${JSON.stringify(manifest, null, 2)}\n`
+  );
+  await writeFile(
+    path.join(outputDir, "copy-payloads.json"),
+    `${JSON.stringify(copyPayloads, null, 2)}\n`
+  );
   await writeFile(path.join(outputDir, "index.html"), galleryHtml(manifest));
   await writeFile(path.join(outputDir, "README.md"), readmeMarkdown(manifest));
 
-  console.log(`Generated ${manifest.length} test assets in ${path.relative(rootDir, outputDir)}`);
+  console.log(
+    `Generated ${manifest.length} test assets in ${path.relative(rootDir, outputDir)}`
+  );
 }
 
 main().catch((error) => {

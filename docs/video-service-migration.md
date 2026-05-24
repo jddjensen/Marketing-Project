@@ -17,21 +17,22 @@ Pull the trigger when **any** of these is true:
 - You need analytics on view-through rate, drop-off, etc.
 
 Stay on Supabase if:
+
 - All video viewing is internal team review.
 - You're on Supabase Pro and egress is comfortably under 250 GB/month.
 - File sizes are < 100 MB and short clips.
 
 ## Mux vs Cloudflare Stream — quick pick
 
-| | Mux | Cloudflare Stream |
-|---|---|---|
-| Pricing model | Storage $0.003/min, streaming $0.0008–$0.005/min | Storage $5/1000 min, streaming $1/1000 min delivered |
-| Adaptive bitrate (HLS) | Auto | Auto |
-| Analytics | First-class, very deep | Basic |
-| Live streaming | Yes (extra) | Yes (extra) |
-| Per-asset playback URLs | Signed JWTs, fine-grained | Signed tokens, simpler |
-| Player | `mux-player` web component, polished | HLS.js or `<stream>` web component |
-| Complexity | Higher (more knobs) | Lower (more turnkey) |
+|                         | Mux                                              | Cloudflare Stream                                    |
+| ----------------------- | ------------------------------------------------ | ---------------------------------------------------- |
+| Pricing model           | Storage $0.003/min, streaming $0.0008–$0.005/min | Storage $5/1000 min, streaming $1/1000 min delivered |
+| Adaptive bitrate (HLS)  | Auto                                             | Auto                                                 |
+| Analytics               | First-class, very deep                           | Basic                                                |
+| Live streaming          | Yes (extra)                                      | Yes (extra)                                          |
+| Per-asset playback URLs | Signed JWTs, fine-grained                        | Signed tokens, simpler                               |
+| Player                  | `mux-player` web component, polished             | HLS.js or `<stream>` web component                   |
+| Complexity              | Higher (more knobs)                              | Lower (more turnkey)                                 |
 
 **For a marketing platform without live or per-second analytics needs, Cloudflare
 Stream is usually the right pick** — pricing is simpler, the player is

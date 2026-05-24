@@ -134,7 +134,9 @@ export async function uploadVideoDirect(input: {
       }),
       signal,
     });
-    const body = (await res.json().catch(() => ({}))) as { error?: string } & Partial<DirectUploadResult>;
+    const body = (await res.json().catch(() => ({}))) as {
+      error?: string;
+    } & Partial<DirectUploadResult>;
     if (!res.ok) {
       throw new Error(body.error ?? "upload finalize failed");
     }
@@ -187,11 +189,17 @@ async function signOne(input: {
     }),
     signal: input.signal,
   });
-  const body = (await res.json().catch(() => ({}))) as Partial<SignResponse> & { error?: string };
+  const body = (await res.json().catch(() => ({}))) as Partial<SignResponse> & {
+    error?: string;
+  };
   if (!res.ok || !body.uploadUrl || !body.storagePath || !body.token) {
     throw new Error(body.error ?? "could not sign upload");
   }
-  return { uploadUrl: body.uploadUrl, storagePath: body.storagePath, token: body.token };
+  return {
+    uploadUrl: body.uploadUrl,
+    storagePath: body.storagePath,
+    token: body.token,
+  };
 }
 
 async function putToSignedUrl(

@@ -17,7 +17,8 @@ function parseScope(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   const scope = parseScope(request);
-  if ("error" in scope) return Response.json({ error: scope.error }, { status: 400 });
+  if ("error" in scope)
+    return Response.json({ error: scope.error }, { status: 400 });
 
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
@@ -39,9 +40,12 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const scope = parseScope(request);
-  if ("error" in scope) return Response.json({ error: scope.error }, { status: 400 });
+  if ("error" in scope)
+    return Response.json({ error: scope.error }, { status: 400 });
 
-  const body = (await request.json().catch(() => null)) as { values?: unknown } | null;
+  const body = (await request.json().catch(() => null)) as {
+    values?: unknown;
+  } | null;
   if (!body || !Array.isArray(body.values)) {
     return Response.json({ error: "values[] required" }, { status: 400 });
   }
@@ -74,7 +78,10 @@ export async function POST(request: NextRequest) {
 
   const { data, error } = await supabase
     .from("search_terms")
-    .upsert(rows, { onConflict: "project_id,platform,value", ignoreDuplicates: true })
+    .upsert(rows, {
+      onConflict: "project_id,platform,value",
+      ignoreDuplicates: true,
+    })
     .select("id, value, added_at");
 
   if (error) return Response.json({ error: "request failed" }, { status: 500 });
@@ -93,7 +100,8 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   const scope = parseScope(request);
-  if ("error" in scope) return Response.json({ error: scope.error }, { status: 400 });
+  if ("error" in scope)
+    return Response.json({ error: scope.error }, { status: 400 });
   const id = request.nextUrl.searchParams.get("id");
   if (!id) return Response.json({ error: "id required" }, { status: 400 });
 
@@ -106,6 +114,7 @@ export async function DELETE(request: NextRequest) {
     .eq("id", id);
 
   if (error) return Response.json({ error: "request failed" }, { status: 500 });
-  if (count === 0) return Response.json({ error: "not found" }, { status: 404 });
+  if (count === 0)
+    return Response.json({ error: "not found" }, { status: 404 });
   return Response.json({ ok: true });
 }

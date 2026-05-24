@@ -49,13 +49,13 @@ For local dev with `supabase start`, migrations are applied automatically when t
 
 ## Scripts
 
-| Command | What it does |
-|---|---|
-| `npm run dev` | Start the dev server with fast refresh |
-| `npm run build` | Production build |
-| `npm run start` | Run the production build |
-| `npm run lint` | ESLint over the project |
-| `npm run typecheck` | `tsc --noEmit`, no build artifacts |
+| Command             | What it does                           |
+| ------------------- | -------------------------------------- |
+| `npm run dev`       | Start the dev server with fast refresh |
+| `npm run build`     | Production build                       |
+| `npm run start`     | Run the production build               |
+| `npm run lint`      | ESLint over the project                |
+| `npm run typecheck` | `tsc --noEmit`, no build artifacts     |
 
 ## Project layout
 

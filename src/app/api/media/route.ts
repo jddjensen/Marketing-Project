@@ -26,7 +26,8 @@ export async function GET(request: NextRequest) {
     .eq("is_current", true)
     .order("uploaded_at", { ascending: false });
 
-  if (error) return Response.json({ error: "failed to load media" }, { status: 500 });
+  if (error)
+    return Response.json({ error: "failed to load media" }, { status: 500 });
 
   const rows = data ?? [];
   const allPaths: string[] = [];
@@ -39,10 +40,12 @@ export async function GET(request: NextRequest) {
   const result: Record<string, Array<Record<string, unknown>>> = {};
   for (const row of rows) {
     // Text creatives have no storage_path and therefore no signed URL.
-    const url = row.storage_path ? urlMap.get(row.storage_path) ?? null : null;
+    const url = row.storage_path
+      ? (urlMap.get(row.storage_path) ?? null)
+      : null;
     if (row.kind !== "text" && !url) continue;
     const posterUrl = row.poster_storage_path
-      ? urlMap.get(row.poster_storage_path) ?? null
+      ? (urlMap.get(row.poster_storage_path) ?? null)
       : null;
     const bucket = result[row.ratio] ?? (result[row.ratio] = []);
     bucket.push({

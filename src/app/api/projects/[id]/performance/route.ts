@@ -76,7 +76,8 @@ export async function GET(
   ctx: { params: Promise<{ id: string }> }
 ) {
   const { id } = await ctx.params;
-  if (!isUuid(id)) return Response.json({ error: "not found" }, { status: 404 });
+  if (!isUuid(id))
+    return Response.json({ error: "not found" }, { status: 404 });
   const refresh = request.nextUrl.searchParams.get("refresh") === "1";
   const supabase = await createSupabaseServerClient();
 
@@ -96,22 +97,24 @@ export async function GET(
       .select("ga4_property_id, brief_budget")
       .eq("id", id)
       .maybeSingle(),
-    supabase
-      .from("project_platforms")
-      .select("platform")
-      .eq("project_id", id),
+    supabase.from("project_platforms").select("platform").eq("project_id", id),
   ]);
 
-  if (linksError) return Response.json({ error: linksError.message }, { status: 500 });
-  if (projectError) return Response.json({ error: projectError.message }, { status: 500 });
-  if (platformsError) return Response.json({ error: platformsError.message }, { status: 500 });
+  if (linksError)
+    return Response.json({ error: linksError.message }, { status: 500 });
+  if (projectError)
+    return Response.json({ error: projectError.message }, { status: 500 });
+  if (platformsError)
+    return Response.json({ error: platformsError.message }, { status: 500 });
 
   const {
     data: { user },
   } = await supabase.auth.getUser();
   const linkRows = (links ?? []) as LinkRow[];
   const linkIds = linkRows.map((link) => link.id);
-  const budget = parseBudget((project as ProjectRow | null)?.brief_budget ?? null);
+  const budget = parseBudget(
+    (project as ProjectRow | null)?.brief_budget ?? null
+  );
   const analytics = await buildGoogleAnalyticsProjectSettings(
     supabase,
     (project as ProjectRow | null)?.ga4_property_id ?? null,
@@ -121,30 +124,38 @@ export async function GET(
   let clickCounts = new Map<string, number>();
   let scanCounts = new Map<string, number>();
   if (linkIds.length > 0) {
-    const [{ data: clickRows, error: clickError }, { data: scanRows, error: scanError }] =
-      await Promise.all([
-        supabase
-          .from("project_tracking_link_clicks")
-          .select("link_id")
-          .in("link_id", linkIds),
-        supabase
-          .from("project_tracking_link_scans")
-          .select("link_id")
-          .in("link_id", linkIds),
-      ]);
+    const [
+      { data: clickRows, error: clickError },
+      { data: scanRows, error: scanError },
+    ] = await Promise.all([
+      supabase
+        .from("project_tracking_link_clicks")
+        .select("link_id")
+        .in("link_id", linkIds),
+      supabase
+        .from("project_tracking_link_scans")
+        .select("link_id")
+        .in("link_id", linkIds),
+    ]);
 
-    if (clickError) return Response.json({ error: clickError.message }, { status: 500 });
-    if (scanError) return Response.json({ error: scanError.message }, { status: 500 });
+    if (clickError)
+      return Response.json({ error: clickError.message }, { status: 500 });
+    if (scanError)
+      return Response.json({ error: scanError.message }, { status: 500 });
 
     clickCounts = countByLink((clickRows ?? []) as CountRow[]);
     scanCounts = countByLink((scanRows ?? []) as CountRow[]);
   }
 
-  let gaSummary:
-    | Awaited<ReturnType<typeof getGoogleAnalyticsProjectPerformance>>
-    | null = null;
+  let gaSummary: Awaited<
+    ReturnType<typeof getGoogleAnalyticsProjectPerformance>
+  > | null = null;
 
-  if (analytics.status === "ready" && analytics.ga4PropertyId && linkRows.length > 0) {
+  if (
+    analytics.status === "ready" &&
+    analytics.ga4PropertyId &&
+    linkRows.length > 0
+  ) {
     try {
       const accessToken =
         analytics.authMode === "oauth" && user?.id
@@ -159,7 +170,10 @@ export async function GET(
       });
     } catch (error) {
       if (isGoogleAnalyticsError(error)) {
-        return Response.json({ error: error.message, analytics }, { status: error.status });
+        return Response.json(
+          { error: error.message, analytics },
+          { status: error.status }
+        );
       }
       return Response.json(
         { error: "Failed to load Google Analytics data", analytics },
@@ -229,7 +243,11 @@ export async function GET(
   };
 
   const cpaDenominator =
-    totals.ticketSales > 0 ? totals.ticketSales : totals.conversions > 0 ? totals.conversions : null;
+    totals.ticketSales > 0
+      ? totals.ticketSales
+      : totals.conversions > 0
+        ? totals.conversions
+        : null;
   const cpaBasis =
     totals.ticketSales > 0
       ? "ticket_sales"
@@ -248,7 +266,10 @@ export async function GET(
     trackedLinkCount: linkRows.length,
     totals: {
       ...totals,
-      cpa: budget !== null && budget > 0 && cpaDenominator ? budget / cpaDenominator : null,
+      cpa:
+        budget !== null && budget > 0 && cpaDenominator
+          ? budget / cpaDenominator
+          : null,
       cpaBasis,
       roas: budget !== null && budget > 0 ? totals.revenue / budget : null,
     },

@@ -4,7 +4,11 @@ import { THEMES, type ThemeId } from "@/lib/themes";
 import type { ColorMode } from "@/lib/colorMode";
 import { useAppearance } from "./AppearanceProvider";
 
-const COLOR_MODE_OPTIONS: Array<{ value: ColorMode; label: string; hint: string }> = [
+const COLOR_MODE_OPTIONS: Array<{
+  value: ColorMode;
+  label: string;
+  hint: string;
+}> = [
   { value: "auto", label: "Auto", hint: "Follow system" },
   { value: "light", label: "Light", hint: "Always light" },
   { value: "dark", label: "Dark", hint: "Always dark" },
@@ -23,7 +27,7 @@ export function AppearanceSettings() {
         <ThemeGrid active={theme} onPick={setTheme} />
         {activeTheme && (
           <p className="mt-3 text-xs text-zinc-500">
-            <span className="text-zinc-700 dark:text-zinc-200 font-medium">
+            <span className="font-medium text-zinc-700 dark:text-zinc-200">
               {activeTheme.name}
             </span>{" "}
             — {activeTheme.description}
@@ -73,7 +77,7 @@ function Section({
     <section>
       <h2 className="text-sm font-semibold">{title}</h2>
       {description && (
-        <p className="text-xs text-zinc-500 mt-1 max-w-xl">{description}</p>
+        <p className="mt-1 max-w-xl text-xs text-zinc-500">{description}</p>
       )}
       <div className="mt-4">{children}</div>
     </section>
@@ -88,7 +92,7 @@ function ThemeGrid({
   onPick: (id: ThemeId) => void;
 }) {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
       {THEMES.map((t) => {
         const isActive = t.id === active;
         return (
@@ -98,14 +102,14 @@ function ThemeGrid({
             onClick={() => onPick(t.id)}
             aria-label={`${t.name} — ${t.description}`}
             aria-pressed={isActive ? "true" : "false"}
-            className={`group flex flex-col items-stretch gap-2 rounded-xl border p-3 text-left transition-all duration-150 ease-[var(--ease-apple)] focus-ring ${
+            className={`group focus-ring flex flex-col items-stretch gap-2 rounded-xl border p-3 text-left transition-all duration-150 ease-[var(--ease-apple)] ${
               isActive
-                ? "border-zinc-900 dark:border-zinc-100 bg-zinc-50 dark:bg-zinc-800/40"
-                : "border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600"
+                ? "border-zinc-900 bg-zinc-50 dark:border-zinc-100 dark:bg-zinc-800/40"
+                : "border-zinc-200 hover:border-zinc-400 dark:border-zinc-800 dark:hover:border-zinc-600"
             }`}
           >
             <div
-              className="h-12 w-full rounded-md relative"
+              className="relative h-12 w-full rounded-md"
               style={{ background: t.swatch }}
               aria-hidden="true"
             >

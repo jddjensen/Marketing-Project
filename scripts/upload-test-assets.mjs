@@ -4,10 +4,18 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createServerClient } from "@supabase/ssr";
 
-const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const rootDir = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  ".."
+);
 const baseUrl = process.env.TEST_ASSET_BASE_URL ?? "http://localhost:3000";
 const envPath = path.join(rootDir, ".env.local");
-const manifestPath = path.join(rootDir, "public", "test-assets", "manifest.json");
+const manifestPath = path.join(
+  rootDir,
+  "public",
+  "test-assets",
+  "manifest.json"
+);
 
 const signageSpecs = {
   "billboard-highway-default": {
@@ -70,7 +78,9 @@ async function createAuthSession() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!supabaseUrl || !anonKey) {
-    throw new Error("NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are required");
+    throw new Error(
+      "NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are required"
+    );
   }
 
   const jar = new Map();
@@ -102,17 +112,26 @@ async function createAuthSession() {
     );
   }
 
-  return { jar, email, temporaryUser: !(configuredEmail && configuredPassword) };
+  return {
+    jar,
+    email,
+    temporaryUser: !(configuredEmail && configuredPassword),
+  };
 }
 
 function cookieHeader(jar) {
-  return [...jar].map(([name, value]) => `${name}=${encodeURIComponent(value)}`).join("; ");
+  return [...jar]
+    .map(([name, value]) => `${name}=${encodeURIComponent(value)}`)
+    .join("; ");
 }
 
 async function apiFetch(jar, pathname, init = {}) {
   const headers = new Headers(init.headers ?? {});
   headers.set("cookie", cookieHeader(jar));
-  const response = await fetch(new URL(pathname, baseUrl), { ...init, headers });
+  const response = await fetch(new URL(pathname, baseUrl), {
+    ...init,
+    headers,
+  });
   const contentType = response.headers.get("content-type") ?? "";
   const payload = contentType.includes("application/json")
     ? await response.json().catch(() => null)
@@ -124,7 +143,9 @@ async function apiFetch(jar, pathname, init = {}) {
         : typeof payload === "string"
           ? payload.slice(0, 200)
           : "request failed";
-    throw new Error(`${init.method ?? "GET"} ${pathname} -> ${response.status}: ${detail}`);
+    throw new Error(
+      `${init.method ?? "GET"} ${pathname} -> ${response.status}: ${detail}`
+    );
   }
   return payload;
 }
@@ -141,13 +162,18 @@ async function uploadAsset(jar, projectId, asset, signageFormatIds) {
   const absolutePath = path.join(rootDir, "public", "test-assets", asset.file);
   const fileBytes = await readFile(absolutePath);
   const formData = new FormData();
-  formData.append("file", new Blob([fileBytes], { type: asset.mimeType }), path.basename(asset.file));
+  formData.append(
+    "file",
+    new Blob([fileBytes], { type: asset.mimeType }),
+    path.basename(asset.file)
+  );
   formData.append("ratio", asset.slot);
   formData.append("platform", asset.platform);
   formData.append("projectId", projectId);
   if (asset.platform === "signage") {
     const signageFormatId = signageFormatIds.get(asset.slot);
-    if (!signageFormatId) throw new Error(`Missing signage format for ${asset.slot}`);
+    if (!signageFormatId)
+      throw new Error(`Missing signage format for ${asset.slot}`);
     formData.append("signageFormatId", signageFormatId);
   }
   if (asset.suggestedCopy && Object.keys(asset.suggestedCopy).length > 0) {
@@ -169,38 +195,52 @@ async function main() {
 
   const { project } = await jsonFetch(jar, "/api/projects", "POST", {
     name: projectName,
-    description: "Generated test campaign used to validate uploads, media boards, moodboard review, and UTM tracking.",
+    description:
+      "Generated test campaign used to validate uploads, media boards, moodboard review, and UTM tracking.",
     platforms,
   });
 
   await jsonFetch(jar, `/api/projects/${project.id}`, "PATCH", {
     campaignBrief: {
-      objective: "Validate every generated test asset across all campaign channels.",
+      objective:
+        "Validate every generated test asset across all campaign channels.",
       audience: "Internal QA, marketing operators, and CMO reviewers.",
       offer: "Ocean Nights after-dark aquarium campaign.",
       cta: "Plan your visit",
-      kpiTargets: "Confirm uploads, media retrieval, signed URLs, and UTM creation.",
+      kpiTargets:
+        "Confirm uploads, media retrieval, signed URLs, and UTM creation.",
       launchStartDate: "2026-06-01",
       launchEndDate: "2026-06-30",
       owner: "Marketing QA",
       budget: 12500,
-      successDefinition: "All generated fixtures upload and appear in project review surfaces.",
+      successDefinition:
+        "All generated fixtures upload and appear in project review surfaces.",
       event: "Ocean Nights",
       exhibit: "After Dark Galleries",
     },
   });
 
-  const { link: landingPage } = await jsonFetch(jar, `/api/projects/${project.id}/tracking-links`, "POST", {
-    url: "https://example.com/ocean-nights",
-    label: "Ocean Nights Landing Page",
-  });
+  const { link: landingPage } = await jsonFetch(
+    jar,
+    `/api/projects/${project.id}/tracking-links`,
+    "POST",
+    {
+      url: "https://example.com/ocean-nights",
+      label: "Ocean Nights Landing Page",
+    }
+  );
 
   const signageFormatIds = new Map();
   for (const asset of manifest.filter((item) => item.platform === "signage")) {
     if (signageFormatIds.has(asset.slot)) continue;
     const spec = signageSpecs[asset.slot];
     if (!spec) throw new Error(`Missing signage spec for ${asset.slot}`);
-    const { format } = await jsonFetch(jar, `/api/projects/${project.id}/signage-formats`, "POST", spec);
+    const { format } = await jsonFetch(
+      jar,
+      `/api/projects/${project.id}/signage-formats`,
+      "POST",
+      spec
+    );
     signageFormatIds.set(asset.slot, format.id);
   }
 
@@ -214,38 +254,65 @@ async function main() {
       "POST",
       { creativeId: item.creativeId, landingPageId: landingPage.id }
     );
-    console.log(`${String(index + 1).padStart(2, "0")}/${manifest.length} uploaded ${asset.platform}/${asset.slot}`);
+    console.log(
+      `${String(index + 1).padStart(2, "0")}/${manifest.length} uploaded ${asset.platform}/${asset.slot}`
+    );
   }
 
-  const mediaResponse = await apiFetch(jar, `/api/projects/${project.id}/media`);
-  const trackingResponse = await apiFetch(jar, `/api/projects/${project.id}/tracking-links`);
-  const signageResponse = await apiFetch(jar, `/api/projects/${project.id}/signage-formats`);
-
-  const mediaCount = Array.isArray(mediaResponse.items) ? mediaResponse.items.length : 0;
-  const trackingCount = Array.isArray(trackingResponse.links) ? trackingResponse.links.length : 0;
-  const signageMediaCount = Object.values(signageResponse.mediaByFormat ?? {}).reduce(
-    (total, rows) => total + (Array.isArray(rows) ? rows.length : 0),
-    0
+  const mediaResponse = await apiFetch(
+    jar,
+    `/api/projects/${project.id}/media`
+  );
+  const trackingResponse = await apiFetch(
+    jar,
+    `/api/projects/${project.id}/tracking-links`
+  );
+  const signageResponse = await apiFetch(
+    jar,
+    `/api/projects/${project.id}/signage-formats`
   );
 
+  const mediaCount = Array.isArray(mediaResponse.items)
+    ? mediaResponse.items.length
+    : 0;
+  const trackingCount = Array.isArray(trackingResponse.links)
+    ? trackingResponse.links.length
+    : 0;
+  const signageMediaCount = Object.values(
+    signageResponse.mediaByFormat ?? {}
+  ).reduce((total, rows) => total + (Array.isArray(rows) ? rows.length : 0), 0);
+
   if (mediaCount !== manifest.length) {
-    throw new Error(`Expected ${manifest.length} project media items, found ${mediaCount}`);
+    throw new Error(
+      `Expected ${manifest.length} project media items, found ${mediaCount}`
+    );
   }
   if (trackingCount !== manifest.length + 1) {
-    throw new Error(`Expected ${manifest.length + 1} tracking links including landing page, found ${trackingCount}`);
+    throw new Error(
+      `Expected ${manifest.length + 1} tracking links including landing page, found ${trackingCount}`
+    );
   }
-  if (signageMediaCount !== manifest.filter((asset) => asset.platform === "signage").length) {
-    throw new Error(`Expected all signage media to appear under signage formats, found ${signageMediaCount}`);
+  if (
+    signageMediaCount !==
+    manifest.filter((asset) => asset.platform === "signage").length
+  ) {
+    throw new Error(
+      `Expected all signage media to appear under signage formats, found ${signageMediaCount}`
+    );
   }
 
   console.log("");
   console.log(`Project: ${project.name}`);
   console.log(`Project ID: ${project.id}`);
-  console.log(`Project URL: ${new URL(`/projects/${project.id}`, baseUrl).toString()}`);
+  console.log(
+    `Project URL: ${new URL(`/projects/${project.id}`, baseUrl).toString()}`
+  );
   console.log(`Uploaded assets: ${uploaded.length}`);
   console.log(`Tracking links: ${trackingCount}`);
   console.log(`Signage formats: ${signageFormatIds.size}`);
-  console.log(`Authenticated as: ${temporaryUser ? "temporary test user" : email}`);
+  console.log(
+    `Authenticated as: ${temporaryUser ? "temporary test user" : email}`
+  );
 }
 
 main().catch((error) => {

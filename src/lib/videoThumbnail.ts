@@ -28,7 +28,9 @@ export async function extractVideoPoster(file: File): Promise<Blob | null> {
 
     const seekTo = Math.min(
       TARGET_TIME_SECONDS,
-      Number.isFinite(video.duration) ? Math.max(0, video.duration - 0.1) : TARGET_TIME_SECONDS
+      Number.isFinite(video.duration)
+        ? Math.max(0, video.duration - 0.1)
+        : TARGET_TIME_SECONDS
     );
 
     await new Promise<void>((resolve, reject) => {
@@ -42,7 +44,10 @@ export async function extractVideoPoster(file: File): Promise<Blob | null> {
     const sourceHeight = video.videoHeight;
     if (!sourceWidth || !sourceHeight) return null;
 
-    const scale = Math.min(1, MAX_DIMENSION / Math.max(sourceWidth, sourceHeight));
+    const scale = Math.min(
+      1,
+      MAX_DIMENSION / Math.max(sourceWidth, sourceHeight)
+    );
     const width = Math.round(sourceWidth * scale);
     const height = Math.round(sourceHeight * scale);
 

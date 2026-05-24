@@ -96,7 +96,11 @@ export function ProjectsGrid() {
   }, [showArchived]);
 
   const onCreate = useCallback(
-    async (input: { name: string; description: string | null; platforms: PlatformKey[] }) => {
+    async (input: {
+      name: string;
+      description: string | null;
+      platforms: PlatformKey[];
+    }) => {
       setBusy(true);
       setError(null);
       try {
@@ -105,10 +109,16 @@ export function ProjectsGrid() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(input),
         });
-        const body = (await res.json()) as { project?: Project; error?: string };
-        if (!res.ok || !body.project) throw new Error(body.error ?? "failed to create");
+        const body = (await res.json()) as {
+          project?: Project;
+          error?: string;
+        };
+        if (!res.ok || !body.project)
+          throw new Error(body.error ?? "failed to create");
         setCreating(false);
-        router.push(`/projects/${body.project.id}`, { transitionTypes: ["nav-forward"] });
+        router.push(`/projects/${body.project.id}`, {
+          transitionTypes: ["nav-forward"],
+        });
       } catch (e) {
         setError(e instanceof Error ? e.message : "failed to create");
       } finally {
@@ -132,7 +142,11 @@ export function ProjectsGrid() {
 
   const onDelete = useCallback(
     async (id: string, name: string) => {
-      if (!window.confirm(`Delete "${name}" and all of its media? This cannot be undone.`)) {
+      if (
+        !window.confirm(
+          `Delete "${name}" and all of its media? This cannot be undone.`
+        )
+      ) {
         return;
       }
       const res = await fetch(`/api/projects/${id}`, { method: "DELETE" });
@@ -151,11 +165,13 @@ export function ProjectsGrid() {
   );
 
   return (
-    <main className="max-w-7xl mx-auto px-6 py-10">
-      <div className="flex items-center justify-between mb-6">
+    <main className="mx-auto max-w-7xl px-6 py-10">
+      <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-3 text-sm">
-          <span className="font-medium uppercase tracking-wide text-zinc-500">Projects</span>
-          <label className="flex items-center gap-2 text-xs text-zinc-500 cursor-pointer select-none">
+          <span className="font-medium tracking-wide text-zinc-500 uppercase">
+            Projects
+          </span>
+          <label className="flex cursor-pointer items-center gap-2 text-xs text-zinc-500 select-none">
             <input
               type="checkbox"
               checked={showArchived}
@@ -168,21 +184,24 @@ export function ProjectsGrid() {
         <button
           type="button"
           onClick={() => setCreating(true)}
-          className="apple-tap rounded-lg bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 px-3 py-1.5 text-sm font-medium hover:opacity-90"
+          className="apple-tap rounded-lg bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 dark:bg-zinc-100 dark:text-zinc-900"
         >
           + New project
         </button>
       </div>
 
       {projects === null ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" aria-busy="true">
+        <div
+          className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+          aria-busy="true"
+        >
           {Array.from({ length: 6 }).map((_, i) => (
             <div
               key={i}
-              className="rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900"
+              className="overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900"
             >
               <div className="skeleton aspect-[4/3] w-full" />
-              <div className="p-4 space-y-2">
+              <div className="space-y-2 p-4">
                 <div className="skeleton h-4 w-2/3" />
                 <div className="skeleton h-3 w-full" />
                 <div className="skeleton h-3 w-4/5" />
@@ -194,7 +213,7 @@ export function ProjectsGrid() {
         <EmptyState onCreate={() => setCreating(true)} />
       ) : (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {active.map((p) => (
               <ProjectCard
                 key={p.id}
@@ -209,19 +228,19 @@ export function ProjectsGrid() {
             <button
               type="button"
               onClick={() => setCreating(true)}
-              className="apple-tap rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 bg-white/40 dark:bg-zinc-900/40 hover:border-zinc-400 dark:hover:border-zinc-600 flex flex-col items-center justify-center aspect-[4/3] text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+              className="apple-tap flex aspect-[4/3] flex-col items-center justify-center rounded-xl border border-dashed border-zinc-300 bg-white/40 text-zinc-500 hover:border-zinc-400 hover:text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900/40 dark:hover:border-zinc-600 dark:hover:text-zinc-100"
             >
-              <span className="text-3xl mb-2">+</span>
+              <span className="mb-2 text-3xl">+</span>
               <span className="text-sm font-medium">New project</span>
             </button>
           </div>
 
           {showArchived && archived.length > 0 && (
             <div className="mt-12">
-              <h2 className="text-xs font-medium uppercase tracking-wide text-zinc-500 mb-3">
+              <h2 className="mb-3 text-xs font-medium tracking-wide text-zinc-500 uppercase">
                 Archived
               </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 opacity-70">
+              <div className="grid grid-cols-1 gap-4 opacity-70 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {archived.map((p) => (
                   <ProjectCard
                     key={p.id}
@@ -273,30 +292,35 @@ function ProjectCard({
   useEffect(() => {
     if (!menuOpen) return;
     const onClick = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) onCloseMenu();
+      if (menuRef.current && !menuRef.current.contains(e.target as Node))
+        onCloseMenu();
     };
     document.addEventListener("mousedown", onClick);
     return () => document.removeEventListener("mousedown", onClick);
   }, [menuOpen, onCloseMenu]);
 
   return (
-    <div className="relative group">
+    <div className="group relative">
       <Link
         href={`/projects/${project.id}`}
         transitionTypes={["nav-forward"]}
-        className="apple-lift block rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-zinc-400 dark:hover:border-zinc-600 shadow-[var(--shadow-soft)]"
+        className="apple-lift block overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-[var(--shadow-soft)] hover:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-600"
       >
         <div
-          className={`aspect-[4/3] bg-gradient-to-br ${hashGradient(project.id)} p-4 flex flex-col justify-end`}
+          className={`aspect-[4/3] bg-gradient-to-br ${hashGradient(project.id)} flex flex-col justify-end p-4`}
         >
           <div className="text-white drop-shadow">
-            <div className="font-semibold text-lg leading-tight">{project.name}</div>
+            <div className="text-lg leading-tight font-semibold">
+              {project.name}
+            </div>
             {project.description && (
-              <div className="text-xs opacity-90 mt-0.5 line-clamp-2">{project.description}</div>
+              <div className="mt-0.5 line-clamp-2 text-xs opacity-90">
+                {project.description}
+              </div>
             )}
           </div>
         </div>
-        <div className="px-4 py-2.5 flex items-center justify-between text-xs text-zinc-500">
+        <div className="flex items-center justify-between px-4 py-2.5 text-xs text-zinc-500">
           <span>
             {project.archivedAt
               ? `Archived ${formatRelative(project.archivedAt)}`
@@ -313,7 +337,7 @@ function ProjectCard({
           e.stopPropagation();
           onOpenMenu();
         }}
-        className="absolute top-2 right-2 w-7 h-7 rounded-md bg-black/30 hover:bg-black/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+        className="absolute top-2 right-2 flex h-7 w-7 items-center justify-center rounded-md bg-black/30 text-white opacity-0 transition-opacity group-hover:opacity-100 hover:bg-black/50"
       >
         ⋯
       </button>
@@ -321,7 +345,7 @@ function ProjectCard({
       {menuOpen && (
         <div
           ref={menuRef}
-          className="absolute top-10 right-2 z-10 rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-lg py-1 min-w-[140px] text-sm"
+          className="absolute top-10 right-2 z-10 min-w-[140px] rounded-md border border-zinc-200 bg-white py-1 text-sm shadow-lg dark:border-zinc-700 dark:bg-zinc-900"
         >
           <button
             type="button"
@@ -329,7 +353,7 @@ function ProjectCard({
               onCloseMenu();
               onArchive();
             }}
-            className="block w-full text-left px-3 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+            className="block w-full px-3 py-1.5 text-left hover:bg-zinc-100 dark:hover:bg-zinc-800"
           >
             {project.archivedAt ? "Unarchive" : "Archive"}
           </button>
@@ -339,7 +363,7 @@ function ProjectCard({
               onCloseMenu();
               onDelete();
             }}
-            className="block w-full text-left px-3 py-1.5 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40"
+            className="block w-full px-3 py-1.5 text-left text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40"
           >
             Delete
           </button>
@@ -358,7 +382,11 @@ function CreateDialog({
   busy: boolean;
   error: string | null;
   onClose: () => void;
-  onSubmit: (input: { name: string; description: string | null; platforms: PlatformKey[] }) => void;
+  onSubmit: (input: {
+    name: string;
+    description: string | null;
+    platforms: PlatformKey[];
+  }) => void;
 }) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -387,23 +415,24 @@ function CreateDialog({
     <div
       role="dialog"
       aria-modal="true"
-      className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4"
+      className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
-        className="modal-surface w-full max-w-xl rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-[var(--shadow-lift)] max-h-[90vh] flex flex-col"
+        className="modal-surface flex max-h-[90vh] w-full max-w-xl flex-col rounded-xl border border-zinc-200 bg-white shadow-[var(--shadow-lift)] dark:border-zinc-800 dark:bg-zinc-900"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="px-5 pt-5">
-          <h2 className="font-semibold text-lg">New project</h2>
-          <p className="text-sm text-zinc-500 mt-1">
-            A project gathers every top-level channel in one place. Channels like Website and Meta
-            each hold their own placements and size slots inside the channel board.
+          <h2 className="text-lg font-semibold">New project</h2>
+          <p className="mt-1 text-sm text-zinc-500">
+            A project gathers every top-level channel in one place. Channels
+            like Website and Meta each hold their own placements and size slots
+            inside the channel board.
           </p>
         </div>
 
         <form
-          className="flex-1 overflow-y-auto px-5 py-4 space-y-5"
+          className="flex-1 space-y-5 overflow-y-auto px-5 py-4"
           onSubmit={(e) => {
             e.preventDefault();
             if (!canSubmit) return;
@@ -414,9 +443,9 @@ function CreateDialog({
             });
           }}
         >
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div className="sm:col-span-1">
-              <label className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+              <label className="text-xs font-medium tracking-wide text-zinc-500 uppercase">
                 Name
               </label>
               <input
@@ -430,8 +459,9 @@ function CreateDialog({
               />
             </div>
             <div className="sm:col-span-2">
-              <label className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-                Description <span className="text-zinc-400 normal-case">(optional)</span>
+              <label className="text-xs font-medium tracking-wide text-zinc-500 uppercase">
+                Description{" "}
+                <span className="text-zinc-400 normal-case">(optional)</span>
               </label>
               <input
                 type="text"
@@ -446,7 +476,7 @@ function CreateDialog({
 
           <div>
             <div className="flex items-center justify-between">
-              <label className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+              <label className="text-xs font-medium tracking-wide text-zinc-500 uppercase">
                 Channels
               </label>
               <span className="text-[11px] text-zinc-400">
@@ -455,28 +485,26 @@ function CreateDialog({
             </div>
 
             <div className="mt-2 flex flex-wrap gap-1.5">
-              {(
-                [
-                  { key: "all" as const, label: "Select all" },
-                  { key: "digital" as const, label: "Digital" },
-                  { key: "physical" as const, label: "Physical only" },
-                ]
-              ).map((p) => (
+              {[
+                { key: "all" as const, label: "Select all" },
+                { key: "digital" as const, label: "Digital" },
+                { key: "physical" as const, label: "Physical only" },
+              ].map((p) => (
                 <button
                   key={p.key}
                   type="button"
                   onClick={() => applyPreset(p.key)}
-                  className={`text-xs rounded-full border px-3 py-1 transition-colors ${
+                  className={`rounded-full border px-3 py-1 text-xs transition-colors ${
                     preset === p.key
-                      ? "bg-zinc-900 text-white border-zinc-900 dark:bg-zinc-100 dark:text-zinc-900 dark:border-zinc-100"
-                      : "border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:border-zinc-400 dark:hover:border-zinc-500"
+                      ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900"
+                      : "border-zinc-200 text-zinc-600 hover:border-zinc-400 dark:border-zinc-700 dark:text-zinc-300 dark:hover:border-zinc-500"
                   }`}
                 >
                   {p.label}
                 </button>
               ))}
               {preset === "custom" && (
-                <span className="text-xs rounded-full border border-dashed border-zinc-300 dark:border-zinc-700 px-3 py-1 text-zinc-500">
+                <span className="rounded-full border border-dashed border-zinc-300 px-3 py-1 text-xs text-zinc-500 dark:border-zinc-700">
                   Custom
                 </span>
               )}
@@ -488,19 +516,19 @@ function CreateDialog({
                 if (items.length === 0) return null;
                 return (
                   <div key={group}>
-                    <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400 mb-1.5">
+                    <div className="mb-1.5 text-[11px] font-semibold tracking-wide text-zinc-400 uppercase">
                       {CHANNEL_CATEGORY_LABELS[group]}
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                       {items.map((c) => {
                         const checked = selected.has(c.key);
                         return (
                           <label
                             key={c.key}
-                            className={`flex items-start gap-3 rounded-lg border p-3 cursor-pointer transition-colors ${
+                            className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${
                               checked
-                                ? "border-zinc-900 dark:border-zinc-100 bg-zinc-50 dark:bg-zinc-800/60"
-                                : "border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600"
+                                ? "border-zinc-900 bg-zinc-50 dark:border-zinc-100 dark:bg-zinc-800/60"
+                                : "border-zinc-200 hover:border-zinc-400 dark:border-zinc-800 dark:hover:border-zinc-600"
                             }`}
                           >
                             <input
@@ -509,9 +537,13 @@ function CreateDialog({
                               checked={checked}
                               onChange={() => toggle(c.key)}
                             />
-                            <div className="flex-1 min-w-0">
-                              <div className="text-sm font-medium">{c.name}</div>
-                              <div className="text-xs text-zinc-500 mt-0.5">{c.desc}</div>
+                            <div className="min-w-0 flex-1">
+                              <div className="text-sm font-medium">
+                                {c.name}
+                              </div>
+                              <div className="mt-0.5 text-xs text-zinc-500">
+                                {c.desc}
+                              </div>
                             </div>
                           </label>
                         );
@@ -524,13 +556,13 @@ function CreateDialog({
           </div>
 
           {error && (
-            <div className="rounded-md border border-red-300 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200 px-3 py-2 text-sm">
+            <div className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
               {error}
             </div>
           )}
         </form>
 
-        <div className="flex items-center justify-between gap-2 px-5 py-3 border-t border-zinc-200 dark:border-zinc-800">
+        <div className="flex items-center justify-between gap-2 border-t border-zinc-200 px-5 py-3 dark:border-zinc-800">
           <span className="text-[11px] text-zinc-500">
             You can add or remove channels anytime from the project dashboard.
           </span>
@@ -538,7 +570,7 @@ function CreateDialog({
             <button
               type="button"
               onClick={onClose}
-              className="text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 px-3 py-2"
+              className="px-3 py-2 text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
             >
               Cancel
             </button>
@@ -553,7 +585,7 @@ function CreateDialog({
                   platforms: Array.from(selected),
                 });
               }}
-              className="apple-tap rounded-md bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 px-4 py-2 text-sm font-medium disabled:opacity-50 hover:opacity-90"
+              className="apple-tap rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900"
             >
               {busy ? "Creating…" : "Create project"}
             </button>
@@ -566,12 +598,20 @@ function CreateDialog({
 
 function EmptyState({ onCreate }: { onCreate: () => void }) {
   return (
-    <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-8 py-12 sm:py-16 flex flex-col items-center text-center shadow-[var(--shadow-soft)]">
+    <div className="flex flex-col items-center rounded-2xl border border-zinc-200 bg-white px-8 py-12 text-center shadow-[var(--shadow-soft)] sm:py-16 dark:border-zinc-800 dark:bg-zinc-900">
       <div
-        className="h-14 w-14 rounded-2xl flex items-center justify-center bg-(--accent-soft) text-(--accent) mb-5"
+        className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-(--accent-soft) text-(--accent)"
         aria-hidden="true"
       >
-        <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        <svg
+          viewBox="0 0 24 24"
+          className="h-7 w-7"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
           <path d="M12 3v18" />
           <path d="M3 12h18" />
         </svg>
@@ -580,11 +620,12 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
       <h2 className="text-xl font-semibold tracking-tight">
         Start your first campaign
       </h2>
-      <p className="text-sm text-zinc-500 mt-1.5 max-w-md">
-        A project bundles every channel, creative, and tracked link for one campaign so the team works from one source of truth.
+      <p className="mt-1.5 max-w-md text-sm text-zinc-500">
+        A project bundles every channel, creative, and tracked link for one
+        campaign so the team works from one source of truth.
       </p>
 
-      <ul className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 w-full max-w-2xl text-left">
+      <ul className="mt-6 grid w-full max-w-2xl grid-cols-1 gap-3 text-left sm:grid-cols-3 sm:gap-4">
         <FeatureBullet
           title="Pick channels"
           body="Meta, TikTok, YouTube, email, signage, and 8 more — turn on the ones you're using."
@@ -602,11 +643,11 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
       <button
         type="button"
         onClick={onCreate}
-        className="apple-tap mt-7 rounded-lg bg-(--accent) text-white px-5 py-2.5 text-sm font-semibold hover:opacity-90 focus-ring"
+        className="apple-tap focus-ring mt-7 rounded-lg bg-(--accent) px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90"
       >
         + Create your first project
       </button>
-      <p className="text-[11px] text-zinc-500 mt-3">
+      <p className="mt-3 text-[11px] text-zinc-500">
         Takes about 30 seconds. You can edit everything later.
       </p>
     </div>
@@ -615,9 +656,11 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
 
 function FeatureBullet({ title, body }: { title: string; body: string }) {
   return (
-    <li className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/60 dark:bg-zinc-950/40 p-4">
-      <div className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">{title}</div>
-      <p className="text-[11px] text-zinc-500 mt-1 leading-relaxed">{body}</p>
+    <li className="rounded-xl border border-zinc-200 bg-zinc-50/60 p-4 dark:border-zinc-800 dark:bg-zinc-950/40">
+      <div className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
+        {title}
+      </div>
+      <p className="mt-1 text-[11px] leading-relaxed text-zinc-500">{body}</p>
     </li>
   );
 }

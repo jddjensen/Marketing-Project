@@ -1,5 +1,8 @@
 import { notFound } from "next/navigation";
-import { serializeCampaignBrief, type CampaignBrief } from "@/lib/campaignBrief";
+import {
+  serializeCampaignBrief,
+  type CampaignBrief,
+} from "@/lib/campaignBrief";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export type TrackingLinksLocation = "project_tab" | "platform_panel" | "both";

@@ -43,17 +43,28 @@ const cspDirectives: Array<[string, string[]]> = [
   ["default-src", ["'self'"]],
   [
     "script-src",
-    [
-      "'self'",
-      "'unsafe-inline'",
-      ...(isProd ? [] : ["'unsafe-eval'"]),
-    ],
+    ["'self'", "'unsafe-inline'", ...(isProd ? [] : ["'unsafe-eval'"])],
   ],
   ["style-src", ["'self'", "'unsafe-inline'"]],
   // Uploaded creative thumbnails / Supabase signed URLs / inline data URIs
   // (QR codes) all flow through <img>. blob: covers preview generators.
-  ["img-src", ["'self'", "data:", "blob:", ...supabaseConnect.filter((s) => s.startsWith("https://"))]],
-  ["media-src", ["'self'", "blob:", ...supabaseConnect.filter((s) => s.startsWith("https://"))]],
+  [
+    "img-src",
+    [
+      "'self'",
+      "data:",
+      "blob:",
+      ...supabaseConnect.filter((s) => s.startsWith("https://")),
+    ],
+  ],
+  [
+    "media-src",
+    [
+      "'self'",
+      "blob:",
+      ...supabaseConnect.filter((s) => s.startsWith("https://")),
+    ],
+  ],
   ["font-src", ["'self'", "data:"]],
   [
     "connect-src",
@@ -97,7 +108,8 @@ const baseSecurityHeaders = [
   // Lock down powerful APIs that this app doesn't use.
   {
     key: "Permissions-Policy",
-    value: "camera=(), microphone=(), geolocation=(), interest-cohort=(), payment=(), usb=()",
+    value:
+      "camera=(), microphone=(), geolocation=(), interest-cohort=(), payment=(), usb=()",
   },
   // Isolate this app from being grouped with other origins for side-channel
   // attacks (Spectre family). Same-origin scoping is fine because we don't

@@ -80,7 +80,10 @@ export function CampaignBriefPanel({
   const dirty = hasDraftChanges(draft, savedDraft);
   const budgetPreview = formatBudget(draft.budget);
 
-  const updateField = <K extends keyof CampaignBriefDraft>(key: K, value: CampaignBriefDraft[K]) => {
+  const updateField = <K extends keyof CampaignBriefDraft>(
+    key: K,
+    value: CampaignBriefDraft[K]
+  ) => {
     setDraft((prev) => ({ ...prev, [key]: value }));
   };
 
@@ -110,9 +113,10 @@ export function CampaignBriefPanel({
       }),
     });
 
-    const body = (await res.json().catch(() => null)) as
-      | { error?: string; project?: { campaignBrief?: CampaignBrief } }
-      | null;
+    const body = (await res.json().catch(() => null)) as {
+      error?: string;
+      project?: { campaignBrief?: CampaignBrief };
+    } | null;
 
     setSaving(false);
     if (!res.ok || !body?.project?.campaignBrief) {
@@ -134,7 +138,7 @@ export function CampaignBriefPanel({
             setError(null);
             setNotice(null);
           }}
-          className="apple-tap text-xs rounded-md border border-zinc-200 dark:border-zinc-800 px-3 py-1.5 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+          className="apple-tap rounded-md border border-zinc-200 px-3 py-1.5 text-xs text-zinc-500 hover:text-zinc-900 dark:border-zinc-800 dark:hover:text-zinc-100"
         >
           Reset
         </button>
@@ -143,7 +147,7 @@ export function CampaignBriefPanel({
         type="button"
         onClick={() => void saveBrief()}
         disabled={!dirty || saving}
-        className="apple-tap rounded-md bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 px-4 py-2 text-sm font-medium disabled:opacity-50 hover:opacity-90"
+        className="apple-tap rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900"
       >
         {saving ? "Saving…" : "Save brief"}
       </button>
@@ -151,29 +155,37 @@ export function CampaignBriefPanel({
   );
 
   return (
-    <section className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5">
+    <section className="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h2 className="text-sm font-medium uppercase tracking-wide text-zinc-500">
+          <h2 className="text-sm font-medium tracking-wide text-zinc-500 uppercase">
             Campaign Brief
           </h2>
-          <p className="text-sm text-zinc-500 mt-1 max-w-3xl">
-            Set the strategic spine of the campaign before execution starts: what this campaign is
-            trying to do, who it is for, what the offer is, and how success will be measured.
+          <p className="mt-1 max-w-3xl text-sm text-zinc-500">
+            Set the strategic spine of the campaign before execution starts:
+            what this campaign is trying to do, who it is for, what the offer
+            is, and how success will be measured.
           </p>
         </div>
       </div>
 
       {(error || notice) && (
-        <div className="mt-4 rounded-md border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 px-3 py-2 text-sm">
-          {error && <span className="text-red-600 dark:text-red-400">{error}</span>}
-          {notice && !error && <span className="text-zinc-600 dark:text-zinc-300">{notice}</span>}
+        <div className="mt-4 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-950">
+          {error && (
+            <span className="text-red-600 dark:text-red-400">{error}</span>
+          )}
+          {notice && !error && (
+            <span className="text-zinc-600 dark:text-zinc-300">{notice}</span>
+          )}
         </div>
       )}
 
-      <div className="mt-5 grid grid-cols-1 lg:grid-cols-2 gap-5">
+      <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
         <div className="space-y-4">
-          <SectionLabel title="Strategy" subtitle="Why the campaign exists and who it needs to move." />
+          <SectionLabel
+            title="Strategy"
+            subtitle="Why the campaign exists and who it needs to move."
+          />
           <TextAreaField
             label="Objective"
             value={draft.objective}
@@ -204,7 +216,10 @@ export function CampaignBriefPanel({
         </div>
 
         <div className="space-y-4">
-          <SectionLabel title="Operations" subtitle="How the team will measure and manage the campaign." />
+          <SectionLabel
+            title="Operations"
+            subtitle="How the team will measure and manage the campaign."
+          />
           <TextAreaField
             label="KPI Targets"
             value={draft.kpiTargets}
@@ -219,7 +234,7 @@ export function CampaignBriefPanel({
             placeholder="What does a win actually look like for this campaign beyond raw traffic?"
             rows={3}
           />
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field
               label="Owner"
               value={draft.owner}
@@ -238,9 +253,11 @@ export function CampaignBriefPanel({
             />
           </div>
           {budgetPreview && (
-            <div className="text-xs text-zinc-500 -mt-2">Budget preview: {budgetPreview}</div>
+            <div className="-mt-2 text-xs text-zinc-500">
+              Budget preview: {budgetPreview}
+            </div>
           )}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field
               label="Launch Start"
               type="date"
@@ -254,7 +271,7 @@ export function CampaignBriefPanel({
               onChange={(value) => updateField("launchEndDate", value)}
             />
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field
               label="Event"
               value={draft.event}
@@ -278,11 +295,19 @@ export function CampaignBriefPanel({
   );
 }
 
-function SectionLabel({ title, subtitle }: { title: string; subtitle: string }) {
+function SectionLabel({
+  title,
+  subtitle,
+}: {
+  title: string;
+  subtitle: string;
+}) {
   return (
     <div>
-      <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">{title}</div>
-      <div className="text-xs text-zinc-500 mt-1">{subtitle}</div>
+      <div className="text-[11px] font-semibold tracking-wide text-zinc-400 uppercase">
+        {title}
+      </div>
+      <div className="mt-1 text-xs text-zinc-500">{subtitle}</div>
     </div>
   );
 }
@@ -308,7 +333,9 @@ function Field({
 }) {
   return (
     <label className="block">
-      <span className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">{label}</span>
+      <span className="text-[11px] font-medium tracking-wide text-zinc-500 uppercase">
+        {label}
+      </span>
       <input
         type={type}
         inputMode={inputMode}
@@ -338,7 +365,9 @@ function TextAreaField({
 }) {
   return (
     <label className="block">
-      <span className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">{label}</span>
+      <span className="text-[11px] font-medium tracking-wide text-zinc-500 uppercase">
+        {label}
+      </span>
       <textarea
         rows={rows}
         value={value}

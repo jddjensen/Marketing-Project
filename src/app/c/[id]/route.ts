@@ -14,7 +14,9 @@ export async function GET(
     return new Response("Not found", { status: 404 });
   }
   const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase.rpc("increment_click", { tracking_id: id });
+  const { data, error } = await supabase.rpc("increment_click", {
+    tracking_id: id,
+  });
   if (error || typeof data !== "string" || data.length === 0) {
     return new Response("Not found", { status: 404 });
   }

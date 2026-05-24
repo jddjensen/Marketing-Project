@@ -1,24 +1,25 @@
 # Convert Excel Formula to Airtable
 
 ## Trigger
+
 When user wants to convert an Excel formula to Airtable.
 
 ## Common Conversions
 
-| Excel | Airtable |
-|-------|----------|
-| `A1`, `B2` | `{Field Name}` |
-| `VLOOKUP` | Use linked records + rollup |
-| `HLOOKUP` | Use linked records + rollup |
-| `SUMIF` | Use rollup field with SUM |
-| `COUNTIF` | Use rollup field with COUNT |
-| `IFERROR(x,y)` | `IF(ISERROR(x), y, x)` |
-| `ISBLANK(x)` | `x = BLANK()` or `NOT(x)` |
+| Excel           | Airtable                    |
+| --------------- | --------------------------- |
+| `A1`, `B2`      | `{Field Name}`              |
+| `VLOOKUP`       | Use linked records + rollup |
+| `HLOOKUP`       | Use linked records + rollup |
+| `SUMIF`         | Use rollup field with SUM   |
+| `COUNTIF`       | Use rollup field with COUNT |
+| `IFERROR(x,y)`  | `IF(ISERROR(x), y, x)`      |
+| `ISBLANK(x)`    | `x = BLANK()` or `NOT(x)`   |
 | `TEXT(x,"fmt")` | `DATETIME_FORMAT(x, "fmt")` |
-| `DATEVALUE` | `DATETIME_PARSE` |
-| `CONCATENATE` | Same, or use `&` operator |
-| `NOW()` | Same (callable constant) |
-| `TODAY()` | Same (callable constant) |
+| `DATEVALUE`     | `DATETIME_PARSE`            |
+| `CONCATENATE`   | Same, or use `&` operator   |
+| `NOW()`         | Same (callable constant)    |
+| `TODAY()`       | Same (callable constant)    |
 
 ## Steps
 

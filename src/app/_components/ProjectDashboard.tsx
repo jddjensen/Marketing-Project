@@ -50,7 +50,9 @@ export function ProjectDashboard({
   const [groupBy, setGroupBy] = useState<"platform" | "ratio">("platform");
 
   const fetchPlatforms = useCallback(async () => {
-    const res = await fetch(`/api/projects/${projectId}/platforms`, { cache: "no-store" });
+    const res = await fetch(`/api/projects/${projectId}/platforms`, {
+      cache: "no-store",
+    });
     const body = (await res.json()) as {
       platforms?: Array<{ platform: PlatformKey; addedAt: number }>;
     };
@@ -61,7 +63,9 @@ export function ProjectDashboard({
     let active = true;
 
     async function loadPlatforms() {
-      const res = await fetch(`/api/projects/${projectId}/platforms`, { cache: "no-store" });
+      const res = await fetch(`/api/projects/${projectId}/platforms`, {
+        cache: "no-store",
+      });
       const body = (await res.json()) as {
         platforms?: Array<{ platform: PlatformKey; addedAt: number }>;
       };
@@ -70,7 +74,9 @@ export function ProjectDashboard({
     }
 
     async function loadMedia() {
-      const res = await fetch(`/api/projects/${projectId}/media`, { cache: "no-store" });
+      const res = await fetch(`/api/projects/${projectId}/media`, {
+        cache: "no-store",
+      });
       const body = (await res.json()) as { items?: MediaItem[] };
       if (!active) return;
       setMedia(body.items ?? []);
@@ -121,18 +127,23 @@ export function ProjectDashboard({
   }, [enabled]);
 
   return (
-    <main className="max-w-7xl mx-auto px-6 py-10 space-y-10">
-      <CampaignBriefPanel projectId={projectId} initialBrief={initialCampaignBrief} />
+    <main className="mx-auto max-w-7xl space-y-10 px-6 py-10">
+      <CampaignBriefPanel
+        projectId={projectId}
+        initialBrief={initialCampaignBrief}
+      />
       <PerformanceDashboardPanel projectId={projectId} />
 
       <section>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-medium uppercase tracking-wide text-zinc-500">Channels</h2>
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-sm font-medium tracking-wide text-zinc-500 uppercase">
+            Channels
+          </h2>
           {availableToAdd.length > 0 && enabledMeta.length > 0 && (
             <button
               type="button"
               onClick={() => setAdding(true)}
-              className="text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 border border-zinc-200 dark:border-zinc-800 rounded-md px-2 py-1"
+              className="rounded-md border border-zinc-200 px-2 py-1 text-xs text-zinc-500 hover:text-zinc-900 dark:border-zinc-800 dark:hover:text-zinc-100"
             >
               + Add channel
             </button>
@@ -144,7 +155,7 @@ export function ProjectDashboard({
         ) : enabledMeta.length === 0 ? (
           <EmptyPlatforms onAdd={() => setAdding(true)} />
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {enabledMeta.map((p) => (
               <PlatformCard
                 key={p.key}
@@ -160,9 +171,9 @@ export function ProjectDashboard({
               <button
                 type="button"
                 onClick={() => setAdding(true)}
-                className="apple-tap rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 bg-white/40 dark:bg-zinc-900/40 hover:border-zinc-400 dark:hover:border-zinc-600 flex flex-col items-center justify-center p-5 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+                className="apple-tap flex flex-col items-center justify-center rounded-xl border border-dashed border-zinc-300 bg-white/40 p-5 text-zinc-500 hover:border-zinc-400 hover:text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900/40 dark:hover:border-zinc-600 dark:hover:text-zinc-100"
               >
-                <span className="text-2xl mb-1">+</span>
+                <span className="mb-1 text-2xl">+</span>
                 <span className="text-sm font-medium">Add channel</span>
               </button>
             )}
@@ -214,14 +225,14 @@ function PlatformCard({
   }, [menuOpen, onCloseMenu]);
 
   return (
-    <div className="relative group">
+    <div className="group relative">
       <Link
         href={`/projects/${projectId}/${platform.key}`}
         transitionTypes={["nav-forward"]}
-        className="apple-lift block rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 hover:border-zinc-400 dark:hover:border-zinc-600 shadow-[var(--shadow-soft)]"
+        className="apple-lift block rounded-xl border border-zinc-200 bg-white p-5 shadow-[var(--shadow-soft)] hover:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-600"
       >
         <div className="font-semibold">{platform.name}</div>
-        <div className="text-sm text-zinc-500 mt-1">{platform.desc}</div>
+        <div className="mt-1 text-sm text-zinc-500">{platform.desc}</div>
       </Link>
       <button
         type="button"
@@ -231,13 +242,13 @@ function PlatformCard({
           e.stopPropagation();
           onOpenMenu();
         }}
-        className="absolute top-2 right-2 w-7 h-7 rounded-md text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+        className="absolute top-2 right-2 flex h-7 w-7 items-center justify-center rounded-md text-zinc-400 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
       >
         ⋯
       </button>
       {menuOpen && (
         <div
-          className="absolute top-10 right-2 z-10 rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-lg py-1 min-w-[140px] text-sm"
+          className="absolute top-10 right-2 z-10 min-w-[140px] rounded-md border border-zinc-200 bg-white py-1 text-sm shadow-lg dark:border-zinc-700 dark:bg-zinc-900"
           onMouseDown={(e) => e.stopPropagation()}
         >
           <button
@@ -246,11 +257,11 @@ function PlatformCard({
               onCloseMenu();
               onRemove();
             }}
-            className="block w-full text-left px-3 py-1.5 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40"
+            className="block w-full px-3 py-1.5 text-left text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40"
           >
             Remove from project
           </button>
-          <div className="px-3 pt-1 pb-1.5 text-[11px] text-zinc-500 border-t border-zinc-100 dark:border-zinc-800">
+          <div className="border-t border-zinc-100 px-3 pt-1 pb-1.5 text-[11px] text-zinc-500 dark:border-zinc-800">
             Removing hides this channel. Uploaded media is kept.
           </div>
         </div>
@@ -261,15 +272,16 @@ function PlatformCard({
 
 function EmptyPlatforms({ onAdd }: { onAdd: () => void }) {
   return (
-    <div className="rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 bg-white/40 dark:bg-zinc-900/40 py-12 flex flex-col items-center text-center">
+    <div className="flex flex-col items-center rounded-xl border border-dashed border-zinc-300 bg-white/40 py-12 text-center dark:border-zinc-700 dark:bg-zinc-900/40">
       <div className="font-semibold">No channels yet</div>
-      <p className="text-sm text-zinc-500 mt-1 max-w-sm">
-        Add the communication channels you&apos;re using for this campaign to start uploading creatives.
+      <p className="mt-1 max-w-sm text-sm text-zinc-500">
+        Add the communication channels you&apos;re using for this campaign to
+        start uploading creatives.
       </p>
       <button
         type="button"
         onClick={onAdd}
-        className="apple-tap mt-4 apple-tap rounded-lg bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 px-4 py-2 text-sm font-medium hover:opacity-90"
+        className="apple-tap apple-tap mt-4 rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:opacity-90 dark:bg-zinc-100 dark:text-zinc-900"
       >
         + Add a channel
       </button>
@@ -298,19 +310,19 @@ function AddPlatformDialog({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="shrink-0 px-5 pt-5">
-          <h2 className="font-semibold text-lg">Add channel</h2>
+          <h2 className="text-lg font-semibold">Add channel</h2>
           <p className="mt-1 text-sm text-zinc-500">
-            Pick a top-level channel to enable for this project. Placements and size slots stay
-            nested inside the channel.
+            Pick a top-level channel to enable for this project. Placements and
+            size slots stay nested inside the channel.
           </p>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 space-y-4">
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4">
           {CHANNEL_CATEGORY_ORDER.map((group) => {
             const items = options.filter((option) => option.category === group);
             if (items.length === 0) return null;
             return (
               <div key={group}>
-                <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400 mb-1.5">
+                <div className="mb-1.5 text-[11px] font-semibold tracking-wide text-zinc-400 uppercase">
                   {CHANNEL_CATEGORY_LABELS[group]}
                 </div>
                 <div className="space-y-2">
@@ -319,11 +331,13 @@ function AddPlatformDialog({
                       key={p.key}
                       type="button"
                       onClick={() => onAdd(p.key)}
-                      className="w-full flex items-start gap-3 rounded-lg border border-zinc-200 dark:border-zinc-800 p-3 text-left hover:border-zinc-400 dark:hover:border-zinc-600"
+                      className="flex w-full items-start gap-3 rounded-lg border border-zinc-200 p-3 text-left hover:border-zinc-400 dark:border-zinc-800 dark:hover:border-zinc-600"
                     >
                       <div className="flex-1">
-                        <div className="font-medium text-sm">{p.name}</div>
-                        <div className="text-xs text-zinc-500 mt-0.5">{p.desc}</div>
+                        <div className="text-sm font-medium">{p.name}</div>
+                        <div className="mt-0.5 text-xs text-zinc-500">
+                          {p.desc}
+                        </div>
                       </div>
                       <span className="text-xs text-zinc-400">Add</span>
                     </button>
@@ -337,7 +351,7 @@ function AddPlatformDialog({
           <button
             type="button"
             onClick={onClose}
-            className="text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 px-3 py-2"
+            className="px-3 py-2 text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
           >
             Cancel
           </button>
@@ -372,9 +386,11 @@ function CampaignMedia({
       map.set(key, arr);
     }
     if (groupBy === "platform") {
-      return CHANNEL_ORDER
-        .filter((k) => map.has(k))
-        .map((k) => ({ key: k, label: CHANNEL_LABELS[k], items: map.get(k)! }));
+      return CHANNEL_ORDER.filter((k) => map.has(k)).map((k) => ({
+        key: k,
+        label: CHANNEL_LABELS[k],
+        items: map.get(k)!,
+      }));
     }
     return Array.from(map.entries())
       .sort(([a], [b]) => a.localeCompare(b))
@@ -385,12 +401,12 @@ function CampaignMedia({
 
   return (
     <section>
-      <div className="flex items-center justify-between mb-4">
+      <div className="mb-4 flex items-center justify-between">
         <div>
-          <h2 className="text-sm font-medium uppercase tracking-wide text-zinc-500">
+          <h2 className="text-sm font-medium tracking-wide text-zinc-500 uppercase">
             Campaign creative
           </h2>
-          <p className="text-xs text-zinc-500 mt-1">
+          <p className="mt-1 text-xs text-zinc-500">
             Everything uploaded across channels for this project — at a glance.
           </p>
         </div>
@@ -411,7 +427,10 @@ function CampaignMedia({
       </div>
 
       {media === null ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3" aria-busy="true">
+        <div
+          className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6"
+          aria-busy="true"
+        >
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className="space-y-1.5">
               <div className="skeleton aspect-square w-full" />
@@ -420,24 +439,29 @@ function CampaignMedia({
           ))}
         </div>
       ) : totalVisible === 0 ? (
-        <div className="rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 bg-white/40 dark:bg-zinc-900/40 py-10 text-sm text-zinc-500 text-center">
+        <div className="rounded-xl border border-dashed border-zinc-300 bg-white/40 py-10 text-center text-sm text-zinc-500 dark:border-zinc-700 dark:bg-zinc-900/40">
           No creatives yet. Upload media from a channel board to see it here.
         </div>
       ) : (
         <div className="space-y-6">
           {groups.map((g) => (
             <div key={g.key}>
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+              <div className="mb-2 flex items-center justify-between">
+                <h3 className="text-xs font-semibold tracking-wide text-zinc-500 uppercase">
                   {g.label}
                 </h3>
                 <span className="text-[11px] text-zinc-400">
                   {g.items.length} item{g.items.length === 1 ? "" : "s"}
                 </span>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
                 {g.items.map((item) => (
-                  <CreativeTile key={item.id} item={item} projectId={projectId} groupBy={groupBy} />
+                  <CreativeTile
+                    key={item.id}
+                    item={item}
+                    projectId={projectId}
+                    groupBy={groupBy}
+                  />
                 ))}
               </div>
             </div>
@@ -458,43 +482,55 @@ function CreativeTile({
   groupBy: "platform" | "ratio";
 }) {
   const aspect = aspectClass(item.ratio);
-  const channelLabel = CHANNEL_LABELS[item.platform] ?? CHANNEL_BY_KEY[item.platform]?.name ?? item.platform;
-  const secondary = groupBy === "platform" ? formatAssetLabel(item.ratio) : channelLabel;
+  const channelLabel =
+    CHANNEL_LABELS[item.platform] ??
+    CHANNEL_BY_KEY[item.platform]?.name ??
+    item.platform;
+  const secondary =
+    groupBy === "platform" ? formatAssetLabel(item.ratio) : channelLabel;
   return (
     <Link
       href={`/projects/${projectId}/${item.platform}`}
       transitionTypes={["nav-forward"]}
-      className="tile-hover block group rounded-lg"
+      className="tile-hover group block rounded-lg"
       title={`${channelLabel} · ${formatAssetLabel(item.ratio)} · ${item.name ?? "Text creative"}`}
     >
       <div
-        className={`${aspect} w-full rounded-lg overflow-hidden bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 group-hover:border-zinc-400 dark:group-hover:border-zinc-600`}
+        className={`${aspect} w-full overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100 group-hover:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:group-hover:border-zinc-600`}
       >
         {item.kind === "image" && item.url ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={item.url} alt={item.name ?? ""} className="w-full h-full object-cover" />
+          <img
+            src={item.url}
+            alt={item.name ?? ""}
+            className="h-full w-full object-cover"
+          />
         ) : item.kind === "video" && item.posterUrl ? (
           // Use the poster as a static thumbnail to avoid downloading the
           // full video just to render a preview tile.
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={item.posterUrl} alt={item.name ?? ""} className="w-full h-full object-cover" />
+          <img
+            src={item.posterUrl}
+            alt={item.name ?? ""}
+            className="h-full w-full object-cover"
+          />
         ) : item.kind === "video" && item.url ? (
           <video
             src={item.url}
             muted
             playsInline
             preload="metadata"
-            className="w-full h-full object-cover"
+            className="h-full w-full object-cover"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-[10px] uppercase tracking-wider text-zinc-500">
+          <div className="flex h-full w-full items-center justify-center text-[10px] tracking-wider text-zinc-500 uppercase">
             Text
           </div>
         )}
       </div>
       <div className="mt-1 flex items-center justify-between text-[11px] text-zinc-500">
         <span className="truncate">{channelLabel}</span>
-        <span className="shrink-0 ml-2">{secondary}</span>
+        <span className="ml-2 shrink-0">{secondary}</span>
       </div>
     </Link>
   );

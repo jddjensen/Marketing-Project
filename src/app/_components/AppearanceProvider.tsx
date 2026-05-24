@@ -68,7 +68,8 @@ function resolveColorScheme(mode: ColorMode): "light" | "dark" {
 
 export function AppearanceProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<ThemeId>(readInitialTheme);
-  const [colorMode, setColorModeState] = useState<ColorMode>(readInitialColorMode);
+  const [colorMode, setColorModeState] =
+    useState<ColorMode>(readInitialColorMode);
 
   const setTheme = useCallback((next: ThemeId) => {
     setThemeState(next);
@@ -113,7 +114,9 @@ export function AppearanceProvider({ children }: { children: ReactNode }) {
   }, [colorMode]);
 
   return (
-    <AppearanceContext.Provider value={{ theme, colorMode, setTheme, setColorMode }}>
+    <AppearanceContext.Provider
+      value={{ theme, colorMode, setTheme, setColorMode }}
+    >
       {children}
     </AppearanceContext.Provider>
   );

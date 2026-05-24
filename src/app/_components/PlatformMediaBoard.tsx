@@ -3,7 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { UserMenu } from "./UserMenu";
-import { UploadProgressOverlay, type UploadProgressState } from "./UploadProgressOverlay";
+import {
+  UploadProgressOverlay,
+  type UploadProgressState,
+} from "./UploadProgressOverlay";
 import { CampaignMoodboardReview } from "./CampaignMoodboardReview";
 import { CreativeCopyPanel } from "./CreativeCopyPanel";
 import { HoverScrubVideo } from "./HoverScrubVideo";
@@ -13,7 +16,11 @@ import { uploadWithProgress } from "@/lib/uploadWithProgress";
 import { uploadVideoDirect } from "@/lib/directUpload";
 import { extractVideoPoster } from "@/lib/videoThumbnail";
 import { platformSupportsTextOnly } from "@/lib/platformCopy";
-import { platformUtmBase, PLATFORM_DEFAULTS, type PlatformKey } from "@/lib/utm";
+import {
+  platformUtmBase,
+  PLATFORM_DEFAULTS,
+  type PlatformKey,
+} from "@/lib/utm";
 
 type Ratio = string;
 
@@ -82,14 +89,19 @@ export function PlatformMediaBoard({
   const [media, setMedia] = useState<MediaMap>({});
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState<Ratio | null>(null);
-  const [uploadState, setUploadState] = useState<UploadProgressState | null>(null);
+  const [uploadState, setUploadState] = useState<UploadProgressState | null>(
+    null
+  );
   const uploadAbort = useRef<AbortController | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tracking, setTracking] = useState<Record<string, TrackingItem>>({});
   const [landingPages, setLandingPages] = useState<LandingPage[] | null>(null);
   const [moodboardOpen, setMoodboardOpen] = useState(false);
   const [historyFor, setHistoryFor] = useState<string | null>(null);
-  const [textDialog, setTextDialog] = useState<{ ratio: Ratio; ratioLabel: string } | null>(null);
+  const [textDialog, setTextDialog] = useState<{
+    ratio: Ratio;
+    ratioLabel: string;
+  } | null>(null);
   const platformKey = platform as PlatformKey;
   const showTextOption = platformSupportsTextOnly(platformKey);
 
@@ -118,13 +130,17 @@ export function PlatformMediaBoard({
 
   const fetchLandingPages = useCallback(async () => {
     if (!trackingEnabled) return;
-    const res = await fetch(`/api/projects/${projectId}/tracking-links`, { cache: "no-store" });
+    const res = await fetch(`/api/projects/${projectId}/tracking-links`, {
+      cache: "no-store",
+    });
     if (!res.ok) {
       setLandingPages([]);
       return;
     }
     const data = (await res.json()) as { links?: LandingPage[] };
-    setLandingPages((data.links ?? []).filter((link) => link.platform === null));
+    setLandingPages(
+      (data.links ?? []).filter((link) => link.platform === null)
+    );
   }, [projectId, trackingEnabled]);
 
   useEffect(() => {
@@ -150,7 +166,9 @@ export function PlatformMediaBoard({
       // This also prevents the cross-upload abort interference where
       // cancelling B would leave A running with a stale ref.
       if (uploadAbort.current) {
-        setError("Wait for the current upload to finish before starting another.");
+        setError(
+          "Wait for the current upload to finish before starting another."
+        );
         return;
       }
       setError(null);
@@ -167,10 +185,23 @@ export function PlatformMediaBoard({
       });
       try {
         const isVideo = file.type.startsWith("video/");
-        const onProgress = ({ loaded, total, percent }: { loaded: number; total: number; percent: number }) => {
+        const onProgress = ({
+          loaded,
+          total,
+          percent,
+        }: {
+          loaded: number;
+          total: number;
+          percent: number;
+        }) => {
           setUploadState((prev) =>
             prev
-              ? { ...prev, percent, bytesLoaded: loaded, bytesTotal: total || prev.bytesTotal }
+              ? {
+                  ...prev,
+                  percent,
+                  bytesLoaded: loaded,
+                  bytesTotal: total || prev.bytesTotal,
+                }
               : prev
           );
         };
@@ -206,10 +237,14 @@ export function PlatformMediaBoard({
           if (options?.carryCopy && Object.keys(options.carryCopy).length > 0) {
             fd.append("copy", JSON.stringify(options.carryCopy));
           }
-          const res = await uploadWithProgress<{ error?: string }>("/api/upload", fd, {
-            signal: controller.signal,
-            onProgress,
-          });
+          const res = await uploadWithProgress<{ error?: string }>(
+            "/api/upload",
+            fd,
+            {
+              signal: controller.signal,
+              onProgress,
+            }
+          );
           if (!res.ok) {
             throw new Error(res.body?.error ?? "upload failed");
           }
@@ -237,11 +272,14 @@ export function PlatformMediaBoard({
 
   const saveTracking = useCallback(
     async (creativeId: string, landingPageId: string) => {
-      const res = await fetch(`/api/tracking?platform=${platform}&projectId=${projectId}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ creativeId, landingPageId }),
-      });
+      const res = await fetch(
+        `/api/tracking?platform=${platform}&projectId=${projectId}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ creativeId, landingPageId }),
+        }
+      );
       if (!res.ok) {
         const body = (await res.json().catch(() => ({}))) as { error?: string };
         throw new Error(body.error ?? "failed to save landing page");
@@ -269,9 +307,9 @@ export function PlatformMediaBoard({
   );
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100">
+    <div className="min-h-screen bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
       <header className="apple-header sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-6 py-5 flex items-center justify-between">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
           <div>
             <Link
               href={`/projects/${projectId}`}
@@ -280,8 +318,8 @@ export function PlatformMediaBoard({
             >
               ← {projectName}
             </Link>
-            <h1 className="text-2xl font-semibold mt-1">{title}</h1>
-            <p className="text-sm text-zinc-500 mt-1">{subtitle}</p>
+            <h1 className="mt-1 text-2xl font-semibold">{title}</h1>
+            <p className="mt-1 text-sm text-zinc-500">{subtitle}</p>
           </div>
           <div className="flex items-center gap-3">
             <button
@@ -294,8 +332,10 @@ export function PlatformMediaBoard({
             {trackingEnabled && (
               <button
                 type="button"
-                onClick={() => void Promise.all([fetchTracking(), fetchLandingPages()])}
-                className="apple-tap text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 border border-zinc-200 dark:border-zinc-800 rounded-md px-2 py-1"
+                onClick={() =>
+                  void Promise.all([fetchTracking(), fetchLandingPages()])
+                }
+                className="apple-tap rounded-md border border-zinc-200 px-2 py-1 text-xs text-zinc-500 hover:text-zinc-900 dark:border-zinc-800 dark:hover:text-zinc-100"
               >
                 Refresh links
               </button>
@@ -306,15 +346,15 @@ export function PlatformMediaBoard({
       </header>
 
       {error && (
-        <div className="max-w-7xl mx-auto px-6 pt-4">
-          <div className="rounded-md border border-red-300 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200 px-4 py-2 text-sm">
+        <div className="mx-auto max-w-7xl px-6 pt-4">
+          <div className="rounded-md border border-red-300 bg-red-50 px-4 py-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
             {error}
           </div>
         </div>
       )}
 
-      <main className="max-w-7xl mx-auto px-6 py-8 space-y-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <main className="mx-auto max-w-7xl space-y-6 px-6 py-8">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           {ratios.map((r) => (
             <RatioColumn
               key={r.key}
@@ -322,8 +362,18 @@ export function PlatformMediaBoard({
               items={media[r.key] ?? []}
               uploading={uploading === r.key}
               onUpload={(ratio, file) => handleUpload(ratio, file)}
-              onUploadReplace={(ratio, file, replaceCreativeId, deletePrevious, carryCopy) =>
-                handleUpload(ratio, file, { replaceCreativeId, deletePrevious, carryCopy })
+              onUploadReplace={(
+                ratio,
+                file,
+                replaceCreativeId,
+                deletePrevious,
+                carryCopy
+              ) =>
+                handleUpload(ratio, file, {
+                  replaceCreativeId,
+                  deletePrevious,
+                  carryCopy,
+                })
               }
               loading={loading}
               trackingEnabled={trackingEnabled}
@@ -335,7 +385,9 @@ export function PlatformMediaBoard({
               platform={platformKey}
               showTextOption={showTextOption}
               onOpenHistory={(creativeId) => setHistoryFor(creativeId)}
-              onOpenTextDialog={(ratio, ratioLabel) => setTextDialog({ ratio, ratioLabel })}
+              onOpenTextDialog={(ratio, ratioLabel) =>
+                setTextDialog({ ratio, ratioLabel })
+              }
               onMutated={fetchMedia}
             />
           ))}
@@ -424,13 +476,13 @@ function RatioColumn({
   };
 
   return (
-    <section className="flex flex-col bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-[var(--shadow-soft)]">
-      <div className="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
+    <section className="flex flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-[var(--shadow-soft)] dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="flex items-center justify-between border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
         <div>
           <div className="flex items-center gap-2">
             <h2 className="font-semibold">{config.label}</h2>
             {config.recommended && (
-              <span className="text-[10px] uppercase tracking-wide font-medium px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+              <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium tracking-wide text-emerald-700 uppercase dark:bg-emerald-900/40 dark:text-emerald-300">
                 Recommended
               </span>
             )}
@@ -463,7 +515,7 @@ function RatioColumn({
           type="button"
           onClick={() => inputRef.current?.click()}
           disabled={uploading}
-          className="w-full py-5 text-sm text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 disabled:opacity-60"
+          className="w-full py-5 text-sm text-zinc-600 hover:text-zinc-900 disabled:opacity-60 dark:text-zinc-300 dark:hover:text-zinc-100"
         >
           {uploading ? "Uploading…" : "Drop file or click to upload"}
         </button>
@@ -485,14 +537,14 @@ function RatioColumn({
           <button
             type="button"
             onClick={() => onOpenTextDialog(config.key, config.label)}
-            className="text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 underline underline-offset-2 decoration-dotted"
+            className="text-xs text-zinc-500 underline decoration-dotted underline-offset-2 hover:text-zinc-900 dark:hover:text-zinc-100"
           >
             + New text-only creative
           </button>
         </div>
       )}
 
-      <div className="px-4 pb-4 flex-1 flex flex-col gap-4">
+      <div className="flex flex-1 flex-col gap-4 px-4 pb-4">
         {loading && items.length === 0 ? (
           <div className="space-y-3" aria-busy="true">
             {Array.from({ length: 2 }).map((_, i) => (
@@ -503,7 +555,9 @@ function RatioColumn({
             ))}
           </div>
         ) : items.length === 0 ? (
-          <div className="text-sm text-zinc-500 py-6 text-center">No media yet.</div>
+          <div className="py-6 text-center text-sm text-zinc-500">
+            No media yet.
+          </div>
         ) : (
           items.map((item) => (
             <MediaTile
@@ -518,7 +572,13 @@ function RatioColumn({
               projectId={projectId}
               platform={platform}
               onReplace={(file, deletePrevious) =>
-                onUploadReplace(config.key, file, item.creativeId, deletePrevious, item.copy)
+                onUploadReplace(
+                  config.key,
+                  file,
+                  item.creativeId,
+                  deletePrevious,
+                  item.copy
+                )
               }
               onOpenHistory={onOpenHistory}
               onMutated={onMutated}
@@ -563,22 +623,28 @@ function MediaTile({
   return (
     <figure className="group flex flex-col gap-2">
       <div
-        className={`${aspect} w-full rounded-lg overflow-hidden bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 relative`}
+        className={`${aspect} relative w-full overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800`}
       >
         {item.kind === "image" && item.url ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={item.url} alt={item.name ?? ""} className="w-full h-full object-cover" />
+          <img
+            src={item.url}
+            alt={item.name ?? ""}
+            className="h-full w-full object-cover"
+          />
         ) : item.kind === "video" && item.url ? (
           <HoverScrubVideo
             src={item.url}
             poster={item.posterUrl ?? undefined}
-            className="w-full h-full object-cover"
+            className="h-full w-full object-cover"
           />
         ) : item.kind === "text" ? (
-          <div className="w-full h-full flex flex-col items-center justify-center text-zinc-500 px-3 text-center">
-            <span className="text-[10px] uppercase tracking-wider">Text creative</span>
+          <div className="flex h-full w-full flex-col items-center justify-center px-3 text-center text-zinc-500">
+            <span className="text-[10px] tracking-wider uppercase">
+              Text creative
+            </span>
             {item.copy && (
-              <p className="mt-2 text-xs line-clamp-4 text-zinc-700 dark:text-zinc-300">
+              <p className="mt-2 line-clamp-4 text-xs text-zinc-700 dark:text-zinc-300">
                 {firstCopySnippet(item.copy)}
               </p>
             )}
@@ -587,7 +653,7 @@ function MediaTile({
 
         {item.versionNum > 1 && (
           <span
-            className="absolute top-1.5 left-1.5 rounded-full bg-zinc-900/80 dark:bg-zinc-100/90 text-white dark:text-zinc-900 text-[10px] font-semibold tracking-wide px-1.5 py-0.5"
+            className="absolute top-1.5 left-1.5 rounded-full bg-zinc-900/80 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-white dark:bg-zinc-100/90 dark:text-zinc-900"
             title={`Version ${item.versionNum}`}
           >
             v{item.versionNum}
@@ -595,7 +661,10 @@ function MediaTile({
         )}
       </div>
 
-      <figcaption className="text-xs text-zinc-500 truncate" title={item.name ?? ""}>
+      <figcaption
+        className="truncate text-xs text-zinc-500"
+        title={item.name ?? ""}
+      >
         {item.name ?? "Text-only creative"}
       </figcaption>
 
@@ -605,11 +674,11 @@ function MediaTile({
             <button
               type="button"
               onClick={() => replaceInputRef.current?.click()}
-              className="text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 underline underline-offset-2 decoration-dotted"
+              className="text-zinc-600 underline decoration-dotted underline-offset-2 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-100"
             >
               Replace
             </button>
-            <label className="flex items-center gap-1 text-zinc-500 cursor-pointer select-none">
+            <label className="flex cursor-pointer items-center gap-1 text-zinc-500 select-none">
               <input
                 type="checkbox"
                 className="check-tactile"
@@ -636,7 +705,7 @@ function MediaTile({
         <button
           type="button"
           onClick={() => onOpenHistory(item.creativeId)}
-          className="ml-auto text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 underline underline-offset-2 decoration-dotted"
+          className="ml-auto text-zinc-500 underline decoration-dotted underline-offset-2 hover:text-zinc-900 dark:hover:text-zinc-100"
         >
           History
         </button>
@@ -671,7 +740,11 @@ function firstCopySnippet(copy: Record<string, unknown>): string {
     if (typeof value === "string" && value.trim().length > 0) {
       return value.length > 200 ? `${value.slice(0, 200)}…` : value;
     }
-    if (Array.isArray(value) && value.length > 0 && typeof value[0] === "string") {
+    if (
+      Array.isArray(value) &&
+      value.length > 0 &&
+      typeof value[0] === "string"
+    ) {
       return value[0] as string;
     }
   }
@@ -704,7 +777,8 @@ function TrackingControls({
   const sourcePreview = platformUtmBase(platform);
   const sourceLabel = tracking?.utmSource ?? defaults.source;
   const creativeTag = tracking?.utmContent ?? null;
-  const currentLandingPage = landingPages?.find((page) => page.url === tracking?.url) ?? null;
+  const currentLandingPage =
+    landingPages?.find((page) => page.url === tracking?.url) ?? null;
 
   const trackingUrl =
     tracking && typeof window !== "undefined"
@@ -739,8 +813,8 @@ function TrackingControls({
 
   if (editing || !tracking) {
     return (
-      <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 p-2.5 space-y-2">
-        <div className="text-[11px] uppercase tracking-wide font-medium text-zinc-500">
+      <div className="space-y-2 rounded-lg border border-zinc-200 p-2.5 dark:border-zinc-800">
+        <div className="text-[11px] font-medium tracking-wide text-zinc-500 uppercase">
           Landing page
         </div>
         {landingPages === null ? (
@@ -751,7 +825,7 @@ function TrackingControls({
             <Link
               href={`/projects/${projectId}`}
               transitionTypes={["nav-back"]}
-              className="text-blue-600 dark:text-blue-400 hover:underline"
+              className="text-blue-600 hover:underline dark:text-blue-400"
             >
               project dashboard
             </Link>{" "}
@@ -776,7 +850,7 @@ function TrackingControls({
               type="button"
               onClick={submit}
               disabled={busy || landingPageId.length === 0}
-              className="rounded-md bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 px-3 py-1.5 text-xs font-medium disabled:opacity-50 hover:opacity-90"
+              className="rounded-md bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900"
             >
               {busy ? "…" : "Save"}
             </button>
@@ -801,28 +875,32 @@ function TrackingControls({
           <span className="font-mono">{sourcePreview}2</span>
           {", and so on when saved."}
         </div>
-        {err && <div className="text-[11px] text-red-600 dark:text-red-400">{err}</div>}
+        {err && (
+          <div className="text-[11px] text-red-600 dark:text-red-400">
+            {err}
+          </div>
+        )}
       </div>
     );
   }
 
   return (
-    <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 p-2.5 space-y-2">
+    <div className="space-y-2 rounded-lg border border-zinc-200 p-2.5 dark:border-zinc-800">
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <div className="text-[11px] uppercase tracking-wide font-medium text-zinc-500">
+          <div className="text-[11px] font-medium tracking-wide text-zinc-500 uppercase">
             Landing page
           </div>
           <a
             href={tracking.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-xs text-blue-600 dark:text-blue-400 hover:underline truncate block"
+            className="block truncate text-xs text-blue-600 hover:underline dark:text-blue-400"
             title={tracking.url}
           >
             {tracking.label || tracking.url}
           </a>
-          <div className="text-[11px] text-zinc-500 mt-0.5">
+          <div className="mt-0.5 text-[11px] text-zinc-500">
             Source: <span className="font-mono">{sourceLabel}</span>
             {creativeTag && (
               <>
@@ -834,14 +912,18 @@ function TrackingControls({
           </div>
         </div>
         <div className="text-right">
-          <div className="text-[11px] uppercase tracking-wide font-medium text-zinc-500">Clicks</div>
-          <div className="text-lg font-semibold tabular-nums">{tracking.clicks}</div>
+          <div className="text-[11px] font-medium tracking-wide text-zinc-500 uppercase">
+            Clicks
+          </div>
+          <div className="text-lg font-semibold tabular-nums">
+            {tracking.clicks}
+          </div>
         </div>
       </div>
       <div className="flex items-center gap-2 text-[11px]">
-        <span className="text-zinc-500 shrink-0">Tracking link:</span>
+        <span className="shrink-0 text-zinc-500">Tracking link:</span>
         <code
-          className="flex-1 truncate bg-zinc-100 dark:bg-zinc-800 rounded px-1.5 py-0.5"
+          className="flex-1 truncate rounded bg-zinc-100 px-1.5 py-0.5 dark:bg-zinc-800"
           title={trackingUrl ?? ""}
         >
           {trackingUrl}

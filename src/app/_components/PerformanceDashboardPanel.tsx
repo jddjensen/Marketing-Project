@@ -4,7 +4,11 @@ import { useCallback, useEffect, useState } from "react";
 import type { PlatformKey } from "@/lib/utm";
 type AnalyticsSettings = {
   ga4PropertyId: string | null;
-  status: "ready" | "property_missing" | "account_not_connected" | "credentials_missing";
+  status:
+    | "ready"
+    | "property_missing"
+    | "account_not_connected"
+    | "credentials_missing";
   credentialsConfigured: boolean;
   oauthConfigured: boolean;
   connected: boolean;
@@ -93,7 +97,10 @@ function relativeTime(ts: number) {
 function formatTrendDate(value: string) {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return value;
-  return parsed.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  return parsed.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  });
 }
 
 function statusTone(settings: AnalyticsSettings | null) {
@@ -127,18 +134,24 @@ function statusTone(settings: AnalyticsSettings | null) {
     return {
       className:
         "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200",
-      label: "Tracked clicks and QR scans are live. Connect Google Analytics below to pull website sessions, conversions, and revenue.",
+      label:
+        "Tracked clicks and QR scans are live. Connect Google Analytics below to pull website sessions, conversions, and revenue.",
     };
   }
 
   return {
     className:
       "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200",
-    label: "Tracked clicks and QR scans are live. Google OAuth credentials still need to be configured.",
+    label:
+      "Tracked clicks and QR scans are live. Google OAuth credentials still need to be configured.",
   };
 }
 
-export function PerformanceDashboardPanel({ projectId }: { projectId: string }) {
+export function PerformanceDashboardPanel({
+  projectId,
+}: {
+  projectId: string;
+}) {
   const [data, setData] = useState<PerformanceResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -151,9 +164,12 @@ export function PerformanceDashboardPanel({ projectId }: { projectId: string }) 
       setError(null);
 
       const suffix = refresh ? "?refresh=1" : "";
-      const res = await fetch(`/api/projects/${projectId}/performance${suffix}`, {
-        cache: "no-store",
-      });
+      const res = await fetch(
+        `/api/projects/${projectId}/performance${suffix}`,
+        {
+          cache: "no-store",
+        }
+      );
       const body = (await res.json().catch(() => null)) as
         | (PerformanceResponse & { error?: string })
         | { error?: string }
@@ -177,7 +193,9 @@ export function PerformanceDashboardPanel({ projectId }: { projectId: string }) 
     let active = true;
 
     async function initialLoad() {
-      const res = await fetch(`/api/projects/${projectId}/performance`, { cache: "no-store" });
+      const res = await fetch(`/api/projects/${projectId}/performance`, {
+        cache: "no-store",
+      });
       const body = (await res.json().catch(() => null)) as
         | (PerformanceResponse & { error?: string })
         | { error?: string }
@@ -202,50 +220,80 @@ export function PerformanceDashboardPanel({ projectId }: { projectId: string }) 
   }, [projectId]);
 
   const tone = statusTone(data?.analytics ?? null);
-  const trendMax = Math.max(...(data?.trend.map((point) => point.sessions) ?? [0]), 1);
+  const trendMax = Math.max(
+    ...(data?.trend.map((point) => point.sessions) ?? [0]),
+    1
+  );
 
   return (
-    <section className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 space-y-5">
+    <section className="space-y-5 rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <h2 className="text-sm font-medium uppercase tracking-wide text-zinc-500">
+          <h2 className="text-sm font-medium tracking-wide text-zinc-500 uppercase">
             Unified Performance
           </h2>
-          <p className="text-sm text-zinc-500 mt-1 max-w-3xl">
-            One blended view of first-party tracked clicks, QR scans, and GA4 site behavior.
-            Use tracked links for digital channels and QR for print/offline placements so the rollup stays complete.
+          <p className="mt-1 max-w-3xl text-sm text-zinc-500">
+            One blended view of first-party tracked clicks, QR scans, and GA4
+            site behavior. Use tracked links for digital channels and QR for
+            print/offline placements so the rollup stays complete.
           </p>
         </div>
         <div className="flex items-center gap-2">
           {data?.lastSyncedAt && (
-            <div className="text-xs text-zinc-500">Synced {relativeTime(data.lastSyncedAt)}</div>
+            <div className="text-xs text-zinc-500">
+              Synced {relativeTime(data.lastSyncedAt)}
+            </div>
           )}
           <button
             type="button"
             onClick={() => void load(true)}
             disabled={loading || refreshing}
-            className="apple-tap rounded-md border border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-200 px-3 py-2 text-sm font-medium disabled:opacity-40 hover:border-zinc-500"
+            className="apple-tap rounded-md border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-700 hover:border-zinc-500 disabled:opacity-40 dark:border-zinc-700 dark:text-zinc-200"
           >
             {refreshing ? "Refreshing…" : "Refresh"}
           </button>
         </div>
       </div>
 
-      <div className={`rounded-lg border px-3 py-2 text-sm ${tone.className}`}>{tone.label}</div>
+      <div className={`rounded-lg border px-3 py-2 text-sm ${tone.className}`}>
+        {tone.label}
+      </div>
 
       {error ? (
-        <div className="rounded-md border border-red-300 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200 px-3 py-2 text-sm">
+        <div className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
           {error}
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <SummaryCard label="Clicks" value={loading ? "…" : formatInteger(data?.totals.clicks ?? 0)} />
-            <SummaryCard label="Scans" value={loading ? "…" : formatInteger(data?.totals.scans ?? 0)} />
-            <SummaryCard label="GA sessions" value={loading ? "…" : formatInteger(data?.totals.sessions ?? 0)} />
-            <SummaryCard label="Conversions" value={loading ? "…" : formatInteger(data?.totals.conversions ?? 0)} />
-            <SummaryCard label="Revenue" value={loading ? "…" : formatCurrency(data?.totals.revenue ?? 0)} />
-            <SummaryCard label="Ticket sales" value={loading ? "…" : formatInteger(data?.totals.ticketSales ?? 0)} />
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <SummaryCard
+              label="Clicks"
+              value={loading ? "…" : formatInteger(data?.totals.clicks ?? 0)}
+            />
+            <SummaryCard
+              label="Scans"
+              value={loading ? "…" : formatInteger(data?.totals.scans ?? 0)}
+            />
+            <SummaryCard
+              label="GA sessions"
+              value={loading ? "…" : formatInteger(data?.totals.sessions ?? 0)}
+            />
+            <SummaryCard
+              label="Conversions"
+              value={
+                loading ? "…" : formatInteger(data?.totals.conversions ?? 0)
+              }
+            />
+            <SummaryCard
+              label="Revenue"
+              value={loading ? "…" : formatCurrency(data?.totals.revenue ?? 0)}
+            />
+            <SummaryCard
+              label="Ticket sales"
+              value={
+                loading ? "…" : formatInteger(data?.totals.ticketSales ?? 0)
+              }
+            />
             <SummaryCard
               label="CPA"
               value={loading ? "…" : formatCurrency(data?.totals.cpa ?? null)}
@@ -268,14 +316,14 @@ export function PerformanceDashboardPanel({ projectId }: { projectId: string }) 
             />
           </div>
 
-          <div className="grid grid-cols-1 xl:grid-cols-[1.25fr_0.9fr] gap-5">
-            <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 p-4">
-              <div className="flex items-center justify-between gap-2 mb-3">
+          <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.25fr_0.9fr]">
+            <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950">
+              <div className="mb-3 flex items-center justify-between gap-2">
                 <div>
-                  <div className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+                  <div className="text-xs font-medium tracking-wide text-zinc-500 uppercase">
                     Channel Contribution
                   </div>
-                  <div className="text-[11px] text-zinc-500 mt-1">
+                  <div className="mt-1 text-[11px] text-zinc-500">
                     {loading
                       ? "Loading channel performance…"
                       : `${data?.trackedLinkCount ?? 0} tracked links currently feeding this rollup.`}
@@ -290,21 +338,35 @@ export function PerformanceDashboardPanel({ projectId }: { projectId: string }) 
                   {data.channels.map((row) => (
                     <div
                       key={row.channel}
-                      className="rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-3"
+                      className="rounded-md border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900"
                     >
                       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                         <div>
                           <div className="font-medium">{row.label}</div>
-                          <div className="text-[11px] text-zinc-500 mt-1">
-                            {row.linkCount} tracked {row.linkCount === 1 ? "link" : "links"} ·{" "}
-                            {formatInteger(row.clicks)} clicks · {formatInteger(row.scans)} scans
+                          <div className="mt-1 text-[11px] text-zinc-500">
+                            {row.linkCount} tracked{" "}
+                            {row.linkCount === 1 ? "link" : "links"} ·{" "}
+                            {formatInteger(row.clicks)} clicks ·{" "}
+                            {formatInteger(row.scans)} scans
                           </div>
                         </div>
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-                          <MetricPair label="Sessions" value={formatInteger(row.sessions)} />
-                          <MetricPair label="Revenue" value={formatCurrency(row.revenue)} />
-                          <MetricPair label="Session share" value={formatPercent(row.sessionsShare)} />
-                          <MetricPair label="Revenue share" value={formatPercent(row.revenueShare)} />
+                        <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+                          <MetricPair
+                            label="Sessions"
+                            value={formatInteger(row.sessions)}
+                          />
+                          <MetricPair
+                            label="Revenue"
+                            value={formatCurrency(row.revenue)}
+                          />
+                          <MetricPair
+                            label="Session share"
+                            value={formatPercent(row.sessionsShare)}
+                          />
+                          <MetricPair
+                            label="Revenue share"
+                            value={formatPercent(row.revenueShare)}
+                          />
                         </div>
                       </div>
 
@@ -325,28 +387,35 @@ export function PerformanceDashboardPanel({ projectId }: { projectId: string }) 
                 </div>
               ) : (
                 <div className="text-sm text-zinc-500">
-                  No tracked links yet. Add a landing page below, then assign it to a creative to start building performance data.
+                  No tracked links yet. Add a landing page below, then assign it
+                  to a creative to start building performance data.
                 </div>
               )}
             </div>
 
-            <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 p-4">
-              <div className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+            <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950">
+              <div className="text-xs font-medium tracking-wide text-zinc-500 uppercase">
                 14-Day Sessions Trend
               </div>
-              <div className="text-[11px] text-zinc-500 mt-1">
-                GA4-attributed activity across every mt_link_id attached to this project.
+              <div className="mt-1 text-[11px] text-zinc-500">
+                GA4-attributed activity across every mt_link_id attached to this
+                project.
               </div>
 
               {loading ? (
-                <div className="h-40 grid place-items-center text-sm text-zinc-500">Loading…</div>
+                <div className="grid h-40 place-items-center text-sm text-zinc-500">
+                  Loading…
+                </div>
               ) : data?.trend.length ? (
                 <>
-                  <div className="mt-4 h-40 flex items-end gap-2">
+                  <div className="mt-4 flex h-40 items-end gap-2">
                     {data.trend.map((point) => (
-                      <div key={point.date} className="flex-1 flex flex-col items-center justify-end gap-2">
+                      <div
+                        key={point.date}
+                        className="flex flex-1 flex-col items-center justify-end gap-2"
+                      >
                         <div
-                          className="w-full rounded-t-md bg-sky-500/80 dark:bg-sky-400/80 min-h-2"
+                          className="min-h-2 w-full rounded-t-md bg-sky-500/80 dark:bg-sky-400/80"
                           style={{
                             height: `${Math.max(
                               10,
@@ -355,7 +424,7 @@ export function PerformanceDashboardPanel({ projectId }: { projectId: string }) 
                           }}
                           title={`${formatTrendDate(point.date)} · ${point.sessions} sessions`}
                         />
-                        <div className="text-[10px] text-zinc-500 rotate-[-35deg] origin-top-left whitespace-nowrap">
+                        <div className="origin-top-left rotate-[-35deg] text-[10px] whitespace-nowrap text-zinc-500">
                           {formatTrendDate(point.date)}
                         </div>
                       </div>
@@ -366,27 +435,38 @@ export function PerformanceDashboardPanel({ projectId }: { projectId: string }) 
                     <MetricPair
                       label="Trend revenue"
                       value={formatCurrency(
-                        data.trend.reduce((sum, point) => sum + point.purchaseRevenue, 0)
+                        data.trend.reduce(
+                          (sum, point) => sum + point.purchaseRevenue,
+                          0
+                        )
                       )}
                     />
                     <MetricPair
                       label="Trend ticket sales"
                       value={formatInteger(
-                        data.trend.reduce((sum, point) => sum + point.transactions, 0)
+                        data.trend.reduce(
+                          (sum, point) => sum + point.transactions,
+                          0
+                        )
                       )}
                     />
                   </div>
                 </>
               ) : (
-                <div className="h-40 grid place-items-center text-sm text-zinc-500 text-center">
-                  No GA4-attributed sessions yet. Tracked clicks and scans can start collecting immediately, and GA4 metrics will populate once linked traffic lands on the tagged site.
+                <div className="grid h-40 place-items-center text-center text-sm text-zinc-500">
+                  No GA4-attributed sessions yet. Tracked clicks and scans can
+                  start collecting immediately, and GA4 metrics will populate
+                  once linked traffic lands on the tagged site.
                 </div>
               )}
             </div>
           </div>
 
-          <div className="rounded-lg border border-dashed border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs text-zinc-500">
-            Clicks count only when someone uses the tracked redirect link from this app. Scans count from QR visits. GA sessions, conversions, ticket sales, and revenue depend on the project&apos;s GA4 property and the destination site being tagged correctly.
+          <div className="rounded-lg border border-dashed border-zinc-300 px-3 py-2 text-xs text-zinc-500 dark:border-zinc-700">
+            Clicks count only when someone uses the tracked redirect link from
+            this app. Scans count from QR visits. GA sessions, conversions,
+            ticket sales, and revenue depend on the project&apos;s GA4 property
+            and the destination site being tagged correctly.
           </div>
         </>
       )}
@@ -404,10 +484,14 @@ function SummaryCard({
   caption?: string;
 }) {
   return (
-    <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 px-3 py-3">
-      <div className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">{label}</div>
+    <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-3 dark:border-zinc-800 dark:bg-zinc-950">
+      <div className="text-[11px] font-medium tracking-wide text-zinc-500 uppercase">
+        {label}
+      </div>
       <div className="mt-1 text-xl font-semibold">{value}</div>
-      {caption && <div className="mt-1 text-[11px] text-zinc-500">{caption}</div>}
+      {caption && (
+        <div className="mt-1 text-[11px] text-zinc-500">{caption}</div>
+      )}
     </div>
   );
 }
@@ -415,7 +499,9 @@ function SummaryCard({
 function MetricPair({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <div className="text-[10px] uppercase tracking-wide text-zinc-500">{label}</div>
+      <div className="text-[10px] tracking-wide text-zinc-500 uppercase">
+        {label}
+      </div>
       <div className="mt-0.5 font-medium">{value}</div>
     </div>
   );
@@ -436,10 +522,12 @@ function ShareBar({
         <span>{label}</span>
         <span>{formatPercent(value)}</span>
       </div>
-      <div className="mt-1 h-2 rounded-full bg-zinc-200 dark:bg-zinc-800 overflow-hidden">
+      <div className="mt-1 h-2 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800">
         <div
           className={`h-full rounded-full ${tone}`}
-          style={{ width: `${Math.max(0, Math.min(100, Math.round((value ?? 0) * 100)))}%` }}
+          style={{
+            width: `${Math.max(0, Math.min(100, Math.round((value ?? 0) * 100)))}%`,
+          }}
         />
       </div>
     </div>

@@ -4,7 +4,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { UserMenu } from "./UserMenu";
 import { HoverScrubVideo } from "./HoverScrubVideo";
-import { UploadProgressOverlay, type UploadProgressState } from "./UploadProgressOverlay";
+import {
+  UploadProgressOverlay,
+  type UploadProgressState,
+} from "./UploadProgressOverlay";
 import { VersionHistoryModal } from "./VersionHistoryModal";
 import { uploadWithProgress } from "@/lib/uploadWithProgress";
 import { uploadVideoDirect } from "@/lib/directUpload";
@@ -74,20 +77,27 @@ export function SignageBoard({
   const [blueprints, setBlueprints] = useState<SignageBlueprint[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [uploadingId, setUploadingId] = useState<string | null>(null);
-  const [uploadState, setUploadState] = useState<UploadProgressState | null>(null);
+  const [uploadState, setUploadState] = useState<UploadProgressState | null>(
+    null
+  );
   const uploadAbort = useRef<AbortController | null>(null);
   const [addingFormat, setAddingFormat] = useState(false);
   const [menuId, setMenuId] = useState<string | null>(null);
   const [historyFor, setHistoryFor] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
-    const res = await fetch(`/api/projects/${projectId}/signage-formats`, { cache: "no-store" });
+    const res = await fetch(`/api/projects/${projectId}/signage-formats`, {
+      cache: "no-store",
+    });
     if (!res.ok) {
       setData({ formats: [], mediaByFormat: {} });
       return;
     }
     const body = (await res.json()) as SignagePayload;
-    setData({ formats: body.formats ?? [], mediaByFormat: body.mediaByFormat ?? {} });
+    setData({
+      formats: body.formats ?? [],
+      mediaByFormat: body.mediaByFormat ?? {},
+    });
   }, [projectId]);
 
   const fetchBlueprints = useCallback(async () => {
@@ -104,7 +114,9 @@ export function SignageBoard({
     let active = true;
 
     async function loadFormats() {
-      const res = await fetch(`/api/projects/${projectId}/signage-formats`, { cache: "no-store" });
+      const res = await fetch(`/api/projects/${projectId}/signage-formats`, {
+        cache: "no-store",
+      });
       if (!active) return;
       if (!res.ok) {
         setData({ formats: [], mediaByFormat: {} });
@@ -112,7 +124,10 @@ export function SignageBoard({
       }
       const body = (await res.json()) as SignagePayload;
       if (!active) return;
-      setData({ formats: body.formats ?? [], mediaByFormat: body.mediaByFormat ?? {} });
+      setData({
+        formats: body.formats ?? [],
+        mediaByFormat: body.mediaByFormat ?? {},
+      });
     }
 
     async function loadBlueprints() {
@@ -151,27 +166,37 @@ export function SignageBoard({
     [projectId, fetchData]
   );
 
-  const saveBlueprint = useCallback(async (input: Omit<SignageBlueprint, "id" | "createdAt">) => {
-    const res = await fetch("/api/signage-blueprints", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(input),
-    });
-    if (!res.ok) {
-      const body = (await res.json().catch(() => ({}))) as { error?: string };
-      throw new Error(body.error ?? "failed to save blueprint");
-    }
-    await fetchBlueprints();
-  }, [fetchBlueprints]);
+  const saveBlueprint = useCallback(
+    async (input: Omit<SignageBlueprint, "id" | "createdAt">) => {
+      const res = await fetch("/api/signage-blueprints", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+      });
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(body.error ?? "failed to save blueprint");
+      }
+      await fetchBlueprints();
+    },
+    [fetchBlueprints]
+  );
 
   const deleteFormat = useCallback(
     async (formatId: string, label: string) => {
-      if (!window.confirm(`Delete "${label}" and all media uploaded for it? This can't be undone.`)) {
+      if (
+        !window.confirm(
+          `Delete "${label}" and all media uploaded for it? This can't be undone.`
+        )
+      ) {
         return;
       }
-      const res = await fetch(`/api/projects/${projectId}/signage-formats/${formatId}`, {
-        method: "DELETE",
-      });
+      const res = await fetch(
+        `/api/projects/${projectId}/signage-formats/${formatId}`,
+        {
+          method: "DELETE",
+        }
+      );
       if (res.ok) await fetchData();
     },
     [projectId, fetchData]
@@ -201,10 +226,23 @@ export function SignageBoard({
         bytesTotal: file.size,
       });
       const ratio = `${trimDimension(format.width)}x${trimDimension(format.height)}`;
-      const onProgress = ({ loaded, total, percent }: { loaded: number; total: number; percent: number }) => {
+      const onProgress = ({
+        loaded,
+        total,
+        percent,
+      }: {
+        loaded: number;
+        total: number;
+        percent: number;
+      }) => {
         setUploadState((prev) =>
           prev
-            ? { ...prev, percent, bytesLoaded: loaded, bytesTotal: total || prev.bytesTotal }
+            ? {
+                ...prev,
+                percent,
+                bytesLoaded: loaded,
+                bytesTotal: total || prev.bytesTotal,
+              }
             : prev
         );
       };
@@ -237,10 +275,14 @@ export function SignageBoard({
         if (options.carryCopy && Object.keys(options.carryCopy).length > 0) {
           fd.append("copy", JSON.stringify(options.carryCopy));
         }
-        const res = await uploadWithProgress<{ error?: string }>("/api/upload", fd, {
-          signal: controller.signal,
-          onProgress,
-        });
+        const res = await uploadWithProgress<{ error?: string }>(
+          "/api/upload",
+          fd,
+          {
+            signal: controller.signal,
+            onProgress,
+          }
+        );
         if (!res.ok) {
           throw new Error(res.body?.error ?? "upload failed");
         }
@@ -252,7 +294,9 @@ export function SignageBoard({
   const uploadFiles = useCallback(
     async (format: SignageFormat, files: FileList) => {
       if (uploadAbort.current) {
-        setError("Wait for the current upload to finish before starting another.");
+        setError(
+          "Wait for the current upload to finish before starting another."
+        );
         return;
       }
       setError(null);
@@ -293,7 +337,9 @@ export function SignageBoard({
       carryCopy: Record<string, unknown> | null
     ) => {
       if (uploadAbort.current) {
-        setError("Wait for the current upload to finish before starting another.");
+        setError(
+          "Wait for the current upload to finish before starting another."
+        );
         return;
       }
       setError(null);
@@ -329,9 +375,9 @@ export function SignageBoard({
   }, []);
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100">
+    <div className="min-h-screen bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
       <header className="apple-header sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-6 py-5 flex items-start justify-between gap-4">
+        <div className="mx-auto flex max-w-7xl items-start justify-between gap-4 px-6 py-5">
           <div>
             <Link
               href={`/projects/${projectId}`}
@@ -340,17 +386,20 @@ export function SignageBoard({
             >
               ← {projectName}
             </Link>
-            <h1 className="text-2xl font-semibold mt-1">Physical Signage — Campaign Media</h1>
-            <p className="text-sm text-zinc-500 mt-1">
-              Build out physical formats for this campaign, including highway billboards, posters,
-              A-frames, and saved custom blueprints you can reuse on future projects.
+            <h1 className="mt-1 text-2xl font-semibold">
+              Physical Signage — Campaign Media
+            </h1>
+            <p className="mt-1 text-sm text-zinc-500">
+              Build out physical formats for this campaign, including highway
+              billboards, posters, A-frames, and saved custom blueprints you can
+              reuse on future projects.
             </p>
           </div>
           <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={() => setAddingFormat(true)}
-              className="apple-tap text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 border border-zinc-200 dark:border-zinc-800 rounded-md px-2 py-1"
+              className="apple-tap rounded-md border border-zinc-200 px-2 py-1 text-xs text-zinc-500 hover:text-zinc-900 dark:border-zinc-800 dark:hover:text-zinc-100"
             >
               + Add format
             </button>
@@ -360,44 +409,51 @@ export function SignageBoard({
       </header>
 
       {error && (
-        <div className="max-w-7xl mx-auto px-6 pt-4">
-          <div className="rounded-md border border-red-300 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200 px-4 py-2 text-sm">
+        <div className="mx-auto max-w-7xl px-6 pt-4">
+          <div className="rounded-md border border-red-300 bg-red-50 px-4 py-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
             {error}
           </div>
         </div>
       )}
 
-      <main className="max-w-7xl mx-auto px-6 py-8">
-        <section className="mb-8 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4">
+      <main className="mx-auto max-w-7xl px-6 py-8">
+        <section className="mb-8 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
+              <h2 className="text-sm font-semibold tracking-wide text-zinc-500 uppercase">
                 Billboard defaults
               </h2>
-              <p className="text-sm text-zinc-500 mt-1 max-w-3xl">
-                14&apos; × 48&apos; is the safest default. You&apos;ll also find common 10&apos; × 40&apos;,
-                10&apos;6&quot; × 36&apos;, 12&apos; × 24&apos;, and spectacular billboard sizes in the preset picker,
-                plus digital billboard presets that follow the same overall dimensions.
+              <p className="mt-1 max-w-3xl text-sm text-zinc-500">
+                14&apos; × 48&apos; is the safest default. You&apos;ll also find
+                common 10&apos; × 40&apos;, 10&apos;6&quot; × 36&apos;, 12&apos;
+                × 24&apos;, and spectacular billboard sizes in the preset
+                picker, plus digital billboard presets that follow the same
+                overall dimensions.
               </p>
-              <p className="text-xs text-zinc-500 mt-2">
-                Physical Signage is treated as one top-level channel here, with placements like
-                parking lot signage, H-frames, little H-frames, A-frames, bathroom signs,
-                construction banners, fabric evergreen, ship banners, and billboard blueprints
-                grouped inside it.
+              <p className="mt-2 text-xs text-zinc-500">
+                Physical Signage is treated as one top-level channel here, with
+                placements like parking lot signage, H-frames, little H-frames,
+                A-frames, bathroom signs, construction banners, fabric
+                evergreen, ship banners, and billboard blueprints grouped inside
+                it.
               </p>
             </div>
-            <div className="text-xs text-zinc-500 rounded-lg bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 px-3 py-2">
-              {blueprints.length} saved blueprint{blueprints.length === 1 ? "" : "s"}
+            <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-500 dark:border-zinc-800 dark:bg-zinc-950">
+              {blueprints.length} saved blueprint
+              {blueprints.length === 1 ? "" : "s"}
             </div>
           </div>
         </section>
 
         {data === null ? (
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6" aria-busy="true">
+          <div
+            className="grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3"
+            aria-busy="true"
+          >
             {Array.from({ length: 3 }).map((_, i) => (
               <div
                 key={i}
-                className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 space-y-3"
+                className="space-y-3 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
               >
                 <div className="skeleton h-4 w-1/2" />
                 <div className="skeleton h-3 w-1/3" />
@@ -408,7 +464,7 @@ export function SignageBoard({
         ) : data.formats.length === 0 ? (
           <EmptyState onAdd={() => setAddingFormat(true)} />
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
             {data.formats.map((format) => (
               <FormatColumn
                 key={format.id}
@@ -416,12 +472,20 @@ export function SignageBoard({
                 items={data.mediaByFormat[format.id] ?? []}
                 uploading={uploadingId === format.id}
                 menuOpen={menuId === format.id}
-                onOpenMenu={() => setMenuId(menuId === format.id ? null : format.id)}
+                onOpenMenu={() =>
+                  setMenuId(menuId === format.id ? null : format.id)
+                }
                 onCloseMenu={() => setMenuId(null)}
                 onDelete={() => deleteFormat(format.id, format.label)}
                 onUpload={(files) => uploadFiles(format, files)}
                 onReplace={(file, creativeId, deletePrevious, carryCopy) =>
-                  replaceMedia(format, file, creativeId, deletePrevious, carryCopy)
+                  replaceMedia(
+                    format,
+                    file,
+                    creativeId,
+                    deletePrevious,
+                    carryCopy
+                  )
                 }
                 onOpenHistory={(creativeId) => setHistoryFor(creativeId)}
               />
@@ -496,11 +560,13 @@ function FormatColumn({
   const aspect = `aspect-[${trimDimension(format.width)}/${trimDimension(format.height)}]`;
 
   return (
-    <section className="flex flex-col bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden">
-      <div className="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800 flex items-start justify-between gap-2">
+    <section className="flex flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="flex items-start justify-between gap-2 border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
         <div className="min-w-0">
-          <h2 className="font-semibold truncate">{format.label}</h2>
-          <p className="text-xs text-zinc-500 mt-0.5">{formatDimensions(format)}</p>
+          <h2 className="truncate font-semibold">{format.label}</h2>
+          <p className="mt-0.5 text-xs text-zinc-500">
+            {formatDimensions(format)}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs text-zinc-500">
@@ -514,13 +580,13 @@ function FormatColumn({
                 e.stopPropagation();
                 onOpenMenu();
               }}
-              className="w-6 h-6 rounded-md text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center justify-center"
+              className="flex h-6 w-6 items-center justify-center rounded-md text-zinc-400 hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
             >
               ⋯
             </button>
             {menuOpen && (
               <div
-                className="absolute top-7 right-0 z-10 rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-lg py-1 min-w-[160px] text-sm"
+                className="absolute top-7 right-0 z-10 min-w-[160px] rounded-md border border-zinc-200 bg-white py-1 text-sm shadow-lg dark:border-zinc-700 dark:bg-zinc-900"
                 onMouseDown={(e) => e.stopPropagation()}
               >
                 <button
@@ -529,7 +595,7 @@ function FormatColumn({
                     onCloseMenu();
                     onDelete();
                   }}
-                  className="block w-full text-left px-3 py-1.5 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40"
+                  className="block w-full px-3 py-1.5 text-left text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40"
                 >
                   Delete format
                 </button>
@@ -541,7 +607,9 @@ function FormatColumn({
 
       <div
         className={`m-4 rounded-lg border-2 border-dashed transition-colors ${
-          dragOver ? "border-blue-500 bg-blue-50 dark:bg-blue-950/30" : "border-zinc-300 dark:border-zinc-700"
+          dragOver
+            ? "border-blue-500 bg-blue-50 dark:bg-blue-950/30"
+            : "border-zinc-300 dark:border-zinc-700"
         }`}
         onDragOver={(e) => {
           e.preventDefault();
@@ -558,7 +626,7 @@ function FormatColumn({
           type="button"
           onClick={() => inputRef.current?.click()}
           disabled={uploading}
-          className="w-full py-5 text-sm text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 disabled:opacity-60"
+          className="w-full py-5 text-sm text-zinc-600 hover:text-zinc-900 disabled:opacity-60 dark:text-zinc-300 dark:hover:text-zinc-100"
         >
           {uploading ? "Uploading…" : "Drop file or click to upload"}
         </button>
@@ -575,9 +643,11 @@ function FormatColumn({
         />
       </div>
 
-      <div className="px-4 pb-4 flex-1 flex flex-col gap-3">
+      <div className="flex flex-1 flex-col gap-3 px-4 pb-4">
         {items.length === 0 ? (
-          <div className="text-sm text-zinc-500 py-6 text-center">No media yet.</div>
+          <div className="py-6 text-center text-sm text-zinc-500">
+            No media yet.
+          </div>
         ) : (
           items.map((item) => (
             <SignageTile
@@ -612,39 +682,46 @@ function SignageTile({
   return (
     <figure className="group flex flex-col gap-2">
       <div
-        className={`${aspect} w-full rounded-lg overflow-hidden bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 relative`}
+        className={`${aspect} relative w-full overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800`}
       >
         {item.kind === "image" && item.url ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={item.url} alt={item.name ?? ""} className="w-full h-full object-cover" />
+          <img
+            src={item.url}
+            alt={item.name ?? ""}
+            className="h-full w-full object-cover"
+          />
         ) : item.kind === "video" && item.url ? (
           <HoverScrubVideo
             src={item.url}
             poster={item.posterUrl ?? undefined}
-            className="w-full h-full object-cover"
+            className="h-full w-full object-cover"
           />
         ) : null}
         {item.versionNum > 1 && (
           <span
-            className="absolute top-1.5 left-1.5 rounded-full bg-zinc-900/80 dark:bg-zinc-100/90 text-white dark:text-zinc-900 text-[10px] font-semibold tracking-wide px-1.5 py-0.5"
+            className="absolute top-1.5 left-1.5 rounded-full bg-zinc-900/80 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-white dark:bg-zinc-100/90 dark:text-zinc-900"
             title={`Version ${item.versionNum}`}
           >
             v{item.versionNum}
           </span>
         )}
       </div>
-      <figcaption className="text-xs text-zinc-500 truncate" title={item.name ?? ""}>
+      <figcaption
+        className="truncate text-xs text-zinc-500"
+        title={item.name ?? ""}
+      >
         {item.name ?? "—"}
       </figcaption>
       <div className="flex items-center gap-2 text-[11px]">
         <button
           type="button"
           onClick={() => replaceInputRef.current?.click()}
-          className="apple-tap text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 underline underline-offset-2 decoration-dotted"
+          className="apple-tap text-zinc-600 underline decoration-dotted underline-offset-2 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-100"
         >
           Replace
         </button>
-        <label className="flex items-center gap-1 text-zinc-500 cursor-pointer select-none">
+        <label className="flex cursor-pointer items-center gap-1 text-zinc-500 select-none">
           <input
             type="checkbox"
             className="check-tactile"
@@ -669,7 +746,7 @@ function SignageTile({
         <button
           type="button"
           onClick={onOpenHistory}
-          className="apple-tap ml-auto text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 underline underline-offset-2 decoration-dotted"
+          className="apple-tap ml-auto text-zinc-500 underline decoration-dotted underline-offset-2 hover:text-zinc-900 dark:hover:text-zinc-100"
         >
           History
         </button>
@@ -680,16 +757,17 @@ function SignageTile({
 
 function EmptyState({ onAdd }: { onAdd: () => void }) {
   return (
-    <div className="rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 bg-white/40 dark:bg-zinc-900/40 py-16 flex flex-col items-center text-center">
+    <div className="flex flex-col items-center rounded-xl border border-dashed border-zinc-300 bg-white/40 py-16 text-center dark:border-zinc-700 dark:bg-zinc-900/40">
       <div className="text-lg font-semibold">No signage formats yet</div>
-      <p className="text-sm text-zinc-500 mt-1 max-w-md">
-        Add a format to describe what you&apos;re producing, from a 14&apos; × 48&apos; highway billboard
-        to a 24 × 36 in A-frame or a saved custom blueprint, then upload creative at that size.
+      <p className="mt-1 max-w-md text-sm text-zinc-500">
+        Add a format to describe what you&apos;re producing, from a 14&apos; ×
+        48&apos; highway billboard to a 24 × 36 in A-frame or a saved custom
+        blueprint, then upload creative at that size.
       </p>
       <button
         type="button"
         onClick={onAdd}
-        className="apple-tap mt-4 apple-tap rounded-lg bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 px-4 py-2 text-sm font-medium hover:opacity-90"
+        className="apple-tap apple-tap mt-4 rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:opacity-90 dark:bg-zinc-100 dark:text-zinc-900"
       >
         + Add your first format
       </button>
@@ -706,10 +784,14 @@ function AddFormatDialog({
   blueprints: SignageBlueprint[];
   onClose: () => void;
   onAdd: (input: AddFormatInput) => Promise<void>;
-  onSaveBlueprint: (input: Omit<SignageBlueprint, "id" | "createdAt">) => Promise<void>;
+  onSaveBlueprint: (
+    input: Omit<SignageBlueprint, "id" | "createdAt">
+  ) => Promise<void>;
 }) {
   const [mode, setMode] = useState<"preset" | "blueprint" | "custom">("preset");
-  const [selectedPreset, setSelectedPreset] = useState<string>("billboard-highway-default");
+  const [selectedPreset, setSelectedPreset] = useState<string>(
+    "billboard-highway-default"
+  );
   const [selectedBlueprintId, setSelectedBlueprintId] = useState("");
   const [labelOverride, setLabelOverride] = useState("");
   const [customLabel, setCustomLabel] = useState("");
@@ -722,7 +804,9 @@ function AddFormatDialog({
   const [err, setErr] = useState<string | null>(null);
 
   const preset = SIGNAGE_PRESETS.find((item) => item.key === selectedPreset);
-  const activeBlueprintId = blueprints.some((item) => item.id === selectedBlueprintId)
+  const activeBlueprintId = blueprints.some(
+    (item) => item.id === selectedBlueprintId
+  )
     ? selectedBlueprintId
     : (blueprints[0]?.id ?? "");
   const blueprint = blueprints.find((item) => item.id === activeBlueprintId);
@@ -762,12 +846,19 @@ function AddFormatDialog({
       const height = Number(customHeight);
 
       if (!label) throw new Error("label is required");
-      if (!Number.isFinite(width) || width <= 0) throw new Error("width must be > 0");
-      if (!Number.isFinite(height) || height <= 0) throw new Error("height must be > 0");
+      if (!Number.isFinite(width) || width <= 0)
+        throw new Error("width must be > 0");
+      if (!Number.isFinite(height) || height <= 0)
+        throw new Error("height must be > 0");
 
       if (saveAsBlueprint) {
         const savedLabel = blueprintLabel.trim() || label;
-        await onSaveBlueprint({ label: savedLabel, width, height, unit: customUnit });
+        await onSaveBlueprint({
+          label: savedLabel,
+          width,
+          height,
+          unit: customUnit,
+        });
       }
 
       await onAdd({ label, width, height, unit: customUnit, presetKey: null });
@@ -782,31 +873,36 @@ function AddFormatDialog({
     <div
       role="dialog"
       aria-modal="true"
-      className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4"
+      className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
-        className="modal-surface w-full max-w-3xl rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-5 shadow-[var(--shadow-lift)] max-h-[90vh] overflow-y-auto"
+        className="modal-surface max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-xl border border-zinc-200 bg-white p-5 shadow-[var(--shadow-lift)] dark:border-zinc-800 dark:bg-zinc-900"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="font-semibold text-lg">Add signage format</h2>
-        <p className="text-sm text-zinc-500 mt-1">
-          Start from a billboard preset, reuse a saved blueprint, or define a custom physical size.
+        <h2 className="text-lg font-semibold">Add signage format</h2>
+        <p className="mt-1 text-sm text-zinc-500">
+          Start from a billboard preset, reuse a saved blueprint, or define a
+          custom physical size.
         </p>
 
-        <div className="mt-4 flex flex-wrap items-center gap-1 text-xs rounded-md border border-zinc-200 dark:border-zinc-800 p-0.5 bg-white dark:bg-zinc-900 w-fit">
+        <div className="mt-4 flex w-fit flex-wrap items-center gap-1 rounded-md border border-zinc-200 bg-white p-0.5 text-xs dark:border-zinc-800 dark:bg-zinc-900">
           {(["preset", "blueprint", "custom"] as const).map((value) => (
             <button
               key={value}
               type="button"
               onClick={() => setMode(value)}
-              className={`px-3 py-1.5 rounded ${
+              className={`rounded px-3 py-1.5 ${
                 mode === value
                   ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
                   : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
               }`}
             >
-              {value === "preset" ? "Preset" : value === "blueprint" ? "Blueprint" : "Custom"}
+              {value === "preset"
+                ? "Preset"
+                : value === "blueprint"
+                  ? "Blueprint"
+                  : "Custom"}
             </button>
           ))}
         </div>
@@ -814,25 +910,29 @@ function AddFormatDialog({
         <form onSubmit={submit} className="mt-4 space-y-4">
           {mode === "preset" && (
             <>
-              <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-950/40 p-4">
-                <div className="text-sm font-medium">Recommended billboard starter</div>
-                <p className="text-xs text-zinc-500 mt-1">
-                  Highway billboard 14&apos; × 48&apos; is preselected because it&apos;s the safest default for
-                  design specs.
+              <div className="rounded-xl border border-zinc-200 bg-zinc-50/70 p-4 dark:border-zinc-800 dark:bg-zinc-950/40">
+                <div className="text-sm font-medium">
+                  Recommended billboard starter
+                </div>
+                <p className="mt-1 text-xs text-zinc-500">
+                  Highway billboard 14&apos; × 48&apos; is preselected because
+                  it&apos;s the safest default for design specs.
                 </p>
               </div>
 
               <div className="space-y-4">
                 {PRESET_CATEGORIES.map((category) => {
-                  const items = SIGNAGE_PRESETS.filter((preset) => preset.category === category.key);
+                  const items = SIGNAGE_PRESETS.filter(
+                    (preset) => preset.category === category.key
+                  );
                   if (items.length === 0) return null;
 
                   return (
                     <div key={category.key}>
-                      <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400 mb-2">
+                      <div className="mb-2 text-[11px] font-semibold tracking-wide text-zinc-400 uppercase">
                         {category.label}
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                         {items.map((item) => {
                           const selected = selectedPreset === item.key;
                           return (
@@ -842,14 +942,16 @@ function AddFormatDialog({
                               onClick={() => setSelectedPreset(item.key)}
                               className={`rounded-lg border p-3 text-left transition-colors ${
                                 selected
-                                  ? "border-zinc-900 dark:border-zinc-100 bg-zinc-50 dark:bg-zinc-800/60"
-                                  : "border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600"
+                                  ? "border-zinc-900 bg-zinc-50 dark:border-zinc-100 dark:bg-zinc-800/60"
+                                  : "border-zinc-200 hover:border-zinc-400 dark:border-zinc-800 dark:hover:border-zinc-600"
                               }`}
                             >
                               <div className="flex items-start justify-between gap-3">
                                 <div>
-                                  <div className="text-sm font-medium">{item.label}</div>
-                                  <div className="text-xs text-zinc-500 mt-0.5">
+                                  <div className="text-sm font-medium">
+                                    {item.label}
+                                  </div>
+                                  <div className="mt-0.5 text-xs text-zinc-500">
                                     {formatDimensions(item)}
                                   </div>
                                 </div>
@@ -858,7 +960,9 @@ function AddFormatDialog({
                                 </span>
                               </div>
                               {item.note && (
-                                <p className="text-xs text-zinc-500 mt-2 leading-relaxed">{item.note}</p>
+                                <p className="mt-2 text-xs leading-relaxed text-zinc-500">
+                                  {item.note}
+                                </p>
                               )}
                             </button>
                           );
@@ -871,7 +975,7 @@ function AddFormatDialog({
 
               {preset && (
                 <div>
-                  <label className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+                  <label className="text-xs font-medium tracking-wide text-zinc-500 uppercase">
                     Label override
                   </label>
                   <input
@@ -890,15 +994,16 @@ function AddFormatDialog({
           {mode === "blueprint" && (
             <>
               {blueprints.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 bg-zinc-50/70 dark:bg-zinc-950/40 py-10 px-4 text-center">
+                <div className="rounded-xl border border-dashed border-zinc-300 bg-zinc-50/70 px-4 py-10 text-center dark:border-zinc-700 dark:bg-zinc-950/40">
                   <div className="font-medium">No saved blueprints yet</div>
-                  <p className="text-sm text-zinc-500 mt-1">
-                    Create a custom size and enable “Save as blueprint” to reuse it in future projects.
+                  <p className="mt-1 text-sm text-zinc-500">
+                    Create a custom size and enable “Save as blueprint” to reuse
+                    it in future projects.
                   </p>
                 </div>
               ) : (
                 <>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                     {blueprints.map((item) => {
                       const selected = activeBlueprintId === item.id;
                       return (
@@ -908,14 +1013,16 @@ function AddFormatDialog({
                           onClick={() => setSelectedBlueprintId(item.id)}
                           className={`rounded-lg border p-3 text-left transition-colors ${
                             selected
-                              ? "border-zinc-900 dark:border-zinc-100 bg-zinc-50 dark:bg-zinc-800/60"
-                              : "border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600"
+                              ? "border-zinc-900 bg-zinc-50 dark:border-zinc-100 dark:bg-zinc-800/60"
+                              : "border-zinc-200 hover:border-zinc-400 dark:border-zinc-800 dark:hover:border-zinc-600"
                           }`}
                         >
                           <div className="flex items-start justify-between gap-3">
                             <div>
-                              <div className="text-sm font-medium">{item.label}</div>
-                              <div className="text-xs text-zinc-500 mt-0.5">
+                              <div className="text-sm font-medium">
+                                {item.label}
+                              </div>
+                              <div className="mt-0.5 text-xs text-zinc-500">
                                 {formatDimensions(item)}
                               </div>
                             </div>
@@ -930,7 +1037,7 @@ function AddFormatDialog({
 
                   {blueprint && (
                     <div>
-                      <label className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+                      <label className="text-xs font-medium tracking-wide text-zinc-500 uppercase">
                         Label override
                       </label>
                       <input
@@ -951,7 +1058,7 @@ function AddFormatDialog({
           {mode === "custom" && (
             <>
               <div>
-                <label className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+                <label className="text-xs font-medium tracking-wide text-zinc-500 uppercase">
                   Format name
                 </label>
                 <input
@@ -967,7 +1074,7 @@ function AddFormatDialog({
 
               <div className="grid grid-cols-3 gap-2">
                 <div>
-                  <label className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+                  <label className="text-xs font-medium tracking-wide text-zinc-500 uppercase">
                     Width
                   </label>
                   <input
@@ -981,7 +1088,7 @@ function AddFormatDialog({
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+                  <label className="text-xs font-medium tracking-wide text-zinc-500 uppercase">
                     Height
                   </label>
                   <input
@@ -995,7 +1102,7 @@ function AddFormatDialog({
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+                  <label className="text-xs font-medium tracking-wide text-zinc-500 uppercase">
                     Unit
                   </label>
                   <select
@@ -1012,8 +1119,8 @@ function AddFormatDialog({
                 </div>
               </div>
 
-              <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 p-4">
-                <label className="flex items-start gap-3 cursor-pointer">
+              <div className="rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
+                <label className="flex cursor-pointer items-start gap-3">
                   <input
                     type="checkbox"
                     checked={saveAsBlueprint}
@@ -1021,16 +1128,19 @@ function AddFormatDialog({
                     className="check-tactile mt-0.5"
                   />
                   <div className="min-w-0">
-                    <div className="text-sm font-medium">Save as reusable blueprint</div>
-                    <p className="text-xs text-zinc-500 mt-0.5">
-                      Store this size and name so it shows up in the blueprint tab for future projects.
+                    <div className="text-sm font-medium">
+                      Save as reusable blueprint
+                    </div>
+                    <p className="mt-0.5 text-xs text-zinc-500">
+                      Store this size and name so it shows up in the blueprint
+                      tab for future projects.
                     </p>
                   </div>
                 </label>
 
                 {saveAsBlueprint && (
                   <div className="mt-3">
-                    <label className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+                    <label className="text-xs font-medium tracking-wide text-zinc-500 uppercase">
                       Blueprint name
                     </label>
                     <input
@@ -1048,7 +1158,7 @@ function AddFormatDialog({
           )}
 
           {err && (
-            <div className="rounded-md border border-red-300 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200 px-3 py-2 text-sm">
+            <div className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
               {err}
             </div>
           )}
@@ -1057,7 +1167,7 @@ function AddFormatDialog({
             <button
               type="button"
               onClick={onClose}
-              className="text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 px-3 py-2"
+              className="px-3 py-2 text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
             >
               Cancel
             </button>
@@ -1068,7 +1178,7 @@ function AddFormatDialog({
                 (mode === "preset" && !preset) ||
                 (mode === "blueprint" && blueprints.length > 0 && !blueprint)
               }
-              className="apple-tap rounded-md bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 px-4 py-2 text-sm font-medium disabled:opacity-50 hover:opacity-90"
+              className="apple-tap rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900"
             >
               {busy ? "Saving…" : "Add format"}
             </button>

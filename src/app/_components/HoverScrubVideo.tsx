@@ -62,7 +62,10 @@ export function HoverScrubVideo({ src, poster, className = "" }: Props) {
       if (!wrapper || !video) return;
       if (!Number.isFinite(video.duration) || video.duration <= 0) return;
       const rect = wrapper.getBoundingClientRect();
-      const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+      const ratio = Math.max(
+        0,
+        Math.min(1, (e.clientX - rect.left) / rect.width)
+      );
       setScrubPercent(ratio);
       // Park just shy of the end so we never land on the black post-ended frame.
       targetTimeRef.current = ratio * Math.max(0, video.duration - 0.05);
@@ -126,7 +129,7 @@ export function HoverScrubVideo({ src, poster, className = "" }: Props) {
       aria-label={activated ? undefined : "Play video"}
       // Inset focus ring: outer rings get clipped by the parent tile's
       // overflow-hidden, so we draw it just inside the wrapper edge instead.
-      className="relative w-full h-full focus:outline-none focus-visible:shadow-[inset_0_0_0_2px_var(--accent)]"
+      className="relative h-full w-full focus:outline-none focus-visible:shadow-[inset_0_0_0_2px_var(--accent)]"
     >
       <video
         ref={videoRef}
@@ -145,16 +148,22 @@ export function HoverScrubVideo({ src, poster, className = "" }: Props) {
             }`}
           >
             <span
-              className="flex items-center justify-center w-10 h-10 rounded-full bg-black/55 backdrop-blur-sm text-white"
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-black/55 text-white backdrop-blur-sm"
               style={{ boxShadow: "var(--shadow-soft)" }}
             >
-              <svg viewBox="0 0 16 16" width="13" height="13" fill="currentColor" aria-hidden="true">
+              <svg
+                viewBox="0 0 16 16"
+                width="13"
+                height="13"
+                fill="currentColor"
+                aria-hidden="true"
+              >
                 <path d="M5.5 3.5v9l7-4.5z" />
               </svg>
             </span>
           </div>
           {scrubPercent !== null && (
-            <div className="pointer-events-none absolute left-0 right-0 bottom-0 h-[2px] bg-white/25">
+            <div className="pointer-events-none absolute right-0 bottom-0 left-0 h-[2px] bg-white/25">
               <div
                 className="h-full bg-white"
                 style={{ width: `${scrubPercent * 100}%` }}

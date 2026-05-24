@@ -10,14 +10,19 @@ export async function GET(
   ctx: { params: Promise<{ id: string }> }
 ) {
   const { id } = await ctx.params;
-  if (!isUuid(id)) return Response.json({ error: "not found" }, { status: 404 });
+  if (!isUuid(id))
+    return Response.json({ error: "not found" }, { status: 404 });
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("project_platforms")
     .select("platform, added_at")
     .eq("project_id", id)
     .order("added_at", { ascending: true });
-  if (error) return Response.json({ error: "failed to load platforms" }, { status: 500 });
+  if (error)
+    return Response.json(
+      { error: "failed to load platforms" },
+      { status: 500 }
+    );
   return Response.json({
     platforms: (data ?? []).map((r) => ({
       platform: r.platform,
@@ -31,9 +36,16 @@ export async function POST(
   ctx: { params: Promise<{ id: string }> }
 ) {
   const { id } = await ctx.params;
-  if (!isUuid(id)) return Response.json({ error: "not found" }, { status: 404 });
-  const body = (await request.json().catch(() => null)) as { platform?: unknown } | null;
-  if (!body || typeof body.platform !== "string" || !VALID_PLATFORMS.has(body.platform)) {
+  if (!isUuid(id))
+    return Response.json({ error: "not found" }, { status: 404 });
+  const body = (await request.json().catch(() => null)) as {
+    platform?: unknown;
+  } | null;
+  if (
+    !body ||
+    typeof body.platform !== "string" ||
+    !VALID_PLATFORMS.has(body.platform)
+  ) {
     return Response.json({ error: "invalid platform" }, { status: 400 });
   }
 
@@ -44,8 +56,13 @@ export async function POST(
 
   const { error } = await supabase
     .from("project_platforms")
-    .upsert({ project_id: id, platform: body.platform, added_by: user?.id ?? null });
-  if (error) return Response.json({ error: "failed to add platform" }, { status: 500 });
+    .upsert({
+      project_id: id,
+      platform: body.platform,
+      added_by: user?.id ?? null,
+    });
+  if (error)
+    return Response.json({ error: "failed to add platform" }, { status: 500 });
   return Response.json({ ok: true, platform: body.platform });
 }
 
@@ -54,7 +71,8 @@ export async function DELETE(
   ctx: { params: Promise<{ id: string }> }
 ) {
   const { id } = await ctx.params;
-  if (!isUuid(id)) return Response.json({ error: "not found" }, { status: 404 });
+  if (!isUuid(id))
+    return Response.json({ error: "not found" }, { status: 404 });
   const platform = request.nextUrl.searchParams.get("platform");
   if (!platform || !VALID_PLATFORMS.has(platform)) {
     return Response.json({ error: "invalid platform" }, { status: 400 });
@@ -66,7 +84,12 @@ export async function DELETE(
     .delete({ count: "exact" })
     .eq("project_id", id)
     .eq("platform", platform);
-  if (error) return Response.json({ error: "failed to remove platform" }, { status: 500 });
-  if (count === 0) return Response.json({ error: "not found" }, { status: 404 });
+  if (error)
+    return Response.json(
+      { error: "failed to remove platform" },
+      { status: 500 }
+    );
+  if (count === 0)
+    return Response.json({ error: "not found" }, { status: 404 });
   return Response.json({ ok: true });
 }

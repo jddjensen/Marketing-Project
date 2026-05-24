@@ -1,6 +1,7 @@
 # Debug Airtable Formula
 
 ## Trigger
+
 When user asks to debug or fix an Airtable formula error.
 
 ## Steps

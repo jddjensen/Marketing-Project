@@ -21,8 +21,14 @@ export async function POST(
   } = await supabase.auth.getUser();
   if (!user) return Response.json({ error: "unauthorized" }, { status: 401 });
 
-  const body = (await request.json().catch(() => null)) as { versionId?: unknown } | null;
-  if (!body || typeof body.versionId !== "string" || body.versionId.length === 0) {
+  const body = (await request.json().catch(() => null)) as {
+    versionId?: unknown;
+  } | null;
+  if (
+    !body ||
+    typeof body.versionId !== "string" ||
+    body.versionId.length === 0
+  ) {
     return Response.json({ error: "versionId required" }, { status: 400 });
   }
   if (!isUuid(body.versionId)) {

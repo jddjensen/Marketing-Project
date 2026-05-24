@@ -34,7 +34,10 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: "paths required" }, { status: 400 });
   }
   if (paths.length > MAX_PATHS) {
-    return Response.json({ error: `too many paths (max ${MAX_PATHS})` }, { status: 400 });
+    return Response.json(
+      { error: `too many paths (max ${MAX_PATHS})` },
+      { status: 400 }
+    );
   }
 
   const safe: string[] = [];

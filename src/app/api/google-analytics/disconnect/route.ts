@@ -12,6 +12,10 @@ export async function DELETE() {
     .delete()
     .eq("user_id", user.id);
 
-  if (error) return Response.json({ error: "failed to disconnect Google Analytics" }, { status: 500 });
+  if (error)
+    return Response.json(
+      { error: "failed to disconnect Google Analytics" },
+      { status: 500 }
+    );
   return Response.json({ ok: true });
 }

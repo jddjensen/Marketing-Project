@@ -13,7 +13,10 @@ export type PlatformKey =
   | "signage"
   | "flyers";
 
-export const PLATFORM_DEFAULTS: Record<PlatformKey, { source: string; medium: string }> = {
+export const PLATFORM_DEFAULTS: Record<
+  PlatformKey,
+  { source: string; medium: string }
+> = {
   meta: { source: "facebook", medium: "paid_social" },
   tiktok: { source: "tiktok", medium: "paid_social" },
   youtube: { source: "youtube", medium: "video" },
@@ -36,7 +39,10 @@ export function platformUtmBase(platform: PlatformKey): string {
     .replace(/^_+|_+$/g, "");
 }
 
-export function formatCreativeUtmTag(platform: PlatformKey, sequence: number): string {
+export function formatCreativeUtmTag(
+  platform: PlatformKey,
+  sequence: number
+): string {
   const base = platformUtmBase(platform);
   return sequence <= 1 ? base : `${base}${sequence}`;
 }
@@ -60,7 +66,10 @@ type UtmLinkShape = {
   utmContent: string | null;
 };
 
-export function buildUtmUrl(link: UtmLinkShape, campaignFallback: string): string {
+export function buildUtmUrl(
+  link: UtmLinkShape,
+  campaignFallback: string
+): string {
   const raw = link.url?.trim();
   if (!raw) return "";
   let base: URL;
@@ -80,7 +89,10 @@ export function buildUtmUrl(link: UtmLinkShape, campaignFallback: string): strin
   const pairs: Array<[string, string | null]> = [
     ["utm_source", link.utmSource ?? defaults?.source ?? null],
     ["utm_medium", link.utmMedium ?? defaults?.medium ?? null],
-    ["utm_campaign", link.utmCampaign ?? (campaignFallback ? slugify(campaignFallback) : null)],
+    [
+      "utm_campaign",
+      link.utmCampaign ?? (campaignFallback ? slugify(campaignFallback) : null),
+    ],
     ["utm_term", link.utmTerm],
     ["utm_content", link.utmContent],
   ];

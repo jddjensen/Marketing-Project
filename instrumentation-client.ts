@@ -8,7 +8,8 @@ if (dsn) {
   Sentry.init({
     dsn,
     tracesSampleRate: 0,
-    environment: process.env.NEXT_PUBLIC_SENTRY_ENVIRONMENT ?? process.env.NODE_ENV,
+    environment:
+      process.env.NEXT_PUBLIC_SENTRY_ENVIRONMENT ?? process.env.NODE_ENV,
     enabled: process.env.NODE_ENV === "production",
   });
 }

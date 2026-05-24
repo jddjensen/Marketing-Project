@@ -66,16 +66,16 @@ export function UserMenu() {
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="menu"
         aria-expanded={open ? "true" : "false"}
-        className="apple-tap flex items-center gap-2 rounded-full border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 pl-1 pr-3 py-1 text-sm focus-ring"
+        className="apple-tap focus-ring flex items-center gap-2 rounded-full border border-zinc-200 bg-white py-1 pr-3 pl-1 text-sm dark:border-zinc-800 dark:bg-zinc-900"
         title={`Signed in as ${email} (${theme} theme)`}
       >
         <span
-          className="inline-flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold text-white bg-(--accent)"
+          className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-(--accent) text-xs font-semibold text-white"
           aria-hidden="true"
         >
           {initial}
         </span>
-        <span className="text-zinc-500 hidden sm:inline max-w-[160px] truncate">
+        <span className="hidden max-w-[160px] truncate text-zinc-500 sm:inline">
           {email}
         </span>
       </button>
@@ -84,13 +84,13 @@ export function UserMenu() {
         <div
           aria-label="Account menu"
           data-state={state}
-          className="popover-surface absolute right-0 mt-2 w-64 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-[var(--shadow-lift)] overflow-hidden z-50"
+          className="popover-surface absolute right-0 z-50 mt-2 w-64 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-[var(--shadow-lift)] dark:border-zinc-800 dark:bg-zinc-900"
         >
-          <div className="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800">
-            <div className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+          <div className="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
+            <div className="text-[10px] font-semibold tracking-wide text-zinc-500 uppercase">
               Signed in as
             </div>
-            <div className="text-sm truncate" title={email}>
+            <div className="truncate text-sm" title={email}>
               {email}
             </div>
           </div>
@@ -98,16 +98,18 @@ export function UserMenu() {
           <Link
             href="/settings"
             onClick={() => setOpen(false)}
-            className="flex items-center justify-between gap-2 w-full px-4 py-2.5 text-sm text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800/60 transition-colors"
+            className="flex w-full items-center justify-between gap-2 px-4 py-2.5 text-sm text-zinc-700 transition-colors hover:bg-zinc-50 dark:text-zinc-200 dark:hover:bg-zinc-800/60"
           >
             <span>Settings</span>
-            <span className="text-[11px] text-zinc-500 capitalize">{theme}</span>
+            <span className="text-[11px] text-zinc-500 capitalize">
+              {theme}
+            </span>
           </Link>
 
           <button
             type="button"
             onClick={logout}
-            className="w-full text-left px-4 py-2.5 text-sm text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800/60 transition-colors border-t border-zinc-200 dark:border-zinc-800"
+            className="w-full border-t border-zinc-200 px-4 py-2.5 text-left text-sm text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-800/60"
           >
             Sign out
           </button>

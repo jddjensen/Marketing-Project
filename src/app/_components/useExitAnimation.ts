@@ -19,7 +19,9 @@ export function useExitAnimation(open: boolean, exitMs = 200) {
   // delayed unmount lives in a useEffect because timeouts are inherently
   // side-effectful — that's exactly what useEffect is for.
   const [mounted, setMounted] = useState(open);
-  const [state, setState] = useState<"open" | "closed">(open ? "open" : "closed");
+  const [state, setState] = useState<"open" | "closed">(
+    open ? "open" : "closed"
+  );
   const [trackedOpen, setTrackedOpen] = useState(open);
 
   if (open !== trackedOpen) {

@@ -48,7 +48,8 @@ export async function GET(request: NextRequest) {
   if (!includeArchived) query = query.is("archived_at", null);
 
   const { data: projects, error } = await query;
-  if (error) return Response.json({ error: "failed to load calendar" }, { status: 500 });
+  if (error)
+    return Response.json({ error: "failed to load calendar" }, { status: 500 });
   const rows = (projects ?? []) as ProjectRow[];
 
   const ids = rows.map((r) => r.id);

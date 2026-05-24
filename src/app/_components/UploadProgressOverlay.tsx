@@ -59,20 +59,20 @@ export function UploadProgressOverlay({
 
   return (
     <div
-      className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4"
+      className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 backdrop-blur-sm"
       data-state={animState}
       role="dialog"
       aria-modal="true"
       aria-label={title}
     >
       <div
-        className="modal-surface w-full max-w-sm rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-2xl p-6"
+        className="modal-surface w-full max-w-sm rounded-2xl border border-zinc-200 bg-white p-6 shadow-2xl dark:border-zinc-800 dark:bg-zinc-900"
         data-state={animState}
       >
-        <div className="flex items-center gap-3 mb-4">
-          <div className="relative h-9 w-9 shrink-0 rounded-full bg-blue-50 dark:bg-blue-950/50 flex items-center justify-center">
+        <div className="mb-4 flex items-center gap-3">
+          <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-50 dark:bg-blue-950/50">
             <svg
-              className="h-4 w-4 text-blue-600 dark:text-blue-400 animate-pulse"
+              className="h-4 w-4 animate-pulse text-blue-600 dark:text-blue-400"
               viewBox="0 0 16 16"
               fill="none"
               aria-hidden="true"
@@ -95,12 +95,15 @@ export function UploadProgressOverlay({
                 </span>
               )}
             </div>
-            <div className="text-xs text-zinc-500 truncate" title={latest.fileName}>
+            <div
+              className="truncate text-xs text-zinc-500"
+              title={latest.fileName}
+            >
               {latest.fileName}
             </div>
           </div>
           <div
-            className="text-sm font-mono tabular-nums text-zinc-700 dark:text-zinc-200"
+            className="font-mono text-sm text-zinc-700 tabular-nums dark:text-zinc-200"
             aria-live="polite"
           >
             {indeterminate ? "…" : `${latest.percent}%`}
@@ -121,7 +124,7 @@ export function UploadProgressOverlay({
           />
         </div>
 
-        <div className="mt-3 flex items-center justify-between text-[11px] text-zinc-500 font-mono tabular-nums">
+        <div className="mt-3 flex items-center justify-between font-mono text-[11px] text-zinc-500 tabular-nums">
           <span>
             {latest.bytesTotal > 0
               ? `${formatBytes(latest.bytesLoaded)} / ${formatBytes(latest.bytesTotal)}`
@@ -131,7 +134,7 @@ export function UploadProgressOverlay({
             <button
               type="button"
               onClick={onCancel}
-              className="font-sans text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
+              className="font-sans text-zinc-500 transition-colors hover:text-zinc-900 dark:hover:text-zinc-100"
             >
               Cancel
             </button>

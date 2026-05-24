@@ -2,7 +2,11 @@ import { PlatformMediaBoard } from "@/app/_components/PlatformMediaBoard";
 import { CHANNEL_BY_KEY } from "@/lib/channels";
 import { loadProject } from "@/lib/projects";
 
-export default async function WebsitePage({ params }: { params: Promise<{ id: string }> }) {
+export default async function WebsitePage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const { id } = await params;
   const project = await loadProject(id);
   const channel = CHANNEL_BY_KEY.website;

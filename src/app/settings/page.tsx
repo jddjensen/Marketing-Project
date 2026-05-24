@@ -6,20 +6,20 @@ export const dynamic = "force-dynamic";
 
 export default function SettingsPage() {
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100">
+    <div className="min-h-screen bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
       <header className="apple-header sticky top-0 z-40">
-        <div className="max-w-3xl mx-auto px-6 py-6 flex items-start justify-between gap-4">
+        <div className="mx-auto flex max-w-3xl items-start justify-between gap-4 px-6 py-6">
           <div className="flex items-center gap-4">
             <Link
               href="/"
               transitionTypes={["nav-back"]}
-              className="text-xs font-medium uppercase tracking-wide text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+              className="text-xs font-medium tracking-wide text-zinc-500 uppercase hover:text-zinc-900 dark:hover:text-zinc-100"
             >
               ← Projects
             </Link>
             <div>
               <h1 className="text-2xl font-semibold">Settings</h1>
-              <p className="text-sm text-zinc-500 mt-1">
+              <p className="mt-1 text-sm text-zinc-500">
                 Tune the look and feel of your workspace.
               </p>
             </div>
@@ -28,11 +28,11 @@ export default function SettingsPage() {
         </div>
       </header>
 
-      <main className="max-w-3xl mx-auto px-6 py-8">
-        <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-6 shadow-[var(--shadow-soft)]">
+      <main className="mx-auto max-w-3xl px-6 py-8">
+        <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-[var(--shadow-soft)] dark:border-zinc-800 dark:bg-zinc-900">
           <div className="mb-6">
             <h2 className="text-base font-semibold">Appearance</h2>
-            <p className="text-xs text-zinc-500 mt-1">
+            <p className="mt-1 text-xs text-zinc-500">
               Saved per-browser. Syncing across devices is on the roadmap.
             </p>
           </div>

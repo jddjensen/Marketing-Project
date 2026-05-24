@@ -81,9 +81,14 @@ export async function POST(request: NextRequest) {
   // Signage ratios are validated below against the resolved format dimensions;
   // every other channel must hit one of its declared slots so we can't end up
   // with media filed under a ratio no UI renders.
-  if (platform !== "signage" && !isPlatformSlotKey(platform as PlatformKey, ratio)) {
+  if (
+    platform !== "signage" &&
+    !isPlatformSlotKey(platform as PlatformKey, ratio)
+  ) {
     return Response.json(
-      { error: `ratio '${ratio}' is not a valid slot for platform '${platform}'` },
+      {
+        error: `ratio '${ratio}' is not a valid slot for platform '${platform}'`,
+      },
       { status: 400 }
     );
   }
@@ -91,7 +96,10 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: "file is empty" }, { status: 400 });
   }
   if (file.size > MAX_BYTES) {
-    return Response.json({ error: "file too large (max 2GB)" }, { status: 400 });
+    return Response.json(
+      { error: "file too large (max 2GB)" },
+      { status: 400 }
+    );
   }
   if (!ALLOWED_MIME.has(file.type)) {
     return Response.json(
@@ -112,7 +120,10 @@ export async function POST(request: NextRequest) {
     try {
       parsed = JSON.parse(copyRaw);
     } catch {
-      return Response.json({ error: "copy must be valid JSON" }, { status: 400 });
+      return Response.json(
+        { error: "copy must be valid JSON" },
+        { status: 400 }
+      );
     }
     const result = validateCopy(platform as PlatformKey, parsed);
     if (!result.ok) {
@@ -135,13 +146,19 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: "project not found" }, { status: 404 });
   }
   if (project.archived_at) {
-    return Response.json({ error: "cannot upload to an archived project" }, { status: 400 });
+    return Response.json(
+      { error: "cannot upload to an archived project" },
+      { status: 400 }
+    );
   }
 
   let formatId: string | null = null;
   if (platform === "signage") {
     if (typeof signageFormatId !== "string" || !isUuid(signageFormatId)) {
-      return Response.json({ error: "signageFormatId required for signage" }, { status: 400 });
+      return Response.json(
+        { error: "signageFormatId required for signage" },
+        { status: 400 }
+      );
     }
     const { data: format, error: formatError } = await supabase
       .from("signage_formats")
@@ -150,7 +167,10 @@ export async function POST(request: NextRequest) {
       .eq("project_id", projectId)
       .maybeSingle();
     if (formatError || !format) {
-      return Response.json({ error: "signage format not found for project" }, { status: 404 });
+      return Response.json(
+        { error: "signage format not found for project" },
+        { status: 404 }
+      );
     }
     const expected = expectedSignageRatio({
       width: Number(format.width),
@@ -158,13 +178,21 @@ export async function POST(request: NextRequest) {
     });
     if (ratio !== expected) {
       return Response.json(
-        { error: `ratio '${ratio}' does not match signage format dimensions (expected '${expected}')` },
+        {
+          error: `ratio '${ratio}' does not match signage format dimensions (expected '${expected}')`,
+        },
         { status: 400 }
       );
     }
     formatId = signageFormatId;
-  } else if (typeof signageFormatId === "string" && signageFormatId.length > 0) {
-    return Response.json({ error: "signageFormatId only valid for signage platform" }, { status: 400 });
+  } else if (
+    typeof signageFormatId === "string" &&
+    signageFormatId.length > 0
+  ) {
+    return Response.json(
+      { error: "signageFormatId only valid for signage platform" },
+      { status: 400 }
+    );
   }
 
   // Replace flow: confirm the creative exists in this project and figure out
@@ -174,7 +202,10 @@ export async function POST(request: NextRequest) {
   let archivedRows: Array<{ id: string; storage_path: string | null }> = [];
   if (typeof replaceCreativeId === "string" && replaceCreativeId.length > 0) {
     if (!isUuid(replaceCreativeId)) {
-      return Response.json({ error: "invalid replaceCreativeId" }, { status: 400 });
+      return Response.json(
+        { error: "invalid replaceCreativeId" },
+        { status: 400 }
+      );
     }
     const { data: existing, error: existingError } = await supabase
       .from("media")
@@ -183,7 +214,10 @@ export async function POST(request: NextRequest) {
       .eq("project_id", projectId)
       .order("version_num", { ascending: false });
     if (existingError) {
-      return Response.json({ error: "creative lookup failed" }, { status: 500 });
+      return Response.json(
+        { error: "creative lookup failed" },
+        { status: 500 }
+      );
     }
     if (!existing || existing.length === 0) {
       return Response.json({ error: "creative not found" }, { status: 404 });
@@ -225,14 +259,19 @@ export async function POST(request: NextRequest) {
     try {
       const pipeline = sharp(processedBytes, { failOn: "error" }).rotate();
       if (file.type === "image/jpeg") {
-        processedBytes = await pipeline.jpeg({ quality: 90, mozjpeg: true }).toBuffer();
+        processedBytes = await pipeline
+          .jpeg({ quality: 90, mozjpeg: true })
+          .toBuffer();
       } else if (file.type === "image/png") {
         processedBytes = await pipeline.png({ compressionLevel: 9 }).toBuffer();
       } else if (file.type === "image/webp") {
         processedBytes = await pipeline.webp({ quality: 90 }).toBuffer();
       }
     } catch {
-      return Response.json({ error: "image could not be processed" }, { status: 400 });
+      return Response.json(
+        { error: "image could not be processed" },
+        { status: 400 }
+      );
     }
   }
 
@@ -249,7 +288,10 @@ export async function POST(request: NextRequest) {
 
   const { error: uploadError } = await supabase.storage
     .from(CREATIVES_BUCKET)
-    .upload(storagePath, uploadBody, { contentType: storedMime, upsert: false });
+    .upload(storagePath, uploadBody, {
+      contentType: storedMime,
+      upsert: false,
+    });
   if (uploadError) {
     return Response.json({ error: "upload failed" }, { status: 500 });
   }
@@ -300,7 +342,10 @@ export async function POST(request: NextRequest) {
     const cleanup = [storagePath];
     if (posterStoragePath) cleanup.push(posterStoragePath);
     await supabase.storage.from(CREATIVES_BUCKET).remove(cleanup);
-    return Response.json({ error: "failed to save media record" }, { status: 500 });
+    return Response.json(
+      { error: "failed to save media record" },
+      { status: 500 }
+    );
   }
 
   // Archive previous versions: flip is_current=false on every row of this
@@ -335,7 +380,10 @@ export async function POST(request: NextRequest) {
 
   const url = await signedMediaUrl(supabase, storagePath);
   if (!url) {
-    return Response.json({ error: "could not sign media url" }, { status: 500 });
+    return Response.json(
+      { error: "could not sign media url" },
+      { status: 500 }
+    );
   }
   const posterUrl = posterStoragePath
     ? await signedMediaUrl(supabase, posterStoragePath)

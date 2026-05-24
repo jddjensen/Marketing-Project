@@ -34,7 +34,9 @@ function parseBudget(value: string | number | null) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-export function serializeCampaignBrief(source: CampaignBriefSource): CampaignBrief {
+export function serializeCampaignBrief(
+  source: CampaignBriefSource
+): CampaignBrief {
   return {
     objective: source.brief_objective,
     audience: source.brief_audience,

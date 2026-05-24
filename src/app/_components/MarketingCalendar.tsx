@@ -8,7 +8,11 @@ import {
   CHANNEL_CATEGORY_LABELS,
   CHANNEL_CATEGORY_ORDER,
 } from "@/lib/channels";
-import { SEASON_KEYS, SEASON_LABELS, type SeasonKey } from "@/lib/campaignBrief";
+import {
+  SEASON_KEYS,
+  SEASON_LABELS,
+  type SeasonKey,
+} from "@/lib/campaignBrief";
 import type { PlatformKey } from "@/lib/utm";
 
 type CalendarEntry = {
@@ -74,7 +78,11 @@ function startOfMonthUtc(year: number, month: number): Date {
   return new Date(Date.UTC(year, month, 1));
 }
 
-function addMonths(year: number, month: number, delta: number): { year: number; month: number } {
+function addMonths(
+  year: number,
+  month: number,
+  delta: number
+): { year: number; month: number } {
   const total = year * 12 + month + delta;
   return { year: Math.floor(total / 12), month: ((total % 12) + 12) % 12 };
 }
@@ -83,7 +91,10 @@ function daysInMonthUtc(year: number, month: number): number {
   return new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
 }
 
-function formatDateRange(start: string | null, end: string | null): string | null {
+function formatDateRange(
+  start: string | null,
+  end: string | null
+): string | null {
   if (!start && !end) return null;
   const fmt = new Intl.DateTimeFormat(undefined, {
     month: "short",
@@ -128,11 +139,14 @@ function useTimelineRange(entries: CalendarEntry[]) {
       anchorMonth = earliest.getUTCMonth();
     }
 
-    const months: { year: number; month: number; start: Date; end: Date }[] = [];
+    const months: { year: number; month: number; start: Date; end: Date }[] =
+      [];
     for (let i = 0; i < MONTHS_IN_VIEW; i++) {
       const { year, month } = addMonths(anchorYear, anchorMonth, i);
       const start = startOfMonthUtc(year, month);
-      const end = new Date(Date.UTC(year, month, daysInMonthUtc(year, month), 23, 59, 59));
+      const end = new Date(
+        Date.UTC(year, month, daysInMonthUtc(year, month), 23, 59, 59)
+      );
       months.push({ year, month, start, end });
     }
 
@@ -156,7 +170,9 @@ export function MarketingCalendar({
   const [seasonFilter, setSeasonFilter] = useState<Set<SeasonKey>>(new Set());
   const [eventFilter, setEventFilter] = useState<Set<string>>(new Set());
   const [exhibitFilter, setExhibitFilter] = useState<Set<string>>(new Set());
-  const [channelFilter, setChannelFilter] = useState<Set<PlatformKey>>(new Set());
+  const [channelFilter, setChannelFilter] = useState<Set<PlatformKey>>(
+    new Set()
+  );
   const [search, setSearch] = useState("");
 
   useEffect(() => {
@@ -176,8 +192,14 @@ export function MarketingCalendar({
     };
   }, [includeArchived]);
 
-  const allEvents = useMemo(() => uniqSorted(entries.map((e) => e.event)), [entries]);
-  const allExhibits = useMemo(() => uniqSorted(entries.map((e) => e.exhibit)), [entries]);
+  const allEvents = useMemo(
+    () => uniqSorted(entries.map((e) => e.event)),
+    [entries]
+  );
+  const allExhibits = useMemo(
+    () => uniqSorted(entries.map((e) => e.exhibit)),
+    [entries]
+  );
   const allChannels = useMemo(() => {
     const set = new Set<PlatformKey>();
     for (const e of entries) for (const c of e.channels) set.add(c);
@@ -194,7 +216,8 @@ export function MarketingCalendar({
         if (!entry.event || !eventFilter.has(entry.event.trim())) return false;
       }
       if (exhibitFilter.size > 0) {
-        if (!entry.exhibit || !exhibitFilter.has(entry.exhibit.trim())) return false;
+        if (!entry.exhibit || !exhibitFilter.has(entry.exhibit.trim()))
+          return false;
       }
       if (channelFilter.size > 0) {
         if (!entry.channels.some((c) => channelFilter.has(c))) return false;
@@ -213,15 +236,24 @@ export function MarketingCalendar({
       }
       return true;
     });
-  }, [entries, seasonFilter, eventFilter, exhibitFilter, channelFilter, search]);
+  }, [
+    entries,
+    seasonFilter,
+    eventFilter,
+    exhibitFilter,
+    channelFilter,
+    search,
+  ]);
 
   const scheduled = useMemo(
     () =>
-      filtered.filter((e) => e.launchStartDate || e.launchEndDate).sort((a, b) => {
-        const aStart = a.launchStartDate ?? a.launchEndDate ?? "";
-        const bStart = b.launchStartDate ?? b.launchEndDate ?? "";
-        return aStart.localeCompare(bStart);
-      }),
+      filtered
+        .filter((e) => e.launchStartDate || e.launchEndDate)
+        .sort((a, b) => {
+          const aStart = a.launchStartDate ?? a.launchEndDate ?? "";
+          const bStart = b.launchStartDate ?? b.launchEndDate ?? "";
+          return aStart.localeCompare(bStart);
+        }),
     [filtered]
   );
   const unscheduled = useMemo(
@@ -252,20 +284,23 @@ export function MarketingCalendar({
   };
 
   return (
-    <main className="max-w-7xl mx-auto px-6 py-8 space-y-6">
+    <main className="mx-auto max-w-7xl space-y-6 px-6 py-8">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <div className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+          <div className="text-xs font-medium tracking-wide text-zinc-500 uppercase">
             Master Marketing Calendar
           </div>
-          <h1 className="text-2xl font-semibold mt-1">Every project, every launch</h1>
-          <p className="text-sm text-zinc-500 mt-1 max-w-2xl">
-            Cross-project view of launches, seasons, events, exhibits, and channels. Filter to the
-            slice you need, or group by how you want to plan.
+          <h1 className="mt-1 text-2xl font-semibold">
+            Every project, every launch
+          </h1>
+          <p className="mt-1 max-w-2xl text-sm text-zinc-500">
+            Cross-project view of launches, seasons, events, exhibits, and
+            channels. Filter to the slice you need, or group by how you want to
+            plan.
           </p>
         </div>
         <div className="flex items-center gap-2 text-sm">
-          <label className="flex items-center gap-2 text-xs text-zinc-500 cursor-pointer select-none">
+          <label className="flex cursor-pointer items-center gap-2 text-xs text-zinc-500 select-none">
             <input
               type="checkbox"
               checked={includeArchived}
@@ -275,15 +310,17 @@ export function MarketingCalendar({
             Include archived
           </label>
           <span className="text-xs text-zinc-400">
-            {loading ? "Loading…" : `${filtered.length} of ${entries.length} projects`}
+            {loading
+              ? "Loading…"
+              : `${filtered.length} of ${entries.length} projects`}
           </span>
         </div>
       </div>
 
-      <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 space-y-4">
+      <div className="space-y-4 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500 mr-1">
+            <span className="mr-1 text-[11px] font-semibold tracking-wide text-zinc-500 uppercase">
               Group by
             </span>
             {(Object.keys(GROUP_LABEL) as GroupBy[]).map((key) => {
@@ -314,7 +351,7 @@ export function MarketingCalendar({
               <button
                 type="button"
                 onClick={clearFilters}
-                className="apple-tap text-xs rounded-md border border-zinc-200 dark:border-zinc-800 px-3 py-1.5 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+                className="apple-tap rounded-md border border-zinc-200 px-3 py-1.5 text-xs text-zinc-500 hover:text-zinc-900 dark:border-zinc-800 dark:hover:text-zinc-100"
               >
                 Clear filters
               </button>
@@ -322,10 +359,13 @@ export function MarketingCalendar({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
           <FilterPills
             title="Season"
-            items={SEASON_KEYS.map((k) => ({ key: k, label: SEASON_LABELS[k] }))}
+            items={SEASON_KEYS.map((k) => ({
+              key: k,
+              label: SEASON_LABELS[k],
+            }))}
             selected={seasonFilter}
             onToggle={(k) => setSeasonFilter((prev) => togglePill(prev, k))}
           />
@@ -357,19 +397,18 @@ export function MarketingCalendar({
         <EmptyState />
       ) : (
         <div className="space-y-6">
-          {scheduled.length > 0 && (
-            <TimelineHeader months={months} />
-          )}
+          {scheduled.length > 0 && <TimelineHeader months={months} />}
           {groups.map((group) => (
             <section
               key={group.key}
-              className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden"
+              className="overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900"
             >
-              <header className="flex items-center justify-between px-4 py-2.5 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/50">
+              <header className="flex items-center justify-between border-b border-zinc-200 bg-zinc-50 px-4 py-2.5 dark:border-zinc-800 dark:bg-zinc-950/50">
                 <div className="flex items-center gap-2">
                   <h2 className="text-sm font-semibold">{group.label}</h2>
                   <span className="text-[11px] text-zinc-500">
-                    {group.entries.length} {group.entries.length === 1 ? "project" : "projects"}
+                    {group.entries.length}{" "}
+                    {group.entries.length === 1 ? "project" : "projects"}
                   </span>
                 </div>
                 {group.sub && (
@@ -392,13 +431,14 @@ export function MarketingCalendar({
           ))}
 
           {unscheduled.length > 0 && (
-            <section className="rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 bg-white/60 dark:bg-zinc-900/60 overflow-hidden">
-              <header className="flex items-center justify-between px-4 py-2.5 border-b border-dashed border-zinc-300 dark:border-zinc-700">
+            <section className="overflow-hidden rounded-xl border border-dashed border-zinc-300 bg-white/60 dark:border-zinc-700 dark:bg-zinc-900/60">
+              <header className="flex items-center justify-between border-b border-dashed border-zinc-300 px-4 py-2.5 dark:border-zinc-700">
                 <div className="flex items-center gap-2">
                   <h2 className="text-sm font-semibold">Unscheduled</h2>
                   <span className="text-[11px] text-zinc-500">
                     {unscheduled.length}{" "}
-                    {unscheduled.length === 1 ? "project" : "projects"} missing launch dates
+                    {unscheduled.length === 1 ? "project" : "projects"} missing
+                    launch dates
                   </span>
                 </div>
               </header>
@@ -435,7 +475,7 @@ function FilterPills<T extends string>({
 }) {
   return (
     <div>
-      <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500 mb-1.5">
+      <div className="mb-1.5 text-[11px] font-semibold tracking-wide text-zinc-500 uppercase">
         {title}
       </div>
       {items.length === 0 ? (
@@ -513,7 +553,8 @@ function groupEntries(entries: CalendarEntry[], groupBy: GroupBy): Group[] {
   }
 
   if (groupBy === "event" || groupBy === "exhibit") {
-    const getter = (e: CalendarEntry) => (groupBy === "event" ? e.event : e.exhibit);
+    const getter = (e: CalendarEntry) =>
+      groupBy === "event" ? e.event : e.exhibit;
     const map = new Map<string, CalendarEntry[]>();
     for (const entry of entries) {
       const raw = getter(entry);
@@ -539,7 +580,8 @@ function groupEntries(entries: CalendarEntry[], groupBy: GroupBy): Group[] {
   CHANNEL_ORDER_LIST.forEach((k, i) => categoryOrder.set(k, i));
   const map = new Map<string, CalendarEntry[]>();
   for (const entry of entries) {
-    const channels: string[] = entry.channels.length > 0 ? entry.channels : ["_none"];
+    const channels: string[] =
+      entry.channels.length > 0 ? entry.channels : ["_none"];
     for (const channel of channels) {
       const list = map.get(channel) ?? [];
       list.push(entry);
@@ -576,15 +618,20 @@ function TimelineHeader({
   months: { year: number; month: number }[];
 }) {
   return (
-    <div className="hidden md:grid grid-cols-[260px_1fr] rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden text-xs">
-      <div className="px-4 py-2 border-r border-zinc-200 dark:border-zinc-800 text-zinc-500 font-medium uppercase tracking-wide">
+    <div className="hidden grid-cols-[260px_1fr] overflow-hidden rounded-xl border border-zinc-200 bg-white text-xs md:grid dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="border-r border-zinc-200 px-4 py-2 font-medium tracking-wide text-zinc-500 uppercase dark:border-zinc-800">
         Project
       </div>
-      <div className="grid" style={{ gridTemplateColumns: `repeat(${months.length}, minmax(0, 1fr))` }}>
+      <div
+        className="grid"
+        style={{
+          gridTemplateColumns: `repeat(${months.length}, minmax(0, 1fr))`,
+        }}
+      >
         {months.map((m) => (
           <div
             key={`${m.year}-${m.month}`}
-            className="px-2 py-2 border-r last:border-r-0 border-zinc-100 dark:border-zinc-800 text-center"
+            className="border-r border-zinc-100 px-2 py-2 text-center last:border-r-0 dark:border-zinc-800"
           >
             <div className="font-medium text-zinc-700 dark:text-zinc-200">
               {MONTH_SHORT[m.month]}
@@ -610,15 +657,23 @@ function TimelineRow({
   totalMs: number;
   months: { year: number; month: number }[];
 }) {
-  const start = parseIsoDate(entry.launchStartDate) ?? parseIsoDate(entry.launchEndDate);
-  const end = parseIsoDate(entry.launchEndDate) ?? parseIsoDate(entry.launchStartDate);
+  const start =
+    parseIsoDate(entry.launchStartDate) ?? parseIsoDate(entry.launchEndDate);
+  const end =
+    parseIsoDate(entry.launchEndDate) ?? parseIsoDate(entry.launchStartDate);
 
   let barStyle: { left: string; width: string } | null = null;
   let inRange = false;
   if (start && end) {
     const clampedStart = Math.max(start.getTime(), rangeStart.getTime());
-    const clampedEnd = Math.min(Math.max(end.getTime(), start.getTime()), rangeEnd.getTime());
-    if (clampedEnd >= rangeStart.getTime() && clampedStart <= rangeEnd.getTime()) {
+    const clampedEnd = Math.min(
+      Math.max(end.getTime(), start.getTime()),
+      rangeEnd.getTime()
+    );
+    if (
+      clampedEnd >= rangeStart.getTime() &&
+      clampedStart <= rangeEnd.getTime()
+    ) {
       inRange = true;
       const leftPct = ((clampedStart - rangeStart.getTime()) / totalMs) * 100;
       const widthPct = Math.max(
@@ -633,17 +688,19 @@ function TimelineRow({
   const dateRange = formatDateRange(entry.launchStartDate, entry.launchEndDate);
 
   return (
-    <li className="grid grid-cols-1 md:grid-cols-[260px_1fr] items-stretch">
+    <li className="grid grid-cols-1 items-stretch md:grid-cols-[260px_1fr]">
       <Link
         href={`/projects/${entry.id}`}
         transitionTypes={["nav-forward"]}
-        className="block px-4 py-3 border-b md:border-b-0 md:border-r border-zinc-100 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors"
+        className="block border-b border-zinc-100 px-4 py-3 transition-colors hover:bg-zinc-50 md:border-r md:border-b-0 dark:border-zinc-800 dark:hover:bg-zinc-800/40"
       >
-        <div className="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">
+        <div className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">
           {entry.name}
         </div>
-        <div className="mt-0.5 text-[11px] text-zinc-500 truncate">
-          {[entry.event, entry.exhibit, entry.owner].filter(Boolean).join(" · ") ||
+        <div className="mt-0.5 truncate text-[11px] text-zinc-500">
+          {[entry.event, entry.exhibit, entry.owner]
+            .filter(Boolean)
+            .join(" · ") ||
             entry.description ||
             "—"}
         </div>
@@ -651,7 +708,7 @@ function TimelineRow({
           {entry.channels.slice(0, 4).map((key) => (
             <span
               key={key}
-              className="text-[10px] rounded-full border border-zinc-200 dark:border-zinc-700 px-1.5 py-0.5 text-zinc-500"
+              className="rounded-full border border-zinc-200 px-1.5 py-0.5 text-[10px] text-zinc-500 dark:border-zinc-700"
             >
               {CHANNEL_BY_KEY[key]?.name ?? key}
             </span>
@@ -665,14 +722,16 @@ function TimelineRow({
       </Link>
       <div className="relative min-h-[56px] p-2">
         <div
-          className="absolute inset-y-0 left-0 right-0 grid pointer-events-none"
-          style={{ gridTemplateColumns: `repeat(${months.length}, minmax(0, 1fr))` }}
+          className="pointer-events-none absolute inset-y-0 right-0 left-0 grid"
+          style={{
+            gridTemplateColumns: `repeat(${months.length}, minmax(0, 1fr))`,
+          }}
           aria-hidden
         >
           {months.map((m, idx) => (
             <div
               key={`${m.year}-${m.month}-grid`}
-              className={`border-r last:border-r-0 border-zinc-100 dark:border-zinc-800 ${
+              className={`border-r border-zinc-100 last:border-r-0 dark:border-zinc-800 ${
                 idx % 2 === 1 ? "bg-zinc-50/50 dark:bg-zinc-900/40" : ""
               }`}
             />
@@ -680,14 +739,14 @@ function TimelineRow({
         </div>
         {barStyle && inRange ? (
           <div
-            className="absolute top-1/2 -translate-y-1/2 h-6"
+            className="absolute top-1/2 h-6 -translate-y-1/2"
             style={barStyle}
             title={dateRange ?? undefined}
           >
             <div
-              className={`h-full rounded-md bg-gradient-to-r ${gradient} shadow-sm flex items-center px-2`}
+              className={`h-full rounded-md bg-gradient-to-r ${gradient} flex items-center px-2 shadow-sm`}
             >
-              <span className="text-[10px] font-medium text-white drop-shadow truncate">
+              <span className="truncate text-[10px] font-medium text-white drop-shadow">
                 {entry.name}
               </span>
             </div>
@@ -709,31 +768,33 @@ function ProjectRowBasic({ entry }: { entry: CalendarEntry }) {
       <Link
         href={`/projects/${entry.id}`}
         transitionTypes={["nav-forward"]}
-        className="flex items-center gap-3 px-4 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors"
+        className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/40"
       >
         <span
           aria-hidden
           className={`h-8 w-8 rounded-md bg-gradient-to-br ${gradient} flex-shrink-0`}
         />
         <div className="min-w-0 flex-1">
-          <div className="text-sm font-medium truncate">{entry.name}</div>
-          <div className="text-[11px] text-zinc-500 truncate">
-            {[entry.event, entry.exhibit, entry.owner].filter(Boolean).join(" · ") ||
+          <div className="truncate text-sm font-medium">{entry.name}</div>
+          <div className="truncate text-[11px] text-zinc-500">
+            {[entry.event, entry.exhibit, entry.owner]
+              .filter(Boolean)
+              .join(" · ") ||
               entry.description ||
               "Add launch dates to put this on the calendar."}
           </div>
         </div>
-        <div className="flex flex-wrap gap-1 justify-end max-w-[40%]">
+        <div className="flex max-w-[40%] flex-wrap justify-end gap-1">
           {entry.channels.slice(0, 4).map((key) => (
             <span
               key={key}
-              className="text-[10px] rounded-full border border-zinc-200 dark:border-zinc-700 px-1.5 py-0.5 text-zinc-500"
+              className="rounded-full border border-zinc-200 px-1.5 py-0.5 text-[10px] text-zinc-500 dark:border-zinc-700"
             >
               {CHANNEL_BY_KEY[key]?.name ?? key}
             </span>
           ))}
           {entry.channels.length > 4 && (
-            <span className="text-[10px] text-zinc-400 self-center">
+            <span className="self-center text-[10px] text-zinc-400">
               +{entry.channels.length - 4}
             </span>
           )}
@@ -745,15 +806,16 @@ function ProjectRowBasic({ entry }: { entry: CalendarEntry }) {
 
 function EmptyState() {
   return (
-    <div className="rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 bg-white/40 dark:bg-zinc-900/40 py-16 flex flex-col items-center text-center">
+    <div className="flex flex-col items-center rounded-xl border border-dashed border-zinc-300 bg-white/40 py-16 text-center dark:border-zinc-700 dark:bg-zinc-900/40">
       <div className="text-lg font-semibold">Nothing on the calendar yet</div>
-      <p className="text-sm text-zinc-500 mt-1 max-w-md">
-        Add launch dates, events, or exhibits to project briefs and they&apos;ll show up here.
+      <p className="mt-1 max-w-md text-sm text-zinc-500">
+        Add launch dates, events, or exhibits to project briefs and they&apos;ll
+        show up here.
       </p>
       <Link
         href="/"
         transitionTypes={["nav-back"]}
-        className="apple-tap mt-4 rounded-lg bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 px-4 py-2 text-sm font-medium hover:opacity-90"
+        className="apple-tap mt-4 rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:opacity-90 dark:bg-zinc-100 dark:text-zinc-900"
       >
         Back to projects
       </Link>

@@ -40,7 +40,9 @@ function serialize(r: LinkRow) {
     utmTerm: r.utm_term,
     utmContent: r.utm_content,
     qrEnabled: r.qr_enabled,
-    qrGeneratedAt: r.qr_generated_at ? new Date(r.qr_generated_at).getTime() : null,
+    qrGeneratedAt: r.qr_generated_at
+      ? new Date(r.qr_generated_at).getTime()
+      : null,
     createdAt: new Date(r.created_at).getTime(),
     updatedAt: new Date(r.updated_at).getTime(),
   };
@@ -51,19 +53,33 @@ export async function GET(
   ctx: { params: Promise<{ id: string }> }
 ) {
   const { id } = await ctx.params;
-  if (!isUuid(id)) return Response.json({ error: "not found" }, { status: 404 });
+  if (!isUuid(id))
+    return Response.json({ error: "not found" }, { status: 404 });
   const supabase = await createSupabaseServerClient();
-  const [{ data, error }, { data: project, error: projectError }] = await Promise.all([
-    supabase
-      .from("project_tracking_links")
-      .select(LINK_COLS)
-      .eq("project_id", id)
-      .order("created_at", { ascending: true }),
-    supabase.from("projects").select("ga4_property_id").eq("id", id).maybeSingle(),
-  ]);
+  const [{ data, error }, { data: project, error: projectError }] =
+    await Promise.all([
+      supabase
+        .from("project_tracking_links")
+        .select(LINK_COLS)
+        .eq("project_id", id)
+        .order("created_at", { ascending: true }),
+      supabase
+        .from("projects")
+        .select("ga4_property_id")
+        .eq("id", id)
+        .maybeSingle(),
+    ]);
 
-  if (error) return Response.json({ error: "failed to load tracking links" }, { status: 500 });
-  if (projectError) return Response.json({ error: "failed to load project settings" }, { status: 500 });
+  if (error)
+    return Response.json(
+      { error: "failed to load tracking links" },
+      { status: 500 }
+    );
+  if (projectError)
+    return Response.json(
+      { error: "failed to load project settings" },
+      { status: 500 }
+    );
 
   const {
     data: { user },
@@ -97,7 +113,8 @@ export async function POST(
   ctx: { params: Promise<{ id: string }> }
 ) {
   const { id } = await ctx.params;
-  if (!isUuid(id)) return Response.json({ error: "not found" }, { status: 404 });
+  if (!isUuid(id))
+    return Response.json({ error: "not found" }, { status: 404 });
   const body = (await request.json().catch(() => null)) as {
     url?: unknown;
     label?: unknown;
@@ -114,7 +131,10 @@ export async function POST(
   }
   const url = body.url.trim();
   if (url.length === 0 || url.length > 2048) {
-    return Response.json({ error: "url must be 1–2048 chars" }, { status: 400 });
+    return Response.json(
+      { error: "url must be 1–2048 chars" },
+      { status: 400 }
+    );
   }
   try {
     const parsed = new URL(url);
@@ -122,7 +142,10 @@ export async function POST(
       return Response.json({ error: "url must be http(s)" }, { status: 400 });
     }
   } catch {
-    return Response.json({ error: "url must be a valid http(s) URL" }, { status: 400 });
+    return Response.json(
+      { error: "url must be a valid http(s) URL" },
+      { status: 400 }
+    );
   }
 
   let platform: ValidPlatform | null = null;
@@ -166,7 +189,10 @@ export async function POST(
     .single();
 
   if (error || !data) {
-    return Response.json({ error: "failed to create tracking link" }, { status: 500 });
+    return Response.json(
+      { error: "failed to create tracking link" },
+      { status: 500 }
+    );
   }
   return Response.json({ link: serialize(data as LinkRow) });
 }

@@ -2,7 +2,11 @@ import { NextRequest } from "next/server";
 import { CHANNEL_KEYS } from "@/lib/channels";
 import { isUuid } from "@/lib/ids";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { formatCreativeUtmTag, PLATFORM_DEFAULTS, type PlatformKey } from "@/lib/utm";
+import {
+  formatCreativeUtmTag,
+  PLATFORM_DEFAULTS,
+  type PlatformKey,
+} from "@/lib/utm";
 
 const VALID_PLATFORMS = new Set<string>(CHANNEL_KEYS);
 
@@ -67,10 +71,13 @@ async function claimCreativeSequence(
   supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
   scope: Scope
 ): Promise<number | { error: string }> {
-  const { data, error } = await supabase.rpc("claim_project_platform_utm_sequence", {
-    p_project_id: scope.projectId,
-    p_platform: scope.platform,
-  });
+  const { data, error } = await supabase.rpc(
+    "claim_project_platform_utm_sequence",
+    {
+      p_project_id: scope.projectId,
+      p_platform: scope.platform,
+    }
+  );
 
   const sequence = typeof data === "number" ? data : Number(data);
   if (error || !Number.isFinite(sequence) || sequence < 1) {
@@ -81,7 +88,8 @@ async function claimCreativeSequence(
 
 export async function GET(request: NextRequest) {
   const scope = parseScope(request);
-  if ("error" in scope) return Response.json({ error: scope.error }, { status: 400 });
+  if ("error" in scope)
+    return Response.json({ error: scope.error }, { status: 400 });
 
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
@@ -106,7 +114,8 @@ export async function GET(request: NextRequest) {
       .select("link_id")
       .in("link_id", linkIds);
 
-    if (clickError) return Response.json({ error: "request failed" }, { status: 500 });
+    if (clickError)
+      return Response.json({ error: "request failed" }, { status: 500 });
     clicks = countByLink((clickRows ?? []) as ClickRow[]);
   }
 
@@ -117,7 +126,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const scope = parseScope(request);
-  if ("error" in scope) return Response.json({ error: scope.error }, { status: 400 });
+  if ("error" in scope)
+    return Response.json({ error: scope.error }, { status: 400 });
 
   const body = (await request.json().catch(() => null)) as {
     creativeId?: unknown;
@@ -131,7 +141,10 @@ export async function POST(request: NextRequest) {
     !isUuid(body.creativeId) ||
     !isUuid(body.landingPageId)
   ) {
-    return Response.json({ error: "creativeId and landingPageId required" }, { status: 400 });
+    return Response.json(
+      { error: "creativeId and landingPageId required" },
+      { status: 400 }
+    );
   }
 
   const supabase = await createSupabaseServerClient();
@@ -148,8 +161,10 @@ export async function POST(request: NextRequest) {
     .eq("is_current", true)
     .maybeSingle();
 
-  if (mediaError) return Response.json({ error: "creative lookup failed" }, { status: 500 });
-  if (!media) return Response.json({ error: "creative not found" }, { status: 404 });
+  if (mediaError)
+    return Response.json({ error: "creative lookup failed" }, { status: 500 });
+  if (!media)
+    return Response.json({ error: "creative not found" }, { status: 404 });
 
   const { data: landingPage, error: landingError } = await supabase
     .from("project_tracking_links")
@@ -159,8 +174,13 @@ export async function POST(request: NextRequest) {
     .is("platform", null)
     .maybeSingle();
 
-  if (landingError) return Response.json({ error: "landing page lookup failed" }, { status: 500 });
-  if (!landingPage) return Response.json({ error: "landing page not found" }, { status: 404 });
+  if (landingError)
+    return Response.json(
+      { error: "landing page lookup failed" },
+      { status: 500 }
+    );
+  if (!landingPage)
+    return Response.json({ error: "landing page not found" }, { status: 404 });
 
   const defaults = PLATFORM_DEFAULTS[scope.platform];
   const { data: existing, error: existingError } = await supabase
@@ -172,7 +192,8 @@ export async function POST(request: NextRequest) {
     .limit(1)
     .maybeSingle();
 
-  if (existingError) return Response.json({ error: "tracking lookup failed" }, { status: 500 });
+  if (existingError)
+    return Response.json({ error: "tracking lookup failed" }, { status: 500 });
 
   const sequence =
     typeof existing?.utm_sequence === "number"
@@ -210,7 +231,10 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (saveError || !saved) {
-    return Response.json({ error: "failed to save landing page" }, { status: 500 });
+    return Response.json(
+      { error: "failed to save landing page" },
+      { status: 500 }
+    );
   }
 
   const { count } = await supabase
@@ -218,12 +242,15 @@ export async function POST(request: NextRequest) {
     .select("id", { count: "exact", head: true })
     .eq("link_id", saved.id);
 
-  return Response.json({ item: normalizeItem(saved as TrackingLinkRow, count ?? 0) });
+  return Response.json({
+    item: normalizeItem(saved as TrackingLinkRow, count ?? 0),
+  });
 }
 
 export async function DELETE(request: NextRequest) {
   const scope = parseScope(request);
-  if ("error" in scope) return Response.json({ error: scope.error }, { status: 400 });
+  if ("error" in scope)
+    return Response.json({ error: scope.error }, { status: 400 });
   const creativeId = request.nextUrl.searchParams.get("creativeId");
   if (!creativeId || !isUuid(creativeId)) {
     return Response.json({ error: "creativeId required" }, { status: 400 });
@@ -238,6 +265,7 @@ export async function DELETE(request: NextRequest) {
     .eq("creative_id", creativeId);
 
   if (error) return Response.json({ error: "request failed" }, { status: 500 });
-  if (count === 0) return Response.json({ error: "not found" }, { status: 404 });
+  if (count === 0)
+    return Response.json({ error: "not found" }, { status: 404 });
   return Response.json({ ok: true });
 }

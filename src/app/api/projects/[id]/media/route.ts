@@ -8,7 +8,8 @@ export async function GET(
   ctx: { params: Promise<{ id: string }> }
 ) {
   const { id } = await ctx.params;
-  if (!isUuid(id)) return Response.json({ error: "not found" }, { status: 404 });
+  if (!isUuid(id))
+    return Response.json({ error: "not found" }, { status: 404 });
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("media")
@@ -18,7 +19,8 @@ export async function GET(
     .eq("project_id", id)
     .eq("is_current", true)
     .order("uploaded_at", { ascending: false });
-  if (error) return Response.json({ error: "failed to load media" }, { status: 500 });
+  if (error)
+    return Response.json({ error: "failed to load media" }, { status: 500 });
 
   const rows = data ?? [];
   const allPaths: string[] = [];
@@ -30,10 +32,12 @@ export async function GET(
 
   const items = rows
     .map((row) => {
-      const url = row.storage_path ? urlMap.get(row.storage_path) ?? null : null;
+      const url = row.storage_path
+        ? (urlMap.get(row.storage_path) ?? null)
+        : null;
       if (row.kind !== "text" && !url) return null;
       const posterUrl = row.poster_storage_path
-        ? urlMap.get(row.poster_storage_path) ?? null
+        ? (urlMap.get(row.poster_storage_path) ?? null)
         : null;
       return {
         id: row.id,

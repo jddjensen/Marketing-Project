@@ -13,14 +13,15 @@
   --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.06);
   --shadow-lift: 0 2px 6px rgba(0, 0, 0, 0.06), 0 20px 40px rgba(0, 0, 0, 0.12);
   --shadow-inset: inset 0 0 0 1px rgba(0, 0, 0, 0.05);
-  --shadow-segmented: 0 1px 1px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-segmented:
+    0 1px 1px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.08);
   --ease-apple: cubic-bezier(0.32, 0.72, 0, 1);
   --ease-apple-soft: cubic-bezier(0.25, 0.1, 0.25, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-  --dur-snap: 90ms;     /* press feedback — should feel instant */
-  --dur-fast: 140ms;    /* hover, focus ring, color swaps */
-  --dur-base: 220ms;    /* lift, shadow, gentle motion */
-  --dur-slow: 320ms;    /* modal/page transitions */
+  --dur-snap: 90ms; /* press feedback — should feel instant */
+  --dur-fast: 140ms; /* hover, focus ring, color swaps */
+  --dur-base: 220ms; /* lift, shadow, gentle motion */
+  --dur-slow: 320ms; /* modal/page transitions */
   --dur-route-exit: 120ms;
   --dur-route-enter: 180ms;
   --dur-route-slide: 260ms;
@@ -55,7 +56,8 @@
   --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.5);
   --shadow-lift: 0 2px 6px rgba(0, 0, 0, 0.5), 0 20px 40px rgba(0, 0, 0, 0.6);
   --shadow-inset: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
-  --shadow-segmented: 0 1px 1px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.6);
+  --shadow-segmented:
+    0 1px 1px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.6);
 }
 
 /* -------- Theme palettes --------
@@ -155,8 +157,15 @@ html {
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    Helvetica, Arial, sans-serif;
+  font-family:
+    var(--font-sans),
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    Helvetica,
+    Arial,
+    sans-serif;
 }
 
 /* Reduce motion for users who prefer it. */
@@ -180,7 +189,8 @@ body {
 /* -------- Tactile interaction utility classes -------- */
 
 .apple-tap {
-  transition: transform var(--dur-fast) var(--ease-apple),
+  transition:
+    transform var(--dur-fast) var(--ease-apple),
     box-shadow var(--dur-base) var(--ease-apple),
     background-color var(--dur-fast) var(--ease-apple),
     border-color var(--dur-fast) var(--ease-apple),
@@ -196,7 +206,8 @@ body {
   transition-duration: var(--dur-snap);
 }
 .apple-lift {
-  transition: transform var(--dur-base) var(--ease-apple),
+  transition:
+    transform var(--dur-base) var(--ease-apple),
     box-shadow var(--dur-base) var(--ease-apple),
     border-color var(--dur-fast) var(--ease-apple);
 }
@@ -251,7 +262,8 @@ body {
 /* Card / tile hover — subtle lift + accent border. Use on grid items that
  * the user is meant to click. Plays nicely with .apple-tap on inner buttons. */
 .tile-hover {
-  transition: transform var(--dur-base) var(--ease-apple),
+  transition:
+    transform var(--dur-base) var(--ease-apple),
     box-shadow var(--dur-base) var(--ease-apple),
     border-color var(--dur-fast) var(--ease-apple);
   will-change: transform;
@@ -271,7 +283,9 @@ body {
 /* Shared focus ring — accent color, no harsh outline */
 .focus-ring:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--accent);
+  box-shadow:
+    0 0 0 2px var(--background),
+    0 0 0 4px var(--accent);
 }
 
 /* Text inputs / textareas */
@@ -283,7 +297,8 @@ body {
   padding: 8px 12px;
   font-size: 14px;
   color: var(--foreground);
-  transition: border-color var(--dur-fast) var(--ease-apple),
+  transition:
+    border-color var(--dur-fast) var(--ease-apple),
     box-shadow var(--dur-fast) var(--ease-apple),
     background-color var(--dur-fast) var(--ease-apple);
 }
@@ -318,7 +333,8 @@ body {
   font-size: 14px;
   color: var(--foreground);
   cursor: pointer;
-  transition: border-color var(--dur-fast) var(--ease-apple),
+  transition:
+    border-color var(--dur-fast) var(--ease-apple),
     box-shadow var(--dur-fast) var(--ease-apple),
     background-color var(--dur-fast) var(--ease-apple),
     transform var(--dur-fast) var(--ease-apple);
@@ -358,7 +374,8 @@ body {
   cursor: pointer;
   -webkit-user-select: none;
   user-select: none;
-  transition: background-color var(--dur-fast) var(--ease-apple),
+  transition:
+    background-color var(--dur-fast) var(--ease-apple),
     color var(--dur-fast) var(--ease-apple),
     border-color var(--dur-fast) var(--ease-apple),
     transform var(--dur-fast) var(--ease-apple),
@@ -410,7 +427,8 @@ body {
   cursor: pointer;
   -webkit-user-select: none;
   user-select: none;
-  transition: background-color var(--dur-fast) var(--ease-apple),
+  transition:
+    background-color var(--dur-fast) var(--ease-apple),
     color var(--dur-fast) var(--ease-apple),
     box-shadow var(--dur-base) var(--ease-apple),
     transform var(--dur-fast) var(--ease-apple);
@@ -443,7 +461,8 @@ body {
   cursor: pointer;
   position: relative;
   flex-shrink: 0;
-  transition: background-color var(--dur-fast) var(--ease-apple),
+  transition:
+    background-color var(--dur-fast) var(--ease-apple),
     border-color var(--dur-fast) var(--ease-apple),
     box-shadow var(--dur-fast) var(--ease-apple),
     transform var(--dur-fast) var(--ease-apple);
@@ -513,7 +532,8 @@ body {
 }
 
 ::view-transition-old(.route-fade) {
-  animation: var(--dur-route-exit) var(--ease-apple-soft) both route-fade reverse;
+  animation: var(--dur-route-exit) var(--ease-apple-soft) both route-fade
+    reverse;
 }
 ::view-transition-new(.route-fade) {
   animation: var(--dur-route-enter) var(--ease-apple) 40ms both route-fade;
@@ -743,7 +763,8 @@ body {
   backdrop-filter: saturate(180%) blur(18px);
   -webkit-backdrop-filter: saturate(180%) blur(18px);
   border-bottom: 1px solid var(--border);
-  transition: background-color var(--dur-base) var(--ease-apple),
+  transition:
+    background-color var(--dur-base) var(--ease-apple),
     border-color var(--dur-base) var(--ease-apple),
     box-shadow var(--dur-base) var(--ease-apple);
 }

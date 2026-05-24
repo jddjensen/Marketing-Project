@@ -170,14 +170,19 @@ export const SIGNAGE_PRESETS: SignagePreset[] = [
 ];
 
 export function trimDimension(value: number): string {
-  return Number.isInteger(value) ? String(value) : String(Number(value.toFixed(3)));
+  return Number.isInteger(value)
+    ? String(value)
+    : String(Number(value.toFixed(3)));
 }
 
 // The canonical ratio key the boards build for a signage format: width x height
 // using the same dimension trimming as the rendered label. The upload routes
 // reject ratios that don't match this for the format they target, so signage
 // uploads can't end up in a directory that no UI knows how to render.
-export function expectedSignageRatio(format: { width: number; height: number }): string {
+export function expectedSignageRatio(format: {
+  width: number;
+  height: number;
+}): string {
   return `${trimDimension(format.width)}x${trimDimension(format.height)}`;
 }
 
