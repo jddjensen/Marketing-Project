@@ -54,13 +54,11 @@ export async function POST(
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { error } = await supabase
-    .from("project_platforms")
-    .upsert({
-      project_id: id,
-      platform: body.platform,
-      added_by: user?.id ?? null,
-    });
+  const { error } = await supabase.from("project_platforms").upsert({
+    project_id: id,
+    platform: body.platform,
+    added_by: user?.id ?? null,
+  });
   if (error)
     return Response.json({ error: "failed to add platform" }, { status: 500 });
   return Response.json({ ok: true, platform: body.platform });
