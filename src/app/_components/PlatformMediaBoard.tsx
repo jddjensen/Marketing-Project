@@ -9,6 +9,7 @@ import { CreativeCopyPanel } from "./CreativeCopyPanel";
 import { HoverScrubVideo } from "./HoverScrubVideo";
 import { VersionHistoryModal } from "./VersionHistoryModal";
 import { TextCreativeDialog } from "./TextCreativeDialog";
+import { ProjectChannelNav } from "./ProjectChannelNav";
 import { uploadWithProgress } from "@/lib/uploadWithProgress";
 import { uploadVideoDirect } from "@/lib/directUpload";
 import { extractVideoPoster } from "@/lib/videoThumbnail";
@@ -303,6 +304,7 @@ export function PlatformMediaBoard({
             <UserMenu />
           </div>
         </div>
+        <ProjectChannelNav projectId={projectId} activePlatform={platformKey} />
       </header>
 
       {error && (

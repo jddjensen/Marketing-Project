@@ -1,6 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { apiErrorMessage } from "@/lib/api";
+import { EmptyState as SharedEmptyState } from "./EmptyState";
+import { ErrorMessage } from "./ErrorMessage";
+import { LoadingSkeleton } from "./LoadingSkeleton";
 
 type LandingPage = {
   id: string;
@@ -51,12 +55,12 @@ export function LandingPagesPanel({
       | {
           links?: LandingPage[];
           analytics?: AnalyticsSettings;
-          error?: string;
+          error?: unknown;
         }
       | null;
 
     if (!res.ok) {
-      setError(body?.error ?? "failed to load landing pages");
+      setError(apiErrorMessage(body, "Failed to load landing pages."));
       setPages([]);
       return;
     }
@@ -78,12 +82,12 @@ export function LandingPagesPanel({
     setPropertyError(null);
     const res = await fetch("/api/google-analytics/properties", { cache: "no-store" });
     const body = (await res.json().catch(() => null)) as
-      | { properties?: AnalyticsProperty[]; error?: string }
+      | { properties?: AnalyticsProperty[]; error?: unknown }
       | null;
 
     setLoadingProperties(false);
     if (!res.ok) {
-      setPropertyError(body?.error ?? "failed to load Google Analytics properties");
+      setPropertyError(apiErrorMessage(body, "Failed to load Google Analytics properties."));
       setProperties([]);
       return;
     }
@@ -112,10 +116,10 @@ export function LandingPagesPanel({
         }),
       });
       const body = (await res.json().catch(() => null)) as
-        | { link?: LandingPage; error?: string }
+        | { link?: LandingPage; error?: unknown }
         | null;
       if (!res.ok || !body?.link) {
-        setError(body?.error ?? "failed to add landing page");
+        setError(apiErrorMessage(body, "Failed to add landing page."));
         return;
       }
       setPages((prev) => [...(prev ?? []), body.link!]);
@@ -133,8 +137,8 @@ export function LandingPagesPanel({
         body: JSON.stringify(patch),
       });
       if (!res.ok) {
-        const body = (await res.json().catch(() => null)) as { error?: string } | null;
-        setError(body?.error ?? "failed to update landing page");
+        const body = (await res.json().catch(() => null)) as { error?: unknown } | null;
+        setError(apiErrorMessage(body, "Failed to update landing page."));
         await loadPages();
       }
     },
@@ -150,8 +154,8 @@ export function LandingPagesPanel({
       });
       if (!res.ok) {
         setPages(previous);
-        const body = (await res.json().catch(() => null)) as { error?: string } | null;
-        setError(body?.error ?? "failed to delete landing page");
+        const body = (await res.json().catch(() => null)) as { error?: unknown } | null;
+        setError(apiErrorMessage(body, "Failed to delete landing page."));
       }
     },
     [pages, projectId]
@@ -172,12 +176,12 @@ export function LandingPagesPanel({
       body: JSON.stringify({ ga4PropertyId: trimmed || null }),
     });
     const body = (await res.json().catch(() => null)) as
-      | { error?: string; project?: { ga4PropertyId?: string | null } }
+      | { error?: unknown; project?: { ga4PropertyId?: string | null } }
       | null;
 
     setSavingAnalytics(false);
     if (!res.ok) {
-      setError(body?.error ?? "failed to save Google Analytics settings");
+      setError(apiErrorMessage(body, "Failed to save Google Analytics settings."));
       return;
     }
 
@@ -204,8 +208,8 @@ export function LandingPagesPanel({
     setError(null);
     const res = await fetch("/api/google-analytics/disconnect", { method: "DELETE" });
     if (!res.ok) {
-      const body = (await res.json().catch(() => null)) as { error?: string } | null;
-      setError(body?.error ?? "failed to disconnect Google Analytics");
+      const body = (await res.json().catch(() => null)) as { error?: unknown } | null;
+      setError(apiErrorMessage(body, "Failed to disconnect Google Analytics."));
       return;
     }
     setProperties([]);
@@ -250,9 +254,7 @@ export function LandingPagesPanel({
       </div>
 
       {error && (
-        <div className="mb-3 rounded-md border border-red-300 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200 px-3 py-2 text-sm">
-          {error}
-        </div>
+        <ErrorMessage title="Landing pages need attention" message={error} className="mb-3" />
       )}
 
       <GoogleAnalyticsSettingsCard
@@ -270,7 +272,7 @@ export function LandingPagesPanel({
       />
 
       {pages === null ? (
-        <div className="text-sm text-zinc-500">Loading…</div>
+        <LoadingSkeleton rows={2} />
       ) : pages.length === 0 ? (
         <EmptyLandingPages onAdd={() => setAdding(true)} />
       ) : (
@@ -346,19 +348,12 @@ function LandingPageRow({
 
 function EmptyLandingPages({ onAdd }: { onAdd: () => void }) {
   return (
-    <div className="rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 bg-white/40 dark:bg-zinc-900/40 py-10 flex flex-col items-center text-center">
-      <div className="font-semibold">No landing pages yet</div>
-      <p className="text-sm text-zinc-500 mt-1 max-w-sm">
-        Add the destination pages once. Each creative can choose one later and get the right source.
-      </p>
-      <button
-        type="button"
-        onClick={onAdd}
-        className="apple-tap mt-4 rounded-lg bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 px-4 py-2 text-sm font-medium hover:opacity-90"
-      >
-        + Add landing page
-      </button>
-    </div>
+    <SharedEmptyState
+      title="No landing pages yet"
+      description="Add the destination pages once. Each creative can choose one later and get the right source."
+      action={{ label: "+ Add landing page", onClick: onAdd }}
+      className="py-10 shadow-none"
+    />
   );
 }
 

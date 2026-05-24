@@ -9,6 +9,11 @@ import {
   slugify,
   type PlatformKey,
 } from "@/lib/utm";
+import { apiErrorMessage } from "@/lib/api";
+import { EmptyState as SharedEmptyState } from "./EmptyState";
+import { ErrorMessage } from "./ErrorMessage";
+import { LoadingSkeleton } from "./LoadingSkeleton";
+import { Toast } from "./Toast";
 
 type TrackingLink = {
   id: string;
@@ -63,6 +68,7 @@ export function TrackingLinksPanel({
   const [ga4PropertyDraft, setGa4PropertyDraft] = useState("");
   const [savingAnalytics, setSavingAnalytics] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ tone: "success" | "error"; message: string } | null>(null);
   const [adding, setAdding] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [qrFor, setQrFor] = useState<{ id: string; label: string; url: string } | null>(null);
@@ -75,11 +81,13 @@ export function TrackingLinksPanel({
       const body = (await res.json()) as {
         links?: TrackingLink[];
         analytics?: AnalyticsSettings;
-        error?: string;
+        error?: unknown;
       };
       if (!active) return;
       if (!res.ok) {
-        setError(body.error ?? "failed to load");
+        const message = apiErrorMessage(body, "Failed to load tracking links.");
+        setError(message);
+        setToast({ tone: "error", message });
         setLinks([]);
         return;
       }
@@ -114,13 +122,19 @@ export function TrackingLinksPanel({
           utmCampaign: slugify(projectName),
         }),
       });
-      const body = (await res.json()) as { link?: TrackingLink; error?: string };
-      if (!res.ok || !body.link) {
-        setError(body.error ?? "failed to create");
+      const body = (await res.json().catch(() => null)) as {
+        link?: TrackingLink;
+        error?: unknown;
+      } | null;
+      if (!res.ok || !body?.link) {
+        const message = apiErrorMessage(body, "Failed to create tracking link.");
+        setError(message);
+        setToast({ tone: "error", message });
         return;
       }
       setLinks((prev) => [...(prev ?? []), body.link!]);
       setAdding(false);
+      setToast({ tone: "success", message: "Tracking link created." });
     },
     [projectId, projectName, platform]
   );
@@ -147,7 +161,7 @@ export function TrackingLinksPanel({
         body: JSON.stringify(apiPatch),
       });
       const body = (await res.json().catch(() => null)) as
-        | { link?: TrackingLink; error?: string }
+        | { link?: TrackingLink; error?: unknown }
         | null;
       if (!res.ok) {
         if (previousLink) {
@@ -155,7 +169,9 @@ export function TrackingLinksPanel({
             (prev ?? []).map((l) => (l.id === id ? previousLink : l))
           );
         }
-        setError(body?.error ?? "update failed");
+        const message = apiErrorMessage(body, "Update failed.");
+        setError(message);
+        setToast({ tone: "error", message });
         return;
       }
       if (body?.link) {
@@ -169,10 +185,19 @@ export function TrackingLinksPanel({
 
   const deleteLink = useCallback(
     async (id: string) => {
+      const previous = links ?? [];
       setLinks((prev) => (prev ?? []).filter((l) => l.id !== id));
-      await fetch(`/api/projects/${projectId}/tracking-links/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/projects/${projectId}/tracking-links/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const body = (await res.json().catch(() => null)) as { error?: unknown } | null;
+        setLinks(previous);
+        setToast({
+          tone: "error",
+          message: apiErrorMessage(body, "Failed to delete tracking link."),
+        });
+      }
     },
-    [projectId]
+    [links, projectId]
   );
 
   const copy = useCallback(async (token: string, text: string) => {
@@ -190,7 +215,9 @@ export function TrackingLinksPanel({
   const saveGa4Property = useCallback(async () => {
     const trimmed = ga4PropertyDraft.trim();
     if (trimmed && !/^[0-9]{5,20}$/.test(trimmed)) {
-      setError("GA4 property ID must be numeric.");
+      const message = "GA4 property ID must be numeric.";
+      setError(message);
+      setToast({ tone: "error", message });
       return;
     }
 
@@ -202,12 +229,14 @@ export function TrackingLinksPanel({
       body: JSON.stringify({ ga4PropertyId: trimmed || null }),
     });
     const body = (await res.json().catch(() => null)) as
-      | { error?: string; project?: { ga4PropertyId?: string | null } }
+      | { error?: unknown; project?: { ga4PropertyId?: string | null } }
       | null;
 
     setSavingAnalytics(false);
     if (!res.ok) {
-      setError(body?.error ?? "failed to save Google Analytics settings");
+      const message = apiErrorMessage(body, "Failed to save Google Analytics settings.");
+      setError(message);
+      setToast({ tone: "error", message });
       return;
     }
 
@@ -224,10 +253,18 @@ export function TrackingLinksPanel({
           : "credentials_missing",
       };
     });
+    setToast({ tone: "success", message: "Google Analytics settings saved." });
   }, [ga4PropertyDraft, projectId]);
 
   return (
     <section>
+      {toast && (
+        <Toast
+          tone={toast.tone}
+          message={toast.message}
+          onDismiss={() => setToast(null)}
+        />
+      )}
       <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="text-sm font-medium uppercase tracking-wide text-zinc-500">
@@ -249,9 +286,11 @@ export function TrackingLinksPanel({
       </div>
 
       {error && (
-        <div className="mb-3 rounded-md border border-red-300 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200 px-3 py-2 text-sm">
-          {error}
-        </div>
+        <ErrorMessage
+          title="Tracking links need attention"
+          message={error}
+          className="mb-3"
+        />
       )}
 
       <GoogleAnalyticsSettingsCard
@@ -263,9 +302,9 @@ export function TrackingLinksPanel({
       />
 
       {links === null ? (
-        <div className="text-sm text-zinc-500">Loading…</div>
+        <LoadingSkeleton rows={2} />
       ) : visible.length === 0 && !adding ? (
-        <EmptyState onAdd={() => setAdding(true)} platform={platform} />
+        <TrackingEmptyState onAdd={() => setAdding(true)} platform={platform} />
       ) : (
         <div className="space-y-3">
           {visible.map((link) => (
@@ -788,11 +827,11 @@ function GoogleAnalyticsBlock({
         { cache: "no-store" }
       );
       const body = (await res.json().catch(() => null)) as
-        | { summary?: AnalyticsSummary | null; error?: string }
+        | { summary?: AnalyticsSummary | null; error?: unknown }
         | null;
 
       if (!res.ok) {
-        setError(body?.error ?? "failed to load Google Analytics data");
+        setError(apiErrorMessage(body, "Failed to load Google Analytics data."));
         setLoading(false);
         setRefreshing(false);
         return;
@@ -813,12 +852,12 @@ function GoogleAnalyticsBlock({
         cache: "no-store",
       });
       const body = (await res.json().catch(() => null)) as
-        | { summary?: AnalyticsSummary | null; error?: string }
+        | { summary?: AnalyticsSummary | null; error?: unknown }
         | null;
 
       if (!active) return;
       if (!res.ok) {
-        setError(body?.error ?? "failed to load Google Analytics data");
+        setError(apiErrorMessage(body, "Failed to load Google Analytics data."));
         setLoading(false);
         return;
       }
@@ -859,9 +898,7 @@ function GoogleAnalyticsBlock({
       </div>
 
       {error ? (
-        <div className="rounded-md border border-red-300 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200 px-3 py-2 text-sm">
-          {error}
-        </div>
+        <ErrorMessage title="Analytics unavailable" message={error} />
       ) : (
         <>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
@@ -974,7 +1011,7 @@ function UtmField({
   );
 }
 
-function EmptyState({
+function TrackingEmptyState({
   onAdd,
   platform,
 }: {
@@ -982,21 +1019,16 @@ function EmptyState({
   platform?: PlatformKey;
 }) {
   return (
-    <div className="rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 bg-white/40 dark:bg-zinc-900/40 py-10 flex flex-col items-center text-center">
-      <div className="font-semibold">No tracking links yet</div>
-      <p className="text-sm text-zinc-500 mt-1 max-w-sm">
-        {platform
+    <SharedEmptyState
+      title="No tracking links yet"
+      description={
+        platform
           ? `Add a landing page to generate a UTM-tagged link for ${CHANNEL_LABELS[platform]}.`
-          : "Add a landing page and we’ll build a UTM-tagged URL you can copy into each platform."}
-      </p>
-      <button
-        type="button"
-        onClick={onAdd}
-        className="apple-tap mt-4 rounded-lg bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 px-4 py-2 text-sm font-medium hover:opacity-90"
-      >
-        + Add landing page
-      </button>
-    </div>
+          : "Add a landing page and we will build a UTM-tagged URL you can copy into each platform."
+      }
+      action={{ label: "+ Add landing page", onClick: onAdd }}
+      className="py-10 shadow-none"
+    />
   );
 }
 

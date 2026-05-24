@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { UserMenu } from "@/app/_components/UserMenu";
 import { ProjectDashboard } from "@/app/_components/ProjectDashboard";
+import { ProjectChannelNav } from "@/app/_components/ProjectChannelNav";
 import { loadProject } from "@/lib/projects";
 
 export default async function ProjectPage({
@@ -30,6 +31,7 @@ export default async function ProjectPage({
           </div>
           <UserMenu />
         </div>
+        <ProjectChannelNav projectId={id} />
       </header>
       <ProjectDashboard
         projectId={id}

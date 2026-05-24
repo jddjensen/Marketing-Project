@@ -48,7 +48,7 @@ export function EmptyState({
       {children && <div className="mt-5">{children}</div>}
       {action && (
         <div className="mt-6">
-          {"href" in action ? (
+          {"href" in action && action.href ? (
             <Link
               href={action.href}
               className="apple-tap inline-flex min-h-10 items-center justify-center rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:opacity-90 dark:bg-zinc-100 dark:text-zinc-900"
