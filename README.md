@@ -49,13 +49,23 @@ For local dev with `supabase start`, migrations are applied automatically when t
 
 ## Scripts
 
-| Command             | What it does                           |
-| ------------------- | -------------------------------------- |
-| `npm run dev`       | Start the dev server with fast refresh |
-| `npm run build`     | Production build                       |
-| `npm run start`     | Run the production build               |
-| `npm run lint`      | ESLint over the project                |
-| `npm run typecheck` | `tsc --noEmit`, no build artifacts     |
+| Command                    | What it does                                       |
+| -------------------------- | -------------------------------------------------- |
+| `npm run dev`              | Start the dev server with fast refresh             |
+| `npm run build`            | Production build                                   |
+| `npm run start`            | Run the production build                           |
+| `npm run lint`             | ESLint over the project                            |
+| `npm run typecheck`        | `tsc --noEmit`, no build artifacts                 |
+| `npm run format`           | Format the codebase with Prettier                  |
+| `npm run format:check`     | Verify formatting without writing (CI uses this)   |
+| `npm test`                 | Run Vitest unit tests once                         |
+| `npm run test:watch`       | Vitest in watch mode                               |
+| `npm run test:coverage`    | Vitest with v8 coverage report                     |
+| `npm run test:e2e`         | Playwright end-to-end tests (boots the dev server) |
+| `npm run test:e2e:install` | One-time: download Chromium for Playwright         |
+| `npm run test:e2e:ui`      | Playwright in interactive UI mode                  |
+
+A pre-commit hook (Husky + lint-staged) runs Prettier and ESLint on staged files automatically — no need to remember to format before committing.
 
 ## Project layout
 
@@ -82,8 +92,12 @@ src/
 └── proxy.ts                # Auth gate (Next 16 middleware replacement)
 supabase/
 ├── config.toml
-└── migrations/             # 14 SQL migrations, applied in order
+└── migrations/             # SQL migrations, applied in order
+tests/
+└── e2e/                    # Playwright end-to-end tests
 ```
+
+The app also follows Next.js 16 file conventions for `loading.tsx`, `error.tsx`, `not-found.tsx`, `global-error.tsx`, `manifest.ts`, and `apple-icon.tsx` at the appropriate segments.
 
 ## Auth and routing
 
@@ -124,4 +138,10 @@ Core tables:
 - **Imports:** use `@/...` for files outside the current directory; relative for same-folder.
 - **Server vs client components:** prefer server components by default. Add `"use client"` only when the file actually needs hooks, browser APIs, or event handlers.
 - **API responses:** validate at boundaries; never return raw Supabase `error.message` to clients.
-- **Migrations:** sequentially numbered (`0001_*.sql` … `0014_*.sql`). Don't rename or renumber. New migrations go at the end.
+- **Migrations:** sequentially numbered (`0001_*.sql` onward). Don't rename or renumber. New migrations go at the end.
+
+## More docs
+
+- [`CONTRIBUTING.md`](CONTRIBUTING.md) — branch workflow, commit style, PR checklist.
+- [`docs/architecture.md`](docs/architecture.md) — system overview by subsystem.
+- [`docs/language-choices.md`](docs/language-choices.md) — when to reach for Go, Python, SQL, etc. as the app grows.
