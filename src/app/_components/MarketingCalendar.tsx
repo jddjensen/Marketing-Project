@@ -8,12 +8,16 @@ import {
   CHANNEL_CATEGORY_LABELS,
   CHANNEL_CATEGORY_ORDER,
 } from "@/lib/channels";
+import { apiErrorMessage } from "@/lib/api";
 import {
   SEASON_KEYS,
   SEASON_LABELS,
   type SeasonKey,
 } from "@/lib/campaignBrief";
 import type { PlatformKey } from "@/lib/utm";
+import { EmptyState as SharedEmptyState } from "./EmptyState";
+import { ErrorMessage } from "./ErrorMessage";
+import { LoadingSkeleton } from "./LoadingSkeleton";
 
 type CalendarEntry = {
   id: string;
@@ -174,16 +178,26 @@ export function MarketingCalendar({
     new Set()
   );
   const [search, setSearch] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
     async function load() {
       setLoading(true);
+      setError(null);
       const qs = includeArchived ? "?includeArchived=1" : "";
       const res = await fetch(`/api/calendar${qs}`, { cache: "no-store" });
-      const body = (await res.json()) as { entries?: CalendarEntry[] };
+      const body = (await res.json().catch(() => null)) as {
+        entries?: CalendarEntry[];
+        error?: unknown;
+      } | null;
       if (!active) return;
-      setEntries(body.entries ?? []);
+      if (!res.ok) {
+        setError(apiErrorMessage(body, "Failed to load calendar."));
+        setLoading(false);
+        return;
+      }
+      setEntries(body?.entries ?? []);
       setLoading(false);
     }
     void load();
@@ -393,8 +407,12 @@ export function MarketingCalendar({
         </div>
       </div>
 
-      {scheduled.length === 0 && unscheduled.length === 0 ? (
-        <EmptyState />
+      {error && <ErrorMessage title="Calendar unavailable" message={error} />}
+
+      {loading && entries.length === 0 ? (
+        <LoadingSkeleton rows={4} />
+      ) : scheduled.length === 0 && unscheduled.length === 0 ? (
+        <CalendarEmptyState />
       ) : (
         <div className="space-y-6">
           {scheduled.length > 0 && <TimelineHeader months={months} />}
@@ -804,21 +822,13 @@ function ProjectRowBasic({ entry }: { entry: CalendarEntry }) {
   );
 }
 
-function EmptyState() {
+function CalendarEmptyState() {
   return (
-    <div className="flex flex-col items-center rounded-xl border border-dashed border-zinc-300 bg-white/40 py-16 text-center dark:border-zinc-700 dark:bg-zinc-900/40">
-      <div className="text-lg font-semibold">Nothing on the calendar yet</div>
-      <p className="mt-1 max-w-md text-sm text-zinc-500">
-        Add launch dates, events, or exhibits to project briefs and they&apos;ll
-        show up here.
-      </p>
-      <Link
-        href="/"
-        transitionTypes={["nav-back"]}
-        className="apple-tap mt-4 rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:opacity-90 dark:bg-zinc-100 dark:text-zinc-900"
-      >
-        Back to projects
-      </Link>
-    </div>
+    <SharedEmptyState
+      title="Nothing on the calendar yet"
+      description="Add launch dates, events, or exhibits to project briefs and they will show up here."
+      action={{ label: "Back to projects", href: "/" }}
+      className="py-16 shadow-none"
+    />
   );
 }

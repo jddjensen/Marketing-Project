@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
+import { ErrorMessage } from "./ErrorMessage";
+import { Toast } from "./Toast";
 
 type Mode = "login" | "register";
 
@@ -23,6 +25,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
   const [confirmEmailSent, setConfirmEmailSent] = useState<string | null>(null);
 
   const isRegister = mode === "register";
@@ -44,7 +47,9 @@ export function AuthForm({ mode }: { mode: Mode }) {
         password: DEMO_BYPASS_PASSWORD,
       });
       if (signInError) {
-        setError(`demo auto-login failed: ${signInError.message}`);
+        const message = `demo auto-login failed: ${signInError.message}`;
+        setError(message);
+        setToast(message);
         setSubmitting(false);
         return;
       }
@@ -57,6 +62,21 @@ export function AuthForm({ mode }: { mode: Mode }) {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+
+    const trimmedEmail = email.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      const message = "Enter a valid email address.";
+      setError(message);
+      setToast(message);
+      return;
+    }
+    if (isRegister && password.length < 8) {
+      const message = "Password must be at least 8 characters.";
+      setError(message);
+      setToast(message);
+      return;
+    }
+
     setSubmitting(true);
     const supabase = createSupabaseBrowserClient();
     try {
@@ -64,7 +84,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
         const next = searchParams.get("next") ?? "/";
         const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
         const { data, error } = await supabase.auth.signUp({
-          email,
+          email: trimmedEmail,
           password,
           options: { emailRedirectTo: redirectTo },
         });
@@ -73,13 +93,13 @@ export function AuthForm({ mode }: { mode: Mode }) {
         // session. Show a dedicated confirmation screen rather than an
         // inline notice.
         if (!data.session) {
-          setConfirmEmailSent(email);
+          setConfirmEmailSent(trimmedEmail);
           setSubmitting(false);
           return;
         }
       } else {
         const { error } = await supabase.auth.signInWithPassword({
-          email,
+          email: trimmedEmail,
           password,
         });
         if (error) throw error;
@@ -88,7 +108,10 @@ export function AuthForm({ mode }: { mode: Mode }) {
       router.replace(next);
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "authentication failed");
+      const message =
+        err instanceof Error ? err.message : "Authentication failed.";
+      setError(message);
+      setToast(message);
       setSubmitting(false);
     }
   }
@@ -109,12 +132,16 @@ export function AuthForm({ mode }: { mode: Mode }) {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 px-6 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
+      {toast && (
+        <Toast tone="error" message={toast} onDismiss={() => setToast(null)} />
+      )}
       <div className="w-full max-w-sm">
         <div className="mb-6">
           <h1 className="text-2xl font-semibold">Marketing Platform</h1>
           <p className="mt-1 text-sm text-zinc-500">{title}</p>
         </div>
         <form
+          noValidate
           onSubmit={submit}
           className="modal-surface space-y-4 rounded-xl border border-zinc-200 bg-white p-6 shadow-[var(--shadow-soft)] dark:border-zinc-800 dark:bg-zinc-900"
         >
@@ -128,6 +155,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              aria-invalid={Boolean(error || incomingError)}
               className="input-tactile mt-1 w-full"
             />
           </div>
@@ -142,6 +170,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
               minLength={isRegister ? 8 : undefined}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              aria-invalid={Boolean(error || incomingError)}
               className="input-tactile mt-1 w-full"
             />
             {isRegister && (
@@ -151,9 +180,10 @@ export function AuthForm({ mode }: { mode: Mode }) {
             )}
           </div>
           {(error || incomingError) && (
-            <div className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
-              {error ?? humanizeIncomingError(incomingError)}
-            </div>
+            <ErrorMessage
+              title={isRegister ? "Account was not created" : "Sign in failed"}
+              message={error ?? humanizeIncomingError(incomingError)}
+            />
           )}
           <button
             type="submit"

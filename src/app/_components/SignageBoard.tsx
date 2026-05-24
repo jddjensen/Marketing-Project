@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { UserMenu } from "./UserMenu";
 import { HoverScrubVideo } from "./HoverScrubVideo";
+import { ProjectChannelNav } from "./ProjectChannelNav";
 import {
   UploadProgressOverlay,
   type UploadProgressState,
@@ -406,6 +407,7 @@ export function SignageBoard({
             <UserMenu />
           </div>
         </div>
+        <ProjectChannelNav projectId={projectId} activePlatform="signage" />
       </header>
 
       {error && (

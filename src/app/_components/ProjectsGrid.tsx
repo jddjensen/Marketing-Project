@@ -10,7 +10,12 @@ import {
   NON_PHYSICAL_CHANNEL_KEYS,
   PHYSICAL_CHANNEL_KEYS,
 } from "@/lib/channels";
+import { apiErrorMessage } from "@/lib/api";
 import type { PlatformKey } from "@/lib/utm";
+import { EmptyState as SharedEmptyState } from "./EmptyState";
+import { ErrorMessage } from "./ErrorMessage";
+import { LoadingSkeleton } from "./LoadingSkeleton";
+import { Toast } from "./Toast";
 
 type Project = {
   id: string;
@@ -68,24 +73,43 @@ export function ProjectsGrid() {
   const [creating, setCreating] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
   const [menuId, setMenuId] = useState<string | null>(null);
 
   const fetchProjects = useCallback(async () => {
     const qs = showArchived ? "?includeArchived=1" : "";
     const res = await fetch(`/api/projects${qs}`, { cache: "no-store" });
-    const body = (await res.json()) as { projects?: Project[] };
-    setProjects(body.projects ?? []);
+    const body = (await res.json().catch(() => null)) as {
+      projects?: Project[];
+      error?: unknown;
+    } | null;
+    if (!res.ok) {
+      throw new Error(apiErrorMessage(body, "Failed to load projects."));
+    }
+    setProjects(body?.projects ?? []);
   }, [showArchived]);
 
   useEffect(() => {
     let active = true;
 
     async function loadProjects() {
-      const qs = showArchived ? "?includeArchived=1" : "";
-      const res = await fetch(`/api/projects${qs}`, { cache: "no-store" });
-      const body = (await res.json()) as { projects?: Project[] };
-      if (!active) return;
-      setProjects(body.projects ?? []);
+      try {
+        const qs = showArchived ? "?includeArchived=1" : "";
+        const res = await fetch(`/api/projects${qs}`, { cache: "no-store" });
+        const body = (await res.json().catch(() => null)) as {
+          projects?: Project[];
+          error?: unknown;
+        } | null;
+        if (!active) return;
+        if (!res.ok) {
+          throw new Error(apiErrorMessage(body, "Failed to load projects."));
+        }
+        setProjects(body?.projects ?? []);
+      } catch (e) {
+        if (!active) return;
+        setProjects([]);
+        setToast(e instanceof Error ? e.message : "Failed to load projects.");
+      }
     }
 
     void loadProjects();
@@ -113,14 +137,18 @@ export function ProjectsGrid() {
           project?: Project;
           error?: string;
         };
-        if (!res.ok || !body.project)
-          throw new Error(body.error ?? "failed to create");
+        if (!res.ok || !body.project) {
+          throw new Error(apiErrorMessage(body, "Failed to create project."));
+        }
         setCreating(false);
         router.push(`/projects/${body.project.id}`, {
           transitionTypes: ["nav-forward"],
         });
       } catch (e) {
-        setError(e instanceof Error ? e.message : "failed to create");
+        const message =
+          e instanceof Error ? e.message : "Failed to create project.";
+        setError(message);
+        setToast(message);
       } finally {
         setBusy(false);
       }
@@ -135,7 +163,27 @@ export function ProjectsGrid() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ archive }),
       });
-      if (res.ok) fetchProjects();
+      if (!res.ok) {
+        const body = (await res.json().catch(() => null)) as {
+          error?: unknown;
+        } | null;
+        setToast(
+          apiErrorMessage(
+            body,
+            archive
+              ? "Failed to archive project."
+              : "Failed to restore project."
+          )
+        );
+        return;
+      }
+      try {
+        await fetchProjects();
+      } catch (e) {
+        setToast(
+          e instanceof Error ? e.message : "Failed to refresh projects."
+        );
+      }
     },
     [fetchProjects]
   );
@@ -150,7 +198,20 @@ export function ProjectsGrid() {
         return;
       }
       const res = await fetch(`/api/projects/${id}`, { method: "DELETE" });
-      if (res.ok) fetchProjects();
+      if (!res.ok) {
+        const body = (await res.json().catch(() => null)) as {
+          error?: unknown;
+        } | null;
+        setToast(apiErrorMessage(body, "Failed to delete project."));
+        return;
+      }
+      try {
+        await fetchProjects();
+      } catch (e) {
+        setToast(
+          e instanceof Error ? e.message : "Failed to refresh projects."
+        );
+      }
     },
     [fetchProjects]
   );
@@ -166,6 +227,9 @@ export function ProjectsGrid() {
 
   return (
     <main className="mx-auto max-w-7xl px-6 py-10">
+      {toast && (
+        <Toast tone="error" message={toast} onDismiss={() => setToast(null)} />
+      )}
       <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-3 text-sm">
           <span className="font-medium tracking-wide text-zinc-500 uppercase">
@@ -191,26 +255,9 @@ export function ProjectsGrid() {
       </div>
 
       {projects === null ? (
-        <div
-          className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-          aria-busy="true"
-        >
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div
-              key={i}
-              className="overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900"
-            >
-              <div className="skeleton aspect-[4/3] w-full" />
-              <div className="space-y-2 p-4">
-                <div className="skeleton h-4 w-2/3" />
-                <div className="skeleton h-3 w-full" />
-                <div className="skeleton h-3 w-4/5" />
-              </div>
-            </div>
-          ))}
-        </div>
+        <LoadingSkeleton variant="cards" rows={6} />
       ) : active.length === 0 && archived.length === 0 ? (
-        <EmptyState onCreate={() => setCreating(true)} />
+        <ProjectsEmptyState onCreate={() => setCreating(true)} />
       ) : (
         <>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -556,9 +603,7 @@ function CreateDialog({
           </div>
 
           {error && (
-            <div className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
-              {error}
-            </div>
+            <ErrorMessage title="Project was not created" message={error} />
           )}
         </form>
 
@@ -596,13 +641,14 @@ function CreateDialog({
   );
 }
 
-function EmptyState({ onCreate }: { onCreate: () => void }) {
+function ProjectsEmptyState({ onCreate }: { onCreate: () => void }) {
   return (
-    <div className="flex flex-col items-center rounded-2xl border border-zinc-200 bg-white px-8 py-12 text-center shadow-[var(--shadow-soft)] sm:py-16 dark:border-zinc-800 dark:bg-zinc-900">
-      <div
-        className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-(--accent-soft) text-(--accent)"
-        aria-hidden="true"
-      >
+    <SharedEmptyState
+      title="Start your first campaign"
+      description="A project bundles every channel, creative, and tracked link for one campaign so the team works from one source of truth."
+      action={{ label: "+ Create your first project", onClick: onCreate }}
+      className="border-solid bg-white px-8 py-12 sm:py-16 dark:bg-zinc-900"
+      icon={
         <svg
           viewBox="0 0 24 24"
           className="h-7 w-7"
@@ -615,16 +661,8 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
           <path d="M12 3v18" />
           <path d="M3 12h18" />
         </svg>
-      </div>
-
-      <h2 className="text-xl font-semibold tracking-tight">
-        Start your first campaign
-      </h2>
-      <p className="mt-1.5 max-w-md text-sm text-zinc-500">
-        A project bundles every channel, creative, and tracked link for one
-        campaign so the team works from one source of truth.
-      </p>
-
+      }
+    >
       <ul className="mt-6 grid w-full max-w-2xl grid-cols-1 gap-3 text-left sm:grid-cols-3 sm:gap-4">
         <FeatureBullet
           title="Pick channels"
@@ -639,18 +677,10 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
           body="Generate UTM-tagged links and QR codes. See clicks and analytics roll up."
         />
       </ul>
-
-      <button
-        type="button"
-        onClick={onCreate}
-        className="apple-tap focus-ring mt-7 rounded-lg bg-(--accent) px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90"
-      >
-        + Create your first project
-      </button>
       <p className="mt-3 text-[11px] text-zinc-500">
         Takes about 30 seconds. You can edit everything later.
       </p>
-    </div>
+    </SharedEmptyState>
   );
 }
 
