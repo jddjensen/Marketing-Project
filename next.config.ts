@@ -48,13 +48,16 @@ const cspDirectives: Array<[string, string[]]> = [
   ["style-src", ["'self'", "'unsafe-inline'"]],
   // Uploaded creative thumbnails / Supabase signed URLs / inline data URIs
   // (QR codes) all flow through <img>. blob: covers preview generators.
+  // Scheme-agnostic http(s) filter so local Supabase (http://127.0.0.1:54321)
+  // renders in dev — an https-only filter silently dropped it, blocking every
+  // signed-URL image locally. Production origins are https and unaffected.
   [
     "img-src",
     [
       "'self'",
       "data:",
       "blob:",
-      ...supabaseConnect.filter((s) => s.startsWith("https://")),
+      ...supabaseConnect.filter((s) => /^https?:\/\//.test(s)),
     ],
   ],
   [
@@ -62,7 +65,7 @@ const cspDirectives: Array<[string, string[]]> = [
     [
       "'self'",
       "blob:",
-      ...supabaseConnect.filter((s) => s.startsWith("https://")),
+      ...supabaseConnect.filter((s) => /^https?:\/\//.test(s)),
     ],
   ],
   ["font-src", ["'self'", "data:"]],

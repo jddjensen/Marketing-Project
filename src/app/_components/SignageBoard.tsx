@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { UserMenu } from "./UserMenu";
+import { ConfirmDialog } from "./ConfirmDialog";
 import { HoverScrubVideo } from "./HoverScrubVideo";
 import { ProjectChannelNav } from "./ProjectChannelNav";
 import {
@@ -85,6 +86,11 @@ export function SignageBoard({
   const [addingFormat, setAddingFormat] = useState(false);
   const [menuId, setMenuId] = useState<string | null>(null);
   const [historyFor, setHistoryFor] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<{
+    formatId: string;
+    label: string;
+  } | null>(null);
+  const [deletingFormat, setDeletingFormat] = useState(false);
 
   const fetchData = useCallback(async () => {
     const res = await fetch(`/api/projects/${projectId}/signage-formats`, {
@@ -184,21 +190,20 @@ export function SignageBoard({
   );
 
   const deleteFormat = useCallback(
-    async (formatId: string, label: string) => {
-      if (
-        !window.confirm(
-          `Delete "${label}" and all media uploaded for it? This can't be undone.`
-        )
-      ) {
-        return;
+    async (formatId: string) => {
+      setDeletingFormat(true);
+      try {
+        const res = await fetch(
+          `/api/projects/${projectId}/signage-formats/${formatId}`,
+          {
+            method: "DELETE",
+          }
+        );
+        if (res.ok) await fetchData();
+      } finally {
+        setDeletingFormat(false);
+        setConfirmDelete(null);
       }
-      const res = await fetch(
-        `/api/projects/${projectId}/signage-formats/${formatId}`,
-        {
-          method: "DELETE",
-        }
-      );
-      if (res.ok) await fetchData();
     },
     [projectId, fetchData]
   );
@@ -480,7 +485,12 @@ export function SignageBoard({
                   setMenuId(menuId === format.id ? null : format.id)
                 }
                 onCloseMenu={() => setMenuId(null)}
-                onDelete={() => deleteFormat(format.id, format.label)}
+                onDelete={() =>
+                  setConfirmDelete({
+                    formatId: format.id,
+                    label: format.label,
+                  })
+                }
                 onUpload={(files) => uploadFiles(format, files)}
                 onReplace={(file, creativeId, deletePrevious, carryCopy) =>
                   replaceMedia(
@@ -511,6 +521,20 @@ export function SignageBoard({
         />
       )}
       <UploadProgressOverlay state={uploadState} onCancel={cancelUpload} />
+      <ConfirmDialog
+        open={confirmDelete !== null}
+        title={
+          confirmDelete ? `Delete "${confirmDelete.label}"?` : "Delete format?"
+        }
+        message="All media uploaded for this format is deleted with it. This can't be undone."
+        confirmLabel="Delete format"
+        tone="danger"
+        busy={deletingFormat}
+        onConfirm={() => {
+          if (confirmDelete) void deleteFormat(confirmDelete.formatId);
+        }}
+        onCancel={() => setConfirmDelete(null)}
+      />
       {historyFor && (
         <VersionHistoryModal
           projectId={projectId}

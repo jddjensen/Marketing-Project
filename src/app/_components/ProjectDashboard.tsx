@@ -1,13 +1,24 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { CampaignBriefPanel } from "./CampaignBriefPanel";
 import { LandingPagesPanel } from "./LandingPagesPanel";
 import { PerformanceDashboardPanel } from "./PerformanceDashboardPanel";
+import { useDialogChrome } from "./useDialogChrome";
+import { useExitAnimation } from "./useExitAnimation";
 import { aspectClassForAsset, formatAssetLabel } from "@/lib/channelAssets";
 import {
   CHANNELS,
+  CHANNEL_BY_KEY,
   CHANNEL_CATEGORY_LABELS,
   CHANNEL_CATEGORY_ORDER,
   CHANNEL_LABELS,
@@ -20,6 +31,7 @@ import {
   isCustomPlatformKey,
   type CustomChannel,
 } from "@/lib/customChannels";
+import { checkSlotFit, type SlotSpec } from "@/lib/slotFit";
 
 function aspectClass(ratio: string): string {
   return aspectClassForAsset(ratio);
@@ -37,7 +49,52 @@ type MediaItem = {
   kind: "image" | "video" | "text";
   copy: Record<string, unknown> | null;
   uploadedAt: number;
+  width: number | null;
+  height: number | null;
 };
+
+type ChannelStatus = { assets: number; warnings: number };
+
+// Resolve the slot spec a media item was uploaded against. Built-in channels
+// keep slot metadata on CHANNEL_BY_KEY (item.ratio is the slot key); custom
+// channels derive it from the channel's formats (item.ratio is the format id).
+// Signage ratios are runtime-derived with no slot metadata here, so signage
+// items return null and are simply not fit-checked.
+function slotSpecFor(
+  platform: string,
+  ratio: string,
+  customByKey: Map<string, CustomChannel>
+): SlotSpec | null {
+  const custom = customByKey.get(platform);
+  if (custom) {
+    const format = custom.formats.find((f) => f.id === ratio);
+    if (!format) return null;
+    return {
+      label: format.label,
+      aspect: "",
+      ratio: format.width / format.height,
+      size: { width: format.width, height: format.height, unit: format.unit },
+    };
+  }
+  const channel = (CHANNEL_BY_KEY as Partial<Record<string, ChannelMeta>>)[
+    platform
+  ];
+  return channel?.slots?.find((slot) => slot.key === ratio) ?? null;
+}
+
+// Mirrors the per-item FitBadge verdict on the channel boards: only sized
+// image/video files are checked; text creatives and items without stored
+// dimensions never count as warnings.
+function hasFitWarning(
+  item: MediaItem,
+  customByKey: Map<string, CustomChannel>
+): boolean {
+  if (item.kind === "text" || !item.width || !item.height) return false;
+  const spec = slotSpecFor(item.platform, item.ratio, customByKey);
+  if (!spec) return false;
+  const fit = checkSlotFit(spec, item.width, item.height);
+  return fit.state === "ratio-mismatch" || fit.state === "undersized";
+}
 
 export function ProjectDashboard({
   projectId,
@@ -157,6 +214,29 @@ export function ProjectDashboard({
     [customChannels]
   );
 
+  const statusByPlatform = useMemo(() => {
+    const map = new Map<string, ChannelStatus>();
+    if (!media) return map;
+    const customByKey = new Map(customChannels.map((c) => [c.key, c]));
+    for (const item of media) {
+      const entry = map.get(item.platform) ?? { assets: 0, warnings: 0 };
+      entry.assets += 1;
+      if (hasFitWarning(item, customByKey)) entry.warnings += 1;
+      map.set(item.platform, entry);
+    }
+    return map;
+  }, [media, customChannels]);
+
+  const statusFor = useCallback(
+    (key: string): ChannelStatus | null =>
+      media === null
+        ? null
+        : (statusByPlatform.get(key) ?? { assets: 0, warnings: 0 }),
+    [media, statusByPlatform]
+  );
+
+  const openAddDialog = useCallback(() => setAdding(true), []);
+
   return (
     <main className="stagger mx-auto max-w-7xl space-y-10 px-6 py-10">
       <CampaignBriefPanel
@@ -193,6 +273,7 @@ export function ProjectDashboard({
                 key={p.key}
                 name={p.name}
                 desc={p.desc}
+                status={statusFor(p.key)}
                 href={`/projects/${projectId}/${p.key}`}
                 menuOpen={menuKey === p.key}
                 onOpenMenu={() => setMenuKey(menuKey === p.key ? null : p.key)}
@@ -209,6 +290,7 @@ export function ProjectDashboard({
                   `Custom ${CUSTOM_CHANNEL_KIND_LABELS[c.kind].toLowerCase()} channel`
                 }
                 badge={CUSTOM_CHANNEL_KIND_LABELS[c.kind]}
+                status={statusFor(c.key)}
                 href={`/projects/${projectId}/channels/${c.id}`}
                 menuOpen={menuKey === c.key}
                 onOpenMenu={() => setMenuKey(menuKey === c.key ? null : c.key)}
@@ -241,22 +323,55 @@ export function ProjectDashboard({
 
       <LandingPagesPanel projectId={projectId} />
 
-      {adding && (
-        <AddPlatformDialog
-          options={availableToAdd}
-          customOptions={availableCustom}
-          onClose={() => setAdding(false)}
-          onAdd={addPlatform}
-        />
-      )}
+      <AddPlatformDialog
+        open={adding}
+        loading={enabled === null}
+        options={availableToAdd}
+        customOptions={availableCustom}
+        onClose={() => setAdding(false)}
+        onAdd={addPlatform}
+      />
+
+      {/* useSearchParams opts the subtree into client-side rendering during
+          prerender, so it lives in its own Suspense boundary rather than at
+          the top of the dashboard. */}
+      <Suspense fallback={null}>
+        <AddChannelParamOpener onOpen={openAddDialog} />
+      </Suspense>
     </main>
   );
+}
+
+// Contract C1: /projects/<id>?addChannel=1 auto-opens the Add-channel dialog,
+// then strips the param so refresh/back doesn't re-trigger it.
+function AddChannelParamOpener({ onOpen }: { onOpen: () => void }) {
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const router = useRouter();
+  // One-shot per param appearance: guards strict-mode double effects and the
+  // window before router.replace lands, but re-arms if the user deep-links
+  // again without this component unmounting.
+  const handled = useRef(false);
+
+  useEffect(() => {
+    if (searchParams.get("addChannel") !== "1") {
+      handled.current = false;
+      return;
+    }
+    if (handled.current) return;
+    handled.current = true;
+    onOpen();
+    router.replace(pathname, { scroll: false });
+  }, [searchParams, pathname, router, onOpen]);
+
+  return null;
 }
 
 function PlatformCard({
   name,
   desc,
   badge,
+  status,
   href,
   menuOpen,
   onOpenMenu,
@@ -266,6 +381,7 @@ function PlatformCard({
   name: string;
   desc: string;
   badge?: string;
+  status: ChannelStatus | null;
   href: string;
   menuOpen: boolean;
   onOpenMenu: () => void;
@@ -295,6 +411,27 @@ function PlatformCard({
           )}
         </div>
         <div className="mt-1 text-sm text-zinc-500">{desc}</div>
+        {status && (
+          <div className="mt-2 text-xs">
+            {status.assets === 0 ? (
+              <span className="text-zinc-400 dark:text-zinc-600">
+                No creative yet
+              </span>
+            ) : (
+              <>
+                <span className="text-zinc-500">
+                  {status.assets} asset{status.assets === 1 ? "" : "s"}
+                </span>
+                {status.warnings > 0 && (
+                  <span className="text-amber-600 dark:text-amber-400">
+                    {" · "}
+                    {status.warnings} warning{status.warnings === 1 ? "" : "s"}
+                  </span>
+                )}
+              </>
+            )}
+          </div>
+        )}
       </Link>
       <button
         type="button"
@@ -352,35 +489,60 @@ function EmptyPlatforms({ onAdd }: { onAdd: () => void }) {
 }
 
 function AddPlatformDialog({
+  open,
+  loading,
   options,
   customOptions,
   onClose,
   onAdd,
 }: {
+  open: boolean;
+  loading: boolean;
   options: ChannelMeta[];
   customOptions: CustomChannel[];
   onClose: () => void;
   onAdd: (key: string) => void;
 }) {
+  const { mounted, state } = useExitAnimation(open, 200);
+  const { dialogRef } = useDialogChrome<HTMLDivElement>({ open, onClose });
+  if (!mounted) return null;
   return (
     <div
-      role="dialog"
-      aria-modal="true"
       className="modal-backdrop fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 px-4 py-6 backdrop-blur-sm sm:items-center"
+      data-state={state}
       onClick={onClose}
     >
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="add-channel-title"
         className="modal-surface flex max-h-[calc(100vh-3rem)] w-full max-w-md flex-col rounded-xl border border-zinc-200 bg-white shadow-[var(--shadow-lift)] dark:border-zinc-800 dark:bg-zinc-900"
+        data-state={state}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="shrink-0 px-5 pt-5">
-          <h2 className="text-lg font-semibold">Add channel</h2>
+          <h2 id="add-channel-title" className="text-lg font-semibold">
+            Add channel
+          </h2>
           <p className="mt-1 text-sm text-zinc-500">
             Pick a top-level channel to enable for this project. Placements and
             size slots stay nested inside the channel.
           </p>
         </div>
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4">
+          {/* The ?addChannel=1 deep link can open this before the platform
+              list resolves, so cover the loading and all-added cases. */}
+          {loading ? (
+            <div className="py-4 text-sm text-zinc-500">Loading channels…</div>
+          ) : (
+            options.length === 0 &&
+            customOptions.length === 0 && (
+              <div className="py-4 text-sm text-zinc-500">
+                Every channel is already enabled for this project.
+              </div>
+            )
+          )}
           {CHANNEL_CATEGORY_ORDER.map((group) => {
             const items = options.filter((option) => option.category === group);
             if (items.length === 0) return null;

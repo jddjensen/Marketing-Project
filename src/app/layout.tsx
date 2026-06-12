@@ -3,6 +3,7 @@ import { ViewTransition } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AppearanceProvider } from "./_components/AppearanceProvider";
+import { CommandPalette } from "./_components/CommandPalette";
 import { THEME_STORAGE_KEY } from "@/lib/themes";
 import { COLOR_MODE_STORAGE_KEY } from "@/lib/colorMode";
 
@@ -100,6 +101,7 @@ export default function RootLayout({
           >
             {children}
           </ViewTransition>
+          <CommandPalette />
         </AppearanceProvider>
       </body>
     </html>

@@ -2,12 +2,15 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import QRCode from "qrcode";
 import { UserMenu } from "./UserMenu";
 import {
   UploadProgressOverlay,
   type UploadProgressState,
+  type UploadQueueEntry,
 } from "./UploadProgressOverlay";
 import { CampaignMoodboardReview } from "./CampaignMoodboardReview";
+import { ConfirmDialog } from "./ConfirmDialog";
 import { CreativeCopyPanel } from "./CreativeCopyPanel";
 import { HoverScrubVideo } from "./HoverScrubVideo";
 import { VersionHistoryModal } from "./VersionHistoryModal";
@@ -16,7 +19,7 @@ import { ProjectChannelNav } from "./ProjectChannelNav";
 import { uploadWithProgress } from "@/lib/uploadWithProgress";
 import { uploadVideoDirect } from "@/lib/directUpload";
 import { checkSlotFit, slotTargetText } from "@/lib/slotFit";
-import { extractVideoPoster } from "@/lib/videoThumbnail";
+import { extractVideoPoster, type VideoMeta } from "@/lib/videoThumbnail";
 import { platformSupportsTextOnly } from "@/lib/platformCopy";
 import {
   platformUtmBase,
@@ -76,6 +79,39 @@ type LandingPage = {
   platform: PlatformKey | null;
 };
 
+type UploadOptions = {
+  replaceCreativeId?: string;
+  deletePrevious?: boolean;
+  carryCopy?: Record<string, unknown> | null;
+};
+
+type QueueItem = {
+  id: number;
+  ratio: Ratio;
+  slotLabel: string;
+  file: File;
+  options?: UploadOptions;
+  status: UploadQueueEntry["status"];
+  percent: number;
+  bytesLoaded: number;
+  bytesTotal: number;
+  error?: string;
+};
+
+// A drop can outpace the user's intent — the queue lets every file land and
+// upload sequentially instead of rejecting all but the first.
+const TERMINAL: ReadonlySet<QueueItem["status"]> = new Set([
+  "done",
+  "skipped",
+  "error",
+]);
+
+type FitPrompt = {
+  fileName: string;
+  detail: string;
+  resolve: (uploadAnyway: boolean) => void;
+};
+
 export function PlatformMediaBoard({
   projectId,
   projectName,
@@ -97,11 +133,13 @@ export function PlatformMediaBoard({
 }) {
   const [media, setMedia] = useState<MediaMap>({});
   const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState<Ratio | null>(null);
-  const [uploadState, setUploadState] = useState<UploadProgressState | null>(
-    null
-  );
+  const [queue, setQueue] = useState<QueueItem[]>([]);
+  // Ref mirror so the async pump loop reads current state without re-binding.
+  const queueRef = useRef<QueueItem[]>([]);
+  const pumpingRef = useRef(false);
+  const queueIdRef = useRef(0);
   const uploadAbort = useRef<AbortController | null>(null);
+  const [fitPrompt, setFitPrompt] = useState<FitPrompt | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tracking, setTracking] = useState<Record<string, TrackingItem>>({});
   const [landingPages, setLandingPages] = useState<LandingPage[] | null>(null);
@@ -113,6 +151,11 @@ export function PlatformMediaBoard({
   } | null>(null);
   const platformKey = platform as PlatformKey;
   const showTextOption = platformSupportsTextOnly(platformKey);
+
+  const ratiosRef = useRef(ratios);
+  useEffect(() => {
+    ratiosRef.current = ratios;
+  });
 
   const fetchMedia = useCallback(async () => {
     const res = await fetch(
@@ -160,40 +203,60 @@ export function PlatformMediaBoard({
     void loadBoard();
   }, [fetchLandingPages, fetchMedia, fetchTracking]);
 
-  const handleUpload = useCallback(
-    async (
-      ratio: Ratio,
-      file: File,
-      options?: {
-        replaceCreativeId?: string;
-        deletePrevious?: boolean;
-        carryCopy?: Record<string, unknown> | null;
+  const patchQueueItem = useCallback(
+    (id: number, patch: Partial<QueueItem>) => {
+      queueRef.current = queueRef.current.map((item) =>
+        item.id === id ? { ...item, ...patch } : item
+      );
+      setQueue(queueRef.current);
+    },
+    []
+  );
+
+  const processItem = useCallback(
+    async (item: QueueItem) => {
+      const slot = ratiosRef.current.find((r) => r.key === item.ratio);
+      patchQueueItem(item.id, { status: "checking" });
+
+      // Read dimensions client-side BEFORE uploading so a wrong-shaped 500 MB
+      // video is caught while it's still free to catch. Files we can't decode
+      // proceed — "unknown" is not a mismatch.
+      const isVideo = item.file.type.startsWith("video/");
+      let videoMeta: VideoMeta | null = null;
+      let dims: { width: number; height: number } | null = null;
+      if (isVideo) {
+        videoMeta = await extractVideoPoster(item.file);
+        if (videoMeta.width && videoMeta.height) {
+          dims = { width: videoMeta.width, height: videoMeta.height };
+        }
+      } else if (item.file.type.startsWith("image/")) {
+        dims = await probeImageDimensions(item.file);
       }
-    ) => {
-      // Block concurrent uploads: the abort controller is shared across the
-      // single in-flight upload, and the progress overlay only renders one.
-      // This also prevents the cross-upload abort interference where
-      // cancelling B would leave A running with a stale ref.
-      if (uploadAbort.current) {
-        setError(
-          "Wait for the current upload to finish before starting another."
-        );
-        return;
+
+      if (slot && dims) {
+        const knownDims = dims;
+        const fit = checkSlotFit(slot, knownDims.width, knownDims.height);
+        if (fit.state === "ratio-mismatch" || fit.state === "undersized") {
+          patchQueueItem(item.id, { status: "confirming" });
+          const uploadAnyway = await new Promise<boolean>((resolve) => {
+            setFitPrompt({
+              fileName: item.file.name,
+              detail: fitPromptDetail(slot, knownDims, fit),
+              resolve,
+            });
+          });
+          setFitPrompt(null);
+          if (!uploadAnyway) {
+            patchQueueItem(item.id, { status: "skipped" });
+            return;
+          }
+        }
       }
-      setError(null);
-      setUploading(ratio);
+
+      patchQueueItem(item.id, { status: "uploading" });
       const controller = new AbortController();
       uploadAbort.current = controller;
-      setUploadState({
-        fileName: file.name,
-        fileIndex: 1,
-        fileTotal: 1,
-        percent: 0,
-        bytesLoaded: 0,
-        bytesTotal: file.size,
-      });
       try {
-        const isVideo = file.type.startsWith("video/");
         const onProgress = ({
           loaded,
           total,
@@ -203,33 +266,29 @@ export function PlatformMediaBoard({
           total: number;
           percent: number;
         }) => {
-          setUploadState((prev) =>
-            prev
-              ? {
-                  ...prev,
-                  percent,
-                  bytesLoaded: loaded,
-                  bytesTotal: total || prev.bytesTotal,
-                }
-              : prev
-          );
+          patchQueueItem(item.id, {
+            percent,
+            bytesLoaded: loaded,
+            bytesTotal: total || item.file.size,
+          });
         };
 
         if (isVideo) {
           // Direct-to-storage flow — bypasses the Next.js function so files
-          // up to 2 GB go straight from browser to Supabase Storage.
-          const videoMeta = await extractVideoPoster(file);
+          // up to 2 GB go straight from browser to Supabase Storage. Reuses
+          // the poster/dimensions extracted during the pre-upload check.
+          const meta = videoMeta ?? (await extractVideoPoster(item.file));
           await uploadVideoDirect({
-            file,
-            poster: videoMeta.poster,
-            width: videoMeta.width,
-            height: videoMeta.height,
+            file: item.file,
+            poster: meta.poster,
+            width: meta.width,
+            height: meta.height,
             projectId,
             platform: platform as PlatformKey,
-            ratio,
-            replaceCreativeId: options?.replaceCreativeId,
-            deletePrevious: options?.deletePrevious,
-            copy: options?.carryCopy ?? null,
+            ratio: item.ratio,
+            replaceCreativeId: item.options?.replaceCreativeId,
+            deletePrevious: item.options?.deletePrevious,
+            copy: item.options?.carryCopy ?? null,
             signal: controller.signal,
             onProgress,
           });
@@ -237,16 +296,20 @@ export function PlatformMediaBoard({
           // Images keep the existing API-route flow so we retain magic-byte
           // sniffing and EXIF stripping.
           const fd = new FormData();
-          fd.append("file", file);
-          fd.append("ratio", ratio);
+          fd.append("file", item.file);
+          fd.append("ratio", item.ratio);
           fd.append("platform", platform);
           fd.append("projectId", projectId);
-          if (options?.replaceCreativeId) {
-            fd.append("replaceCreativeId", options.replaceCreativeId);
-            if (options.deletePrevious) fd.append("deletePrevious", "true");
+          if (item.options?.replaceCreativeId) {
+            fd.append("replaceCreativeId", item.options.replaceCreativeId);
+            if (item.options.deletePrevious)
+              fd.append("deletePrevious", "true");
           }
-          if (options?.carryCopy && Object.keys(options.carryCopy).length > 0) {
-            fd.append("copy", JSON.stringify(options.carryCopy));
+          if (
+            item.options?.carryCopy &&
+            Object.keys(item.options.carryCopy).length > 0
+          ) {
+            fd.append("copy", JSON.stringify(item.options.carryCopy));
           }
           const res = await uploadWithProgress<{ error?: string }>(
             "/api/upload",
@@ -261,25 +324,100 @@ export function PlatformMediaBoard({
           }
         }
 
+        patchQueueItem(item.id, { status: "done", percent: 100 });
         await fetchMedia();
       } catch (e) {
         if (e instanceof DOMException && e.name === "AbortError") {
-          setError("Upload cancelled");
+          patchQueueItem(item.id, { status: "skipped", error: "Cancelled" });
         } else {
-          setError(e instanceof Error ? e.message : "upload failed");
+          patchQueueItem(item.id, {
+            status: "error",
+            error: e instanceof Error ? e.message : "upload failed",
+          });
         }
       } finally {
         uploadAbort.current = null;
-        setUploadState(null);
-        setUploading(null);
       }
     },
-    [fetchMedia, platform, projectId]
+    [fetchMedia, patchQueueItem, platform, projectId]
   );
 
-  const cancelUpload = useCallback(() => {
+  const pump = useCallback(async () => {
+    if (pumpingRef.current) return;
+    pumpingRef.current = true;
+    try {
+      while (true) {
+        const next = queueRef.current.find((i) => i.status === "queued");
+        if (!next) break;
+        await processItem(next);
+      }
+    } finally {
+      pumpingRef.current = false;
+    }
+  }, [processItem]);
+
+  const enqueueFiles = useCallback(
+    (
+      ratio: Ratio,
+      slotLabel: string,
+      files: File[],
+      options?: UploadOptions
+    ) => {
+      if (files.length === 0) return;
+      setError(null);
+      const items = files.map((file) => ({
+        id: ++queueIdRef.current,
+        ratio,
+        slotLabel,
+        file,
+        options,
+        status: "queued" as const,
+        percent: 0,
+        bytesLoaded: 0,
+        bytesTotal: file.size,
+      }));
+      queueRef.current = [...queueRef.current, ...items];
+      setQueue(queueRef.current);
+      void pump();
+    },
+    [pump]
+  );
+
+  const cancelCurrent = useCallback(() => {
     uploadAbort.current?.abort();
   }, []);
+
+  const cancelAll = useCallback(() => {
+    queueRef.current = queueRef.current.map((item) =>
+      item.status === "queued"
+        ? { ...item, status: "skipped" as const, error: "Cancelled" }
+        : item
+    );
+    setQueue(queueRef.current);
+    uploadAbort.current?.abort();
+  }, []);
+
+  const removeQueued = useCallback((id: number) => {
+    queueRef.current = queueRef.current.filter(
+      (item) => !(item.id === id && item.status === "queued")
+    );
+    setQueue(queueRef.current);
+  }, []);
+
+  const clearQueue = useCallback(() => {
+    queueRef.current = [];
+    setQueue([]);
+  }, []);
+
+  // A fully successful batch dismisses itself; mixed results stay up for
+  // review behind the Close button.
+  useEffect(() => {
+    if (queue.length === 0) return;
+    if (!queue.every((i) => TERMINAL.has(i.status))) return;
+    if (!queue.every((i) => i.status === "done")) return;
+    const t = setTimeout(clearQueue, 1200);
+    return () => clearTimeout(t);
+  }, [queue, clearQueue]);
 
   const saveTracking = useCallback(
     async (creativeId: string, landingPageId: string) => {
@@ -316,6 +454,36 @@ export function PlatformMediaBoard({
     },
     [platform, projectId]
   );
+
+  const activeItem =
+    queue.find(
+      (i) =>
+        i.status === "checking" ||
+        i.status === "confirming" ||
+        i.status === "uploading"
+    ) ?? null;
+  const overlayState: UploadProgressState | null = activeItem
+    ? {
+        fileName: activeItem.file.name,
+        fileIndex: queue.findIndex((i) => i.id === activeItem.id) + 1,
+        fileTotal: queue.length,
+        // Pre-upload checks have no byte progress; zeros render the
+        // indeterminate "Preparing…" state.
+        percent: activeItem.status === "uploading" ? activeItem.percent : 0,
+        bytesLoaded:
+          activeItem.status === "uploading" ? activeItem.bytesLoaded : 0,
+        bytesTotal:
+          activeItem.status === "uploading" ? activeItem.bytesTotal : 0,
+      }
+    : null;
+  const queueEntries: UploadQueueEntry[] = queue.map((item) => ({
+    id: item.id,
+    fileName: item.file.name,
+    slotLabel: item.slotLabel,
+    status: item.status,
+    percent: item.percent,
+    error: item.error,
+  }));
 
   return (
     <div className="page-shell min-h-screen text-zinc-900 dark:text-zinc-100">
@@ -374,8 +542,12 @@ export function PlatformMediaBoard({
               key={r.key}
               config={r}
               items={media[r.key] ?? []}
-              uploading={uploading === r.key}
-              onUpload={(ratio, file) => handleUpload(ratio, file)}
+              pendingCount={
+                queue.filter(
+                  (i) => i.ratio === r.key && !TERMINAL.has(i.status)
+                ).length
+              }
+              onUpload={(ratio, files) => enqueueFiles(ratio, r.label, files)}
               onUploadReplace={(
                 ratio,
                 file,
@@ -383,7 +555,7 @@ export function PlatformMediaBoard({
                 deletePrevious,
                 carryCopy
               ) =>
-                handleUpload(ratio, file, {
+                enqueueFiles(ratio, r.label, [file], {
                   replaceCreativeId,
                   deletePrevious,
                   carryCopy,
@@ -408,7 +580,17 @@ export function PlatformMediaBoard({
         </div>
         {children}
       </main>
-      <UploadProgressOverlay state={uploadState} onCancel={cancelUpload} />
+      <UploadProgressOverlay
+        state={overlayState}
+        onCancel={
+          activeItem?.status === "uploading" ? cancelCurrent : undefined
+        }
+        queue={queueEntries}
+        onRemoveQueued={removeQueued}
+        onCancelAll={cancelAll}
+        onClose={clearQueue}
+      />
+      <FitConfirmDialog prompt={fitPrompt} />
       {historyFor && (
         <VersionHistoryModal
           projectId={projectId}
@@ -438,10 +620,93 @@ export function PlatformMediaBoard({
   );
 }
 
+// Decode just enough of an image to learn its pixel dimensions.
+async function probeImageDimensions(
+  file: File
+): Promise<{ width: number; height: number } | null> {
+  try {
+    const bitmap = await createImageBitmap(file);
+    const dims = { width: bitmap.width, height: bitmap.height };
+    bitmap.close();
+    return dims;
+  } catch {
+    // Some formats (or older Safari paths) fail createImageBitmap; fall back
+    // to a throwaway <img>.
+  }
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve({ width: img.naturalWidth, height: img.naturalHeight });
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(null);
+    };
+    img.src = url;
+  });
+}
+
+function approxRatioText(width: number, height: number): string {
+  const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b));
+  const g = gcd(width, height);
+  const a = width / g;
+  const b = height / g;
+  // 1919×1080-style near-misses reduce to unreadable fractions; show a
+  // decimal instead.
+  if (a <= 50 && b <= 50) return `${a}:${b}`;
+  return `${(width / height).toFixed(2)}:1`;
+}
+
+function fitPromptDetail(
+  slot: RatioConfig,
+  dims: { width: number; height: number },
+  fit: { state: "ratio-mismatch" | "undersized"; expected: string }
+): string {
+  const actual = `${dims.width} × ${dims.height} px (≈ ${approxRatioText(dims.width, dims.height)})`;
+  if (fit.state === "ratio-mismatch") {
+    const target = slotTargetText(slot);
+    return `This file is ${actual}, but ${slot.label} expects ${fit.expected}${
+      target ? ` (${target})` : ""
+    }. It may be cropped or letterboxed when published.`;
+  }
+  return `This file is ${actual}, below the recommended ${fit.expected} for ${slot.label}. It may look soft when published.`;
+}
+
+// Wraps ConfirmDialog so the exit animation has content to show after the
+// prompt state is cleared.
+function FitConfirmDialog({ prompt }: { prompt: FitPrompt | null }) {
+  const [latest, setLatest] = useState(prompt);
+  if (prompt && prompt !== latest) {
+    setLatest(prompt);
+  }
+  const content = prompt ?? latest;
+  if (!content) return null;
+  return (
+    <ConfirmDialog
+      open={prompt !== null}
+      title="Doesn't fit this slot"
+      message={
+        <>
+          <span className="block truncate font-medium text-zinc-700 dark:text-zinc-200">
+            {content.fileName}
+          </span>
+          <span className="mt-1 block">{content.detail}</span>
+        </>
+      }
+      confirmLabel="Upload anyway"
+      cancelLabel="Skip this file"
+      onConfirm={() => content.resolve(true)}
+      onCancel={() => content.resolve(false)}
+    />
+  );
+}
+
 function RatioColumn({
   config,
   items,
-  uploading,
+  pendingCount,
   onUpload,
   onUploadReplace,
   loading,
@@ -459,8 +724,8 @@ function RatioColumn({
 }: {
   config: RatioConfig;
   items: MediaItem[];
-  uploading: boolean;
-  onUpload: (ratio: Ratio, file: File) => void;
+  pendingCount: number;
+  onUpload: (ratio: Ratio, files: File[]) => void;
   onUploadReplace: (
     ratio: Ratio,
     file: File,
@@ -485,9 +750,20 @@ function RatioColumn({
   const [dragOver, setDragOver] = useState(false);
 
   const onFiles = (files: FileList | null) => {
-    if (!files) return;
-    Array.from(files).forEach((f) => onUpload(config.key, f));
+    if (!files || files.length === 0) return;
+    onUpload(config.key, Array.from(files));
   };
+
+  // Roll per-tile fit verdicts up to the header so a long column's problems
+  // are visible without scrolling.
+  const measured = items.filter(
+    (item) => item.kind !== "text" && item.width && item.height
+  );
+  const fitCount = measured.filter(
+    (item) =>
+      checkSlotFit(config, item.width ?? null, item.height ?? null).state ===
+      "match"
+  ).length;
 
   return (
     <section className="flex flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-[var(--shadow-soft)] dark:border-zinc-800 dark:bg-zinc-900">
@@ -503,9 +779,21 @@ function RatioColumn({
           </div>
           <p className="text-xs text-zinc-500">{config.hint}</p>
         </div>
-        <span className="text-xs text-zinc-500">
-          {items.length} item{items.length === 1 ? "" : "s"}
-        </span>
+        <div className="text-right text-xs text-zinc-500">
+          <div>
+            {items.length} item{items.length === 1 ? "" : "s"}
+          </div>
+          {measured.length > 0 &&
+            (fitCount < measured.length ? (
+              <div className="font-medium text-amber-600 dark:text-amber-400">
+                ⚠ {fitCount} of {measured.length} fit
+              </div>
+            ) : (
+              <div className="tabular-nums">
+                {fitCount} of {measured.length} fit
+              </div>
+            ))}
+        </div>
       </div>
 
       <div
@@ -525,11 +813,12 @@ function RatioColumn({
         <button
           type="button"
           onClick={() => inputRef.current?.click()}
-          disabled={uploading}
-          className="w-full py-4 text-sm text-zinc-600 hover:text-zinc-900 disabled:opacity-60 dark:text-zinc-300 dark:hover:text-zinc-100"
+          className="w-full py-4 text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-100"
         >
           <span className="block">
-            {uploading ? "Uploading…" : "Drop file or click to upload"}
+            {pendingCount > 0
+              ? `${pendingCount} upload${pendingCount === 1 ? "" : "s"} in queue — drop more anytime`
+              : "Drop file or click to upload"}
           </span>
           {slotTargetText(config) && (
             <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-zinc-500 tabular-nums dark:bg-zinc-800 dark:text-zinc-400">
@@ -783,6 +1072,14 @@ function firstCopySnippet(copy: Record<string, unknown>): string {
   return "(no copy yet)";
 }
 
+// Channels whose creatives end up on paper or pixels-in-the-world, where the
+// tracked link is scanned rather than clicked.
+const PRINT_QR_PLATFORMS = new Set<PlatformKey>([
+  "signage",
+  "flyers",
+  "digital-signage",
+]);
+
 function TrackingControls({
   creativeId,
   projectId,
@@ -968,6 +1265,12 @@ function TrackingControls({
           {copied ? "Copied" : "Copy"}
         </button>
       </div>
+      {PRINT_QR_PLATFORMS.has(platform) && trackingUrl && (
+        <QrActions
+          url={trackingUrl}
+          name={tracking.label || tracking.utmContent || "tracking-link"}
+        />
+      )}
       <div className="flex items-center justify-end gap-3 text-[11px]">
         <button
           type="button"
@@ -986,6 +1289,129 @@ function TrackingControls({
         >
           Remove
         </button>
+      </div>
+    </div>
+  );
+}
+
+// Inline QR preview + downloads for creatives that ship to print: the code
+// encodes the same tracked redirect the Copy button copies, so scans count
+// alongside clicks.
+function QrActions({ url, name }: { url: string; name: string }) {
+  const [svg, setSvg] = useState<string | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    QRCode.toString(url, {
+      type: "svg",
+      errorCorrectionLevel: "M",
+      margin: 1,
+      width: 64,
+      color: { dark: "#000000", light: "#ffffff" },
+    })
+      .then((out) => {
+        if (!cancelled) setSvg(out);
+      })
+      .catch(() => {
+        if (!cancelled) setExportError("Couldn't render the QR code.");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [url]);
+
+  const safeName =
+    name
+      .toLowerCase()
+      .replace(/https?:\/\//g, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 60) || "tracking-link";
+
+  const downloadSvg = async () => {
+    try {
+      // Re-render at print margin rather than reusing the tiny preview SVG.
+      const out = await QRCode.toString(url, {
+        type: "svg",
+        errorCorrectionLevel: "M",
+        margin: 2,
+        color: { dark: "#000000", light: "#ffffff" },
+      });
+      const blob = new Blob([out], { type: "image/svg+xml" });
+      const href = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = href;
+      a.download = `${safeName}-qr.svg`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(href);
+    } catch {
+      setExportError("Couldn't export the SVG.");
+    }
+  };
+
+  const downloadPng = async () => {
+    try {
+      const dataUrl = await QRCode.toDataURL(url, {
+        errorCorrectionLevel: "M",
+        margin: 2,
+        width: 1024,
+        color: { dark: "#000000", light: "#ffffff" },
+      });
+      const a = document.createElement("a");
+      a.href = dataUrl;
+      a.download = `${safeName}-qr.png`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } catch {
+      setExportError("Couldn't export the PNG.");
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-2.5 rounded-md border border-zinc-200 bg-zinc-50 p-2 dark:border-zinc-800 dark:bg-zinc-950">
+      {svg ? (
+        <div
+          aria-label="QR code for this tracked link"
+          // White padding stays even in dark mode so the printed code scans.
+          className="h-16 w-16 shrink-0 overflow-hidden rounded border border-zinc-200 bg-white p-1 dark:border-zinc-700"
+          dangerouslySetInnerHTML={{ __html: svg }}
+        />
+      ) : (
+        <div className="grid h-16 w-16 shrink-0 place-items-center rounded border border-zinc-200 bg-white text-[10px] text-zinc-400 dark:border-zinc-700">
+          …
+        </div>
+      )}
+      <div className="min-w-0 flex-1">
+        <div className="text-[11px] font-medium tracking-wide text-zinc-500 uppercase">
+          Print QR
+        </div>
+        <div className="mt-1 flex items-center gap-2 text-[11px]">
+          <button
+            type="button"
+            onClick={() => void downloadSvg()}
+            disabled={!svg}
+            className="rounded border border-zinc-300 px-2 py-0.5 font-medium text-zinc-700 hover:border-zinc-500 disabled:opacity-40 dark:border-zinc-700 dark:text-zinc-200 dark:hover:border-zinc-500"
+          >
+            Download SVG
+          </button>
+          <button
+            type="button"
+            onClick={() => void downloadPng()}
+            disabled={!svg}
+            className="rounded border border-zinc-300 px-2 py-0.5 font-medium text-zinc-700 hover:border-zinc-500 disabled:opacity-40 dark:border-zinc-700 dark:text-zinc-200 dark:hover:border-zinc-500"
+          >
+            Download PNG
+          </button>
+        </div>
+        {exportError && (
+          <div className="mt-1 text-[11px] text-red-600 dark:text-red-400">
+            {exportError}
+          </div>
+        )}
       </div>
     </div>
   );

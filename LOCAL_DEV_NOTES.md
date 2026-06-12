@@ -39,6 +39,27 @@ Local Supabase URLs:
 
 The first `npx supabase start` pulled Docker images and applied migrations through `0018_creative_versioning_race_fix.sql`.
 
+## Broken thumbnails in local dev (fixed 2026-06-11)
+
+Uploaded images/videos rendered as broken-image icons in local dev only:
+the CSP `img-src`/`media-src` allow-list in `next.config.ts` admitted only
+`https://` Supabase origins, so signed URLs from the local
+`http://127.0.0.1:54321` Supabase were blocked by the browser. Uploads and
+API fetches still worked because `connect-src` was not scheme-filtered —
+which is why it looked like a rendering bug. Fixed by allowing the Supabase
+origin for any http(s) scheme (production is https and unaffected).
+
+If thumbnails break again: check the browser console for CSP violations
+first, and remember `next.config.ts` changes need a dev-server restart.
+
+Migrations: the first `supabase start` applied through `0018`. After new
+migrations land (e.g. `0021_custom_channels`, `0022_media_dimensions`),
+apply them with:
+
+```bash
+npx supabase migration up
+```
+
 ## Docker
 
 Docker Desktop is installed at:

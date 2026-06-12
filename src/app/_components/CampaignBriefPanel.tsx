@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import type { CampaignBrief } from "@/lib/campaignBrief";
 
 type CampaignBriefDraft = {
@@ -63,6 +63,41 @@ function formatBudget(value: string) {
   }).format(parsed);
 }
 
+// "Filled" means at least one summary-strip field has a value, so the
+// collapsed strip is never empty. All-empty briefs keep showing the form.
+function isBriefFilled(brief: CampaignBrief) {
+  return Boolean(
+    brief.objective?.trim() ||
+    brief.audience?.trim() ||
+    brief.launchStartDate ||
+    brief.launchEndDate ||
+    brief.budget !== null
+  );
+}
+
+// Format yyyy-mm-dd in UTC so the displayed day never shifts with the
+// viewer's timezone.
+function formatBriefDate(isoDate: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return isoDate;
+  const date = new Date(`${isoDate}T00:00:00Z`);
+  if (Number.isNaN(date.getTime())) return isoDate;
+  return new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(date);
+}
+
+function formatDateRange(start: string | null, end: string | null) {
+  if (start && end) {
+    return `${formatBriefDate(start)} – ${formatBriefDate(end)}`;
+  }
+  if (start) return `From ${formatBriefDate(start)}`;
+  if (end) return `Through ${formatBriefDate(end)}`;
+  return null;
+}
+
 export function CampaignBriefPanel({
   projectId,
   initialBrief,
@@ -75,10 +110,27 @@ export function CampaignBriefPanel({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  // Filled briefs collapse to the summary strip on every visit.
+  const [editing, setEditing] = useState(() => !isBriefFilled(initialBrief));
+
+  const editButtonRef = useRef<HTMLButtonElement | null>(null);
+  const firstFieldRef = useRef<HTMLTextAreaElement | null>(null);
+  const pendingFocusRef = useRef<"form" | "strip" | null>(null);
+
+  useEffect(() => {
+    const target = pendingFocusRef.current;
+    pendingFocusRef.current = null;
+    if (target === "form" && editing) {
+      firstFieldRef.current?.focus();
+    } else if (target === "strip" && !editing) {
+      editButtonRef.current?.focus();
+    }
+  }, [editing]);
 
   const savedDraft = toDraft(savedBrief);
   const dirty = hasDraftChanges(draft, savedDraft);
   const budgetPreview = formatBudget(draft.budget);
+  const filled = isBriefFilled(savedBrief);
 
   const updateField = <K extends keyof CampaignBriefDraft>(
     key: K,
@@ -127,9 +179,36 @@ export function CampaignBriefPanel({
     setSavedBrief(body.project.campaignBrief);
     setDraft(toDraft(body.project.campaignBrief));
     setNotice("Campaign brief saved.");
+    if (isBriefFilled(body.project.campaignBrief)) {
+      pendingFocusRef.current = "strip";
+      setEditing(false);
+    }
+  };
+
+  const startEditing = () => {
+    pendingFocusRef.current = "form";
+    setEditing(true);
+  };
+
+  const cancelEditing = () => {
+    setDraft(savedDraft);
+    setError(null);
+    setNotice(null);
+    pendingFocusRef.current = "strip";
+    setEditing(false);
   };
   const briefActions = (
     <div className="flex items-center justify-end gap-2">
+      {filled && (
+        <button
+          type="button"
+          onClick={cancelEditing}
+          disabled={saving}
+          className="apple-tap focus-ring rounded-md border border-zinc-200 px-3 py-1.5 text-xs text-zinc-500 hover:text-zinc-900 disabled:opacity-50 dark:border-zinc-800 dark:hover:text-zinc-100"
+        >
+          Cancel
+        </button>
+      )}
       {dirty && (
         <button
           type="button"
@@ -153,6 +232,86 @@ export function CampaignBriefPanel({
       </button>
     </div>
   );
+
+  // Summary strip segments: objective · audience · dates · budget, populated
+  // ones only. Long free-text segments truncate; dates/budget stay intact.
+  const summarySegments = [
+    {
+      key: "objective",
+      text: savedBrief.objective?.trim() || null,
+      clamp: true,
+    },
+    { key: "audience", text: savedBrief.audience?.trim() || null, clamp: true },
+    {
+      key: "dates",
+      text: formatDateRange(
+        savedBrief.launchStartDate,
+        savedBrief.launchEndDate
+      ),
+      clamp: false,
+    },
+    { key: "budget", text: formatBudget(savedDraft.budget), clamp: false },
+  ].filter(
+    (segment): segment is { key: string; text: string; clamp: boolean } =>
+      Boolean(segment.text)
+  );
+
+  if (!editing) {
+    return (
+      <section className="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <h2 className="text-sm font-medium tracking-wide text-zinc-500 uppercase">
+              Campaign Brief
+            </h2>
+            <p className="mt-1 flex min-w-0 flex-wrap items-baseline gap-x-1.5 gap-y-0.5 text-sm text-zinc-600 dark:text-zinc-300">
+              {summarySegments.map((segment, index) => (
+                <Fragment key={segment.key}>
+                  {index > 0 && (
+                    <span
+                      aria-hidden="true"
+                      className="text-zinc-400 dark:text-zinc-600"
+                    >
+                      ·
+                    </span>
+                  )}
+                  <span
+                    className={
+                      segment.clamp
+                        ? "max-w-full truncate sm:max-w-[36ch]"
+                        : undefined
+                    }
+                  >
+                    {segment.text}
+                  </span>
+                </Fragment>
+              ))}
+            </p>
+          </div>
+          <button
+            ref={editButtonRef}
+            type="button"
+            onClick={startEditing}
+            aria-label="Edit campaign brief"
+            className="apple-tap focus-ring shrink-0 self-start rounded-md border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-600 hover:text-zinc-900 sm:self-center dark:border-zinc-800 dark:text-zinc-300 dark:hover:text-zinc-100"
+          >
+            Edit
+          </button>
+        </div>
+
+        {(error || notice) && (
+          <div className="mt-4 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-950">
+            {error && (
+              <span className="text-red-600 dark:text-red-400">{error}</span>
+            )}
+            {notice && !error && (
+              <span className="text-zinc-600 dark:text-zinc-300">{notice}</span>
+            )}
+          </div>
+        )}
+      </section>
+    );
+  }
 
   return (
     <section className="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
@@ -192,6 +351,7 @@ export function CampaignBriefPanel({
             onChange={(value) => updateField("objective", value)}
             placeholder="Drive spring break attendance, membership renewals, or awareness for a new exhibit."
             rows={3}
+            inputRef={firstFieldRef}
           />
           <TextAreaField
             label="Audience"
@@ -356,12 +516,14 @@ function TextAreaField({
   onChange,
   placeholder,
   rows,
+  inputRef,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   placeholder: string;
   rows: number;
+  inputRef?: React.Ref<HTMLTextAreaElement>;
 }) {
   return (
     <label className="block">
@@ -369,6 +531,7 @@ function TextAreaField({
         {label}
       </span>
       <textarea
+        ref={inputRef}
         rows={rows}
         value={value}
         onChange={(e) => onChange(e.target.value)}

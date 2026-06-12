@@ -1,7 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import {
+  useCallback,
+  useEffect,
+  useState,
+  type MouseEvent as ReactMouseEvent,
+  type ReactNode,
+} from "react";
 import type { PlatformKey } from "@/lib/utm";
+
 type AnalyticsSettings = {
   ga4PropertyId: string | null;
   status:
@@ -18,6 +26,20 @@ type AnalyticsSettings = {
 
 type ChannelBucketKey = PlatformKey | "all-channels";
 
+type ChannelRow = {
+  channel: ChannelBucketKey;
+  label: string;
+  linkCount: number;
+  clicks: number;
+  scans: number;
+  sessions: number;
+  conversions: number;
+  ticketSales: number;
+  revenue: number;
+  sessionsShare: number | null;
+  revenueShare: number | null;
+};
+
 type PerformanceResponse = {
   analytics: AnalyticsSettings;
   trackedLinkCount: number;
@@ -33,19 +55,7 @@ type PerformanceResponse = {
     cpaBasis: "ticket_sales" | "conversions" | null;
     roas: number | null;
   };
-  channels: Array<{
-    channel: ChannelBucketKey;
-    label: string;
-    linkCount: number;
-    clicks: number;
-    scans: number;
-    sessions: number;
-    conversions: number;
-    ticketSales: number;
-    revenue: number;
-    sessionsShare: number | null;
-    revenueShare: number | null;
-  }>;
+  channels: ChannelRow[];
   trend: Array<{
     date: string;
     sessions: number;
@@ -103,15 +113,7 @@ function formatTrendDate(value: string) {
   });
 }
 
-function statusTone(settings: AnalyticsSettings | null) {
-  if (!settings) {
-    return {
-      className:
-        "border-zinc-200 bg-zinc-50 text-zinc-700 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300",
-      label: "Loading analytics settings…",
-    };
-  }
-
+function statusTone(settings: AnalyticsSettings) {
   if (settings.status === "ready") {
     return {
       className:
@@ -147,15 +149,47 @@ function statusTone(settings: AnalyticsSettings | null) {
   };
 }
 
+function channelHasSignal(row: ChannelRow) {
+  return (
+    row.linkCount > 0 ||
+    row.clicks > 0 ||
+    row.scans > 0 ||
+    row.sessions > 0 ||
+    row.conversions > 0 ||
+    row.ticketSales > 0 ||
+    row.revenue > 0
+  );
+}
+
+function ga4StepDescription(settings: AnalyticsSettings) {
+  if (settings.status === "ready") {
+    return "GA4 sessions, conversions, and revenue will flow into this dashboard.";
+  }
+  if (settings.status === "property_missing") {
+    return settings.connected
+      ? "Your Google account is connected — choose a GA4 property in the Google Analytics card under Landing pages."
+      : "Enter the GA4 property ID in the Google Analytics card under Landing pages.";
+  }
+  if (settings.status === "account_not_connected") {
+    return "Connect your Google Analytics account from the Google Analytics card under Landing pages.";
+  }
+  return "Google OAuth credentials must be configured by an admin before GA4 can connect. The Google Analytics card under Landing pages has details.";
+}
+
+const ACTION_LINK_CLASS =
+  "apple-tap focus-ring inline-flex items-center gap-1 rounded-md border border-zinc-300 px-2.5 py-1.5 text-xs font-medium text-zinc-700 hover:border-zinc-500 dark:border-zinc-700 dark:text-zinc-200";
+
 export function PerformanceDashboardPanel({
   projectId,
 }: {
   projectId: string;
 }) {
   const [data, setData] = useState<PerformanceResponse | null>(null);
+  const [landingPageCount, setLandingPageCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showAllChannels, setShowAllChannels] = useState(false);
 
   const load = useCallback(
     async (refresh = false) => {
@@ -164,12 +198,27 @@ export function PerformanceDashboardPanel({
       setError(null);
 
       const suffix = refresh ? "?refresh=1" : "";
-      const res = await fetch(
-        `/api/projects/${projectId}/performance${suffix}`,
-        {
+      // Landing pages are platform-null tracking links; the performance API
+      // excludes them, so the setup checklist needs this second fetch.
+      const [res, linksRes] = await Promise.all([
+        fetch(`/api/projects/${projectId}/performance${suffix}`, {
           cache: "no-store",
-        }
-      );
+        }),
+        fetch(`/api/projects/${projectId}/tracking-links`, {
+          cache: "no-store",
+        }),
+      ]);
+
+      if (linksRes.ok) {
+        const linksBody = (await linksRes.json().catch(() => null)) as {
+          links?: Array<{ platform: string | null }>;
+        } | null;
+        setLandingPageCount(
+          (linksBody?.links ?? []).filter((link) => link.platform === null)
+            .length
+        );
+      }
+
       const body = (await res.json().catch(() => null)) as
         | (PerformanceResponse & { error?: string })
         | { error?: string }
@@ -190,36 +239,60 @@ export function PerformanceDashboardPanel({
   );
 
   useEffect(() => {
-    let active = true;
+    // Deferred a tick so load()'s synchronous setLoading stays out of the
+    // effect body proper (same kickoff idiom as LandingPagesPanel).
+    const kickoff = window.setTimeout(() => {
+      void load();
+    }, 0);
+    return () => window.clearTimeout(kickoff);
+  }, [load]);
 
-    async function initialLoad() {
-      const res = await fetch(`/api/projects/${projectId}/performance`, {
-        cache: "no-store",
+  const scrollToLandingPages = useCallback(
+    (event: ReactMouseEvent<HTMLAnchorElement>) => {
+      const target = document.getElementById("landing-pages");
+      if (!target) return; // fall back to default hash navigation
+      event.preventDefault();
+      const reduceMotion = window.matchMedia(
+        "(prefers-reduced-motion: reduce)"
+      ).matches;
+      target.scrollIntoView({
+        behavior: reduceMotion ? "auto" : "smooth",
+        block: "start",
       });
-      const body = (await res.json().catch(() => null)) as
-        | (PerformanceResponse & { error?: string })
-        | { error?: string }
-        | null;
+      if (!target.hasAttribute("tabindex"))
+        target.setAttribute("tabindex", "-1");
+      target.focus({ preventScroll: true });
+    },
+    []
+  );
 
-      if (!active) return;
-      if (!res.ok) {
-        setError(body?.error ?? "failed to load performance dashboard");
-        setLoading(false);
-        return;
-      }
+  const totals = data?.totals ?? null;
+  const hasAnyActivity = totals
+    ? totals.clicks > 0 ||
+      totals.scans > 0 ||
+      totals.sessions > 0 ||
+      totals.conversions > 0 ||
+      totals.ticketSales > 0 ||
+      totals.revenue > 0
+    : false;
+  // No tracked links means clicks/scans/GA metrics are structurally zero —
+  // there is no performance signal to show, only setup work left to do.
+  const needsSetup =
+    data !== null && data.trackedLinkCount === 0 && !hasAnyActivity;
 
-      setData(body as PerformanceResponse);
-      setLoading(false);
-    }
+  const channels = data?.channels ?? [];
+  const activeChannels = channels.filter(channelHasSignal);
+  const inactiveCount = channels.length - activeChannels.length;
+  const channelsToShow =
+    showAllChannels || activeChannels.length === 0 ? channels : activeChannels;
+  const channelListId = `performance-channel-list-${projectId}`;
 
-    void initialLoad();
+  const firstChannel =
+    channels.find((row) => row.channel !== "all-channels") ?? null;
+  const landingPagesDone = (landingPageCount ?? 0) > 0;
+  const ga4Done = data?.analytics.status === "ready";
 
-    return () => {
-      active = false;
-    };
-  }, [projectId]);
-
-  const tone = statusTone(data?.analytics ?? null);
+  const tone = data && !needsSetup ? statusTone(data.analytics) : null;
   const trendMax = Math.max(
     ...(data?.trend.map((point) => point.sessions) ?? [0]),
     1
@@ -239,7 +312,7 @@ export function PerformanceDashboardPanel({
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {data?.lastSyncedAt && (
+          {data?.lastSyncedAt && !needsSetup && (
             <div className="text-xs text-zinc-500">
               Synced {relativeTime(data.lastSyncedAt)}
             </div>
@@ -255,62 +328,143 @@ export function PerformanceDashboardPanel({
         </div>
       </div>
 
-      <div className={`rounded-lg border px-3 py-2 text-sm ${tone.className}`}>
-        {tone.label}
-      </div>
-
       {error ? (
         <div className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
           {error}
         </div>
+      ) : loading || !data ? (
+        <div className="grid h-40 place-items-center rounded-lg border border-zinc-200 bg-zinc-50 text-sm text-zinc-500 dark:border-zinc-800 dark:bg-zinc-950">
+          Loading performance…
+        </div>
+      ) : needsSetup ? (
+        <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4 sm:p-5 dark:border-zinc-800 dark:bg-zinc-950">
+          <h3 className="text-xs font-medium tracking-wide text-zinc-500 uppercase">
+            Set up performance tracking
+          </h3>
+          <p className="mt-1 max-w-2xl text-sm text-zinc-500">
+            Nothing has been measured for this campaign yet. Three steps connect
+            the pipes — clicks and scans start counting immediately, and GA4
+            fills in sessions, conversions, and revenue.
+          </p>
+          <ol className="mt-4 space-y-2">
+            <SetupStep
+              index={1}
+              done={landingPagesDone}
+              title="Add a landing page"
+              description={
+                landingPagesDone
+                  ? `${formatInteger(landingPageCount)} landing ${
+                      landingPageCount === 1 ? "page" : "pages"
+                    } saved — creatives can link to them from any channel board.`
+                  : "Save the destination URLs this campaign drives traffic to. They live in the Landing pages section further down this page."
+              }
+              action={
+                <a
+                  href="#landing-pages"
+                  onClick={scrollToLandingPages}
+                  className={ACTION_LINK_CLASS}
+                >
+                  Go to Landing pages <span aria-hidden="true">↓</span>
+                </a>
+              }
+            />
+            <SetupStep
+              index={2}
+              done={ga4Done}
+              title="Connect GA4"
+              description={ga4StepDescription(data.analytics)}
+              action={
+                <a
+                  href="#landing-pages"
+                  onClick={scrollToLandingPages}
+                  className={ACTION_LINK_CLASS}
+                >
+                  Open GA4 settings <span aria-hidden="true">↓</span>
+                </a>
+              }
+            />
+            <SetupStep
+              index={3}
+              done={false}
+              title="Create tracking links"
+              description={
+                firstChannel
+                  ? "Assign a landing page to a creative on a channel board. Each assignment generates a tracked link (with QR for print) that reports back here."
+                  : "Enable a channel first, then assign a landing page to a creative there — each assignment generates a tracked link that reports back here."
+              }
+              action={
+                firstChannel ? (
+                  <Link
+                    href={`/projects/${projectId}/${firstChannel.channel}`}
+                    className={ACTION_LINK_CLASS}
+                  >
+                    Open the {firstChannel.label} board{" "}
+                    <span aria-hidden="true">→</span>
+                  </Link>
+                ) : (
+                  <Link
+                    href={`/projects/${projectId}?addChannel=1`}
+                    className={ACTION_LINK_CLASS}
+                  >
+                    Add a channel <span aria-hidden="true">→</span>
+                  </Link>
+                )
+              }
+            />
+          </ol>
+        </div>
       ) : (
         <>
+          {tone && (
+            <div
+              className={`rounded-lg border px-3 py-2 text-sm ${tone.className}`}
+            >
+              {tone.label}
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <SummaryCard
               label="Clicks"
-              value={loading ? "…" : formatInteger(data?.totals.clicks ?? 0)}
+              value={formatInteger(data.totals.clicks)}
             />
             <SummaryCard
               label="Scans"
-              value={loading ? "…" : formatInteger(data?.totals.scans ?? 0)}
+              value={formatInteger(data.totals.scans)}
             />
             <SummaryCard
               label="GA sessions"
-              value={loading ? "…" : formatInteger(data?.totals.sessions ?? 0)}
+              value={formatInteger(data.totals.sessions)}
             />
             <SummaryCard
               label="Conversions"
-              value={
-                loading ? "…" : formatInteger(data?.totals.conversions ?? 0)
-              }
+              value={formatInteger(data.totals.conversions)}
             />
             <SummaryCard
               label="Revenue"
-              value={loading ? "…" : formatCurrency(data?.totals.revenue ?? 0)}
+              value={formatCurrency(data.totals.revenue)}
             />
             <SummaryCard
               label="Ticket sales"
-              value={
-                loading ? "…" : formatInteger(data?.totals.ticketSales ?? 0)
-              }
+              value={formatInteger(data.totals.ticketSales)}
             />
             <SummaryCard
               label="CPA"
-              value={loading ? "…" : formatCurrency(data?.totals.cpa ?? null)}
+              value={formatCurrency(data.totals.cpa)}
               caption={
-                data?.totals.cpaBasis === "ticket_sales"
+                data.totals.cpaBasis === "ticket_sales"
                   ? "Based on ticket sales"
-                  : data?.totals.cpaBasis === "conversions"
+                  : data.totals.cpaBasis === "conversions"
                     ? "Based on conversions"
                     : "Needs budget + outcomes"
               }
             />
             <SummaryCard
               label="ROAS"
-              value={loading ? "…" : formatRoas(data?.totals.roas ?? null)}
+              value={formatRoas(data.totals.roas)}
               caption={
-                data?.totals.budget !== null
-                  ? `Budget ${formatCurrency(data?.totals.budget ?? null)}`
+                data.totals.budget !== null
+                  ? `Budget ${formatCurrency(data.totals.budget)}`
                   : "Add budget in campaign brief"
               }
             />
@@ -324,18 +478,15 @@ export function PerformanceDashboardPanel({
                     Channel Contribution
                   </div>
                   <div className="mt-1 text-[11px] text-zinc-500">
-                    {loading
-                      ? "Loading channel performance…"
-                      : `${data?.trackedLinkCount ?? 0} tracked links currently feeding this rollup.`}
+                    {data.trackedLinkCount} tracked links currently feeding this
+                    rollup.
                   </div>
                 </div>
               </div>
 
-              {loading ? (
-                <div className="text-sm text-zinc-500">Loading…</div>
-              ) : data?.channels.length ? (
-                <div className="space-y-2">
-                  {data.channels.map((row) => (
+              {channels.length ? (
+                <div id={channelListId} className="space-y-2">
+                  {channelsToShow.map((row) => (
                     <div
                       key={row.channel}
                       className="rounded-md border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900"
@@ -384,6 +535,19 @@ export function PerformanceDashboardPanel({
                       </div>
                     </div>
                   ))}
+                  {activeChannels.length > 0 && inactiveCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowAllChannels((value) => !value)}
+                      aria-expanded={showAllChannels}
+                      aria-controls={channelListId}
+                      className="apple-tap focus-ring w-full rounded-md border border-dashed border-zinc-300 px-3 py-2 text-xs font-medium text-zinc-500 hover:border-zinc-400 hover:text-zinc-900 dark:border-zinc-700 dark:hover:border-zinc-600 dark:hover:text-zinc-100"
+                    >
+                      {showAllChannels
+                        ? `Show channels with activity only (${activeChannels.length})`
+                        : `Show all channels (${channels.length})`}
+                    </button>
+                  )}
                 </div>
               ) : (
                 <div className="text-sm text-zinc-500">
@@ -402,11 +566,7 @@ export function PerformanceDashboardPanel({
                 project.
               </div>
 
-              {loading ? (
-                <div className="grid h-40 place-items-center text-sm text-zinc-500">
-                  Loading…
-                </div>
-              ) : data?.trend.length ? (
+              {data.trend.length ? (
                 <>
                   <div className="mt-4 flex h-40 items-end gap-2">
                     {data.trend.map((point) => (
@@ -471,6 +631,66 @@ export function PerformanceDashboardPanel({
         </>
       )}
     </section>
+  );
+}
+
+function SetupStep({
+  index,
+  done,
+  title,
+  description,
+  action,
+}: {
+  index: number;
+  done: boolean;
+  title: string;
+  description: string;
+  action?: ReactNode;
+}) {
+  return (
+    <li className="flex items-start gap-3 rounded-md border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
+      <span
+        aria-hidden="true"
+        className={
+          done
+            ? "grid size-6 shrink-0 place-items-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
+            : "grid size-6 shrink-0 place-items-center rounded-full border border-zinc-300 text-xs font-medium text-zinc-500 dark:border-zinc-700"
+        }
+      >
+        {done ? <CheckIcon /> : index}
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm font-medium">{title}</span>
+          {done && (
+            <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium tracking-wide text-emerald-700 uppercase dark:bg-emerald-900/40 dark:text-emerald-300">
+              Done
+            </span>
+          )}
+        </div>
+        <p className="mt-0.5 text-[13px] text-zinc-500">{description}</p>
+        {!done && action ? <div className="mt-2">{action}</div> : null}
+      </div>
+    </li>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden="true"
+      className="size-3.5"
+    >
+      <path
+        d="M3.5 8.5l3 3 6-7"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
 

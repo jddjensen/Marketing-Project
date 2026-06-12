@@ -260,7 +260,7 @@ export function LandingPagesPanel({ projectId }: { projectId: string }) {
   }, []);
 
   return (
-    <section>
+    <section id="landing-pages" className="scroll-mt-48">
       <div className="mb-4 flex items-center justify-between">
         <div>
           <h2 className="text-sm font-medium tracking-wide text-zinc-500 uppercase">

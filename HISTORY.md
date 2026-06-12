@@ -73,6 +73,50 @@ Large quality sweep, all on one day:
 
 Newest entries at the top. One entry per working session.
 
+### 2026-06-12 — 15-item UX batch: navigation, uploads, dashboard, dialog consistency
+
+- **Fixed local-dev broken thumbnails** (`next.config.ts`): CSP `img-src`/`media-src`
+  only allowed `https://` Supabase origins, silently blocking local
+  `http://127.0.0.1:54321` signed URLs (uploads worked — `connect-src` wasn't
+  filtered). Scheme-agnostic http(s) filter now; prod unaffected. Documented in
+  [LOCAL_DEV_NOTES.md](LOCAL_DEV_NOTES.md), incl. `npx supabase migration up`
+  for migrations 0021/0022.
+- **Shared dialog infra**: `useDialogChrome` (Escape, focus trap, return-focus,
+  nested-dialog stack) + `ConfirmDialog`. Every `window.confirm` replaced
+  (ProjectsGrid ×2, VersionHistoryModal, SignageBoard); chrome adopted by
+  AddPlatformDialog, CreateDialog, CustomChannelDialog, TextCreativeDialog,
+  VersionHistoryModal, CommandPalette.
+- **Toast**: success/info auto-dismiss after 4 s with pause on hover/focus;
+  errors stay persistent.
+- **Channel nav**: tabs filtered to enabled channels only (skeleton pills while
+  loading), active tab scrolls into view, trailing "+" deep-links
+  `?addChannel=1` → dashboard auto-opens its Add-channel dialog.
+- **Project dashboard**: channel cards show "n assets · m warnings" (slot-fit
+  aware, incl. custom-channel formats); performance section renders a 3-step
+  activation checklist until real signal exists, then activity-only rows with a
+  show-all toggle; campaign brief collapses to a summary strip once filled.
+- **Home grid**: `/api/projects` now returns channelCount/assetCount/brief
+  launch dates (grouped queries, no N+1); cards display them. `/?new=1` opens
+  the create dialog (used by the palette).
+- **⌘K command palette** (`CommandPalette.tsx`, mounted in the root layout):
+  actions, all projects, current project's channels; full keyboard nav.
+- **Channel boards** (`PlatformMediaBoard`): client-side dimension check BEFORE
+  upload with an "Upload anyway?" ConfirmDialog per mismatched file; FIFO
+  upload queue with stacked progress list replaces the "wait for the current
+  upload" block; column headers roll up tile fit ("n of m fit"); print
+  channels (signage/flyers/digital-signage) get an inline QR preview +
+  SVG/PNG downloads next to the tracked-link Copy. (TrackingLinksPanel already
+  had QR preview/downloads for project-level links — the gap was per-creative.)
+- **Custom channel dialog**: live proportional aspect-ratio preview per format
+  row (catches swapped width/height).
+- Gates all green: typecheck, eslint (2 pre-existing warnings only), vitest
+  17/17, prettier, production build.
+- Process note: a multi-agent workflow completed the dialog infra + 4 features
+  before hitting the account's monthly spend limit; the rest (board queue/fit/
+  QR, dialog sweep, lint fixes for the new `react-hooks` rules) was finished
+  in-session. Prior session's uncommitted custom-channels/slot-fit work was
+  committed first as `f1cad55`.
+
 ### 2026-06-11 — Establish HISTORY.md
 
 - Created this file, backfilled from the full git history (40 commits,

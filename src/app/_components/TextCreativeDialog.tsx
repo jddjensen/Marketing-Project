@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { getCopyFields } from "@/lib/platformCopy";
 import type { PlatformKey } from "@/lib/utm";
 import { CopyFieldsForm, type CopyValue } from "./CopyFieldsForm";
+import { useDialogChrome } from "./useDialogChrome";
 
 export function TextCreativeDialog({
   projectId,
@@ -36,6 +37,12 @@ export function TextCreativeDialog({
       if (closeTimer.current) clearTimeout(closeTimer.current);
     };
   }, []);
+  // open tracks !closing so focus returns when the close starts, not 200ms
+  // later at unmount.
+  const { dialogRef } = useDialogChrome<HTMLDivElement>({
+    open: !closing,
+    onClose: requestClose,
+  });
 
   const submit = async () => {
     setSaving(true);
@@ -62,14 +69,15 @@ export function TextCreativeDialog({
     <div
       className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 backdrop-blur-sm"
       data-state={closing ? "closed" : "open"}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Create text creative"
       onClick={requestClose}
     >
       <div
+        ref={dialogRef}
         className="modal-surface flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-2xl dark:border-zinc-800 dark:bg-zinc-900"
         data-state={closing ? "closed" : "open"}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Create text creative"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="border-b border-zinc-200 px-5 py-4 dark:border-zinc-800">

@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { ConfirmDialog } from "./ConfirmDialog";
+import { useDialogChrome } from "./useDialogChrome";
 
 type Version = {
   id: string;
@@ -28,6 +30,7 @@ export function VersionHistoryModal({
   const [versions, setVersions] = useState<Version[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [closing, setClosing] = useState(false);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const requestClose = useCallback(() => {
@@ -40,6 +43,12 @@ export function VersionHistoryModal({
       if (closeTimer.current) clearTimeout(closeTimer.current);
     };
   }, []);
+  // open tracks !closing so focus returns when the close starts, not 200ms
+  // later at unmount.
+  const { dialogRef } = useDialogChrome<HTMLDivElement>({
+    open: !closing,
+    onClose: requestClose,
+  });
 
   useEffect(() => {
     let active = true;
@@ -102,11 +111,6 @@ export function VersionHistoryModal({
   };
 
   const remove = async (versionId: string) => {
-    if (
-      !window.confirm("Delete this version permanently? This can't be undone.")
-    ) {
-      return;
-    }
     setBusy(true);
     setError(null);
     try {
@@ -122,6 +126,7 @@ export function VersionHistoryModal({
       await reload();
     } finally {
       setBusy(false);
+      setConfirmDeleteId(null);
     }
   };
 
@@ -129,14 +134,15 @@ export function VersionHistoryModal({
     <div
       className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 backdrop-blur-sm"
       data-state={closing ? "closed" : "open"}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Version history"
       onClick={requestClose}
     >
       <div
+        ref={dialogRef}
         className="modal-surface flex max-h-[80vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-2xl dark:border-zinc-800 dark:bg-zinc-900"
         data-state={closing ? "closed" : "open"}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Version history"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-zinc-200 px-5 py-4 dark:border-zinc-800">
@@ -248,7 +254,7 @@ export function VersionHistoryModal({
                     <button
                       type="button"
                       disabled={busy}
-                      onClick={() => remove(v.id)}
+                      onClick={() => setConfirmDeleteId(v.id)}
                       className="rounded-md px-3 py-1 text-xs text-red-600 hover:bg-red-50 disabled:opacity-50 dark:text-red-400 dark:hover:bg-red-950/40"
                     >
                       Delete
@@ -260,6 +266,18 @@ export function VersionHistoryModal({
           )}
         </div>
       </div>
+      <ConfirmDialog
+        open={confirmDeleteId !== null}
+        title="Delete this version?"
+        message="The file is removed permanently. This can't be undone."
+        confirmLabel="Delete"
+        tone="danger"
+        busy={busy}
+        onConfirm={() => {
+          if (confirmDeleteId) void remove(confirmDeleteId);
+        }}
+        onCancel={() => setConfirmDeleteId(null)}
+      />
     </div>
   );
 }

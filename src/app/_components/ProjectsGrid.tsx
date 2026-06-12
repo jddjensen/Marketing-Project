@@ -1,8 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   CHANNELS,
   CHANNEL_CATEGORY_DESCRIPTIONS,
@@ -23,10 +31,12 @@ import {
   type CustomFormatUnit,
 } from "@/lib/customChannels";
 import type { PlatformKey } from "@/lib/utm";
+import { ConfirmDialog } from "./ConfirmDialog";
 import { EmptyState as SharedEmptyState } from "./EmptyState";
 import { ErrorMessage } from "./ErrorMessage";
 import { LoadingSkeleton } from "./LoadingSkeleton";
 import { Toast } from "./Toast";
+import { useDialogChrome } from "./useDialogChrome";
 
 type Project = {
   id: string;
@@ -35,6 +45,10 @@ type Project = {
   createdAt: number;
   updatedAt: number;
   archivedAt: number | null;
+  channelCount?: number;
+  assetCount?: number;
+  launchStartDate?: string | null;
+  launchEndDate?: string | null;
 };
 
 const ALL_KEYS: PlatformKey[] = CHANNELS.map((c) => c.key);
@@ -78,8 +92,69 @@ function formatRelative(ts: number): string {
   return `${Math.floor(d / 365)}y ago`;
 }
 
+const MONTH_ABBREVS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
+
+// Brief dates are date-only ISO strings; parse the parts directly so the
+// rendered day never shifts with the viewer's timezone.
+function formatBriefDate(iso: string): string | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  if (!m) return null;
+  const month = Number(m[2]);
+  const day = Number(m[3]);
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+  return `${MONTH_ABBREVS[month - 1]} ${day}`;
+}
+
+function formatLaunchWindow(
+  start: string | null | undefined,
+  end: string | null | undefined
+): string | null {
+  const s = start ? formatBriefDate(start) : null;
+  const e = end ? formatBriefDate(end) : null;
+  if (s && e) return `${s} – ${e}`;
+  if (s) return `From ${s}`;
+  if (e) return `Until ${e}`;
+  return null;
+}
+
+function countLabel(n: number, singular: string): string {
+  return `${n} ${singular}${n === 1 ? "" : "s"}`;
+}
+
+// useSearchParams requires a Suspense boundary above it for production
+// builds of static pages; keep it inside this component so the page that
+// renders <ProjectsGrid /> doesn't have to know.
 export function ProjectsGrid() {
+  return (
+    <Suspense
+      fallback={
+        <main className="mx-auto max-w-7xl px-6 py-10">
+          <LoadingSkeleton variant="cards" rows={6} />
+        </main>
+      }
+    >
+      <ProjectsGridInner />
+    </Suspense>
+  );
+}
+
+function ProjectsGridInner() {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [projects, setProjects] = useState<Project[] | null>(null);
   const [showArchived, setShowArchived] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -87,6 +162,35 @@ export function ProjectsGrid() {
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [menuId, setMenuId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  // Last non-null target so the dialog copy stays stable while it animates
+  // out (render-phase setState bounded by the equality check).
+  const [heldDeleteTarget, setHeldDeleteTarget] = useState(deleteTarget);
+  if (deleteTarget && deleteTarget !== heldDeleteTarget) {
+    setHeldDeleteTarget(deleteTarget);
+  }
+  const deleteInfo = deleteTarget ?? heldDeleteTarget;
+
+  // Contract C2: /?new=1 opens the create dialog, then the param is removed
+  // so refresh/back doesn't reopen it. The dialog opens via the tracked-param
+  // render pattern; the effect only cleans the URL.
+  const wantsCreateParam = searchParams.get("new") === "1";
+  const [trackedCreateParam, setTrackedCreateParam] = useState(false);
+  if (wantsCreateParam !== trackedCreateParam) {
+    setTrackedCreateParam(wantsCreateParam);
+    if (wantsCreateParam) setCreating(true);
+  }
+  useEffect(() => {
+    if (!wantsCreateParam) return;
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("new");
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }, [wantsCreateParam, searchParams, pathname, router]);
 
   const fetchProjects = useCallback(async () => {
     const qs = showArchived ? "?includeArchived=1" : "";
@@ -200,15 +304,8 @@ export function ProjectsGrid() {
     [fetchProjects]
   );
 
-  const onDelete = useCallback(
-    async (id: string, name: string) => {
-      if (
-        !window.confirm(
-          `Delete "${name}" and all of its media? This cannot be undone.`
-        )
-      ) {
-        return;
-      }
+  const performDelete = useCallback(
+    async (id: string) => {
       const res = await fetch(`/api/projects/${id}`, { method: "DELETE" });
       if (!res.ok) {
         const body = (await res.json().catch(() => null)) as {
@@ -227,6 +324,17 @@ export function ProjectsGrid() {
     },
     [fetchProjects]
   );
+
+  const onConfirmDelete = useCallback(async () => {
+    if (!deleteTarget) return;
+    setDeleteBusy(true);
+    try {
+      await performDelete(deleteTarget.id);
+      setDeleteTarget(null);
+    } finally {
+      setDeleteBusy(false);
+    }
+  }, [deleteTarget, performDelete]);
 
   const active = useMemo(
     () => (projects ?? []).filter((p) => !p.archivedAt),
@@ -281,7 +389,7 @@ export function ProjectsGrid() {
                 onOpenMenu={() => setMenuId(menuId === p.id ? null : p.id)}
                 onCloseMenu={() => setMenuId(null)}
                 onArchive={() => onArchive(p.id, true)}
-                onDelete={() => onDelete(p.id, p.name)}
+                onDelete={() => setDeleteTarget({ id: p.id, name: p.name })}
               />
             ))}
             <button
@@ -308,7 +416,7 @@ export function ProjectsGrid() {
                     onOpenMenu={() => setMenuId(menuId === p.id ? null : p.id)}
                     onCloseMenu={() => setMenuId(null)}
                     onArchive={() => onArchive(p.id, false)}
-                    onDelete={() => onDelete(p.id, p.name)}
+                    onDelete={() => setDeleteTarget({ id: p.id, name: p.name })}
                   />
                 ))}
               </div>
@@ -328,6 +436,21 @@ export function ProjectsGrid() {
           onSubmit={onCreate}
         />
       )}
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        title="Delete this project?"
+        message={
+          deleteInfo
+            ? `Delete "${deleteInfo.name}" and all of its media? This cannot be undone.`
+            : undefined
+        }
+        confirmLabel="Delete"
+        tone="danger"
+        busy={deleteBusy}
+        onConfirm={() => void onConfirmDelete()}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </main>
   );
 }
@@ -358,6 +481,17 @@ function ProjectCard({
     return () => document.removeEventListener("mousedown", onClick);
   }, [menuOpen, onCloseMenu]);
 
+  // Older API payloads may omit these fields; render nothing rather than 0.
+  const metaParts: string[] = [];
+  if (typeof project.channelCount === "number")
+    metaParts.push(countLabel(project.channelCount, "channel"));
+  if (typeof project.assetCount === "number")
+    metaParts.push(countLabel(project.assetCount, "asset"));
+  const launchWindow = formatLaunchWindow(
+    project.launchStartDate,
+    project.launchEndDate
+  );
+
   return (
     <div className="group relative">
       <Link
@@ -379,12 +513,24 @@ function ProjectCard({
             )}
           </div>
         </div>
-        <div className="flex items-center justify-between px-4 py-2.5 text-xs text-zinc-500">
-          <span>
-            {project.archivedAt
-              ? `Archived ${formatRelative(project.archivedAt)}`
-              : `Updated ${formatRelative(project.updatedAt)}`}
-          </span>
+        <div className="px-4 py-2.5 text-xs text-zinc-500">
+          <div className="flex items-center justify-between gap-2">
+            <span className="truncate">
+              {project.archivedAt
+                ? `Archived ${formatRelative(project.archivedAt)}`
+                : `Updated ${formatRelative(project.updatedAt)}`}
+            </span>
+            {launchWindow && (
+              <span className="shrink-0 text-[11px] whitespace-nowrap text-zinc-400">
+                {launchWindow}
+              </span>
+            )}
+          </div>
+          {metaParts.length > 0 && (
+            <div className="mt-0.5 text-[11px] text-zinc-400">
+              {metaParts.join(" · ")}
+            </div>
+          )}
         </div>
       </Link>
 
@@ -458,6 +604,24 @@ function CreateDialog({
   const [customCollapsed, setCustomCollapsed] = useState(false);
   const [customDialogOpen, setCustomDialogOpen] = useState(false);
   const [customError, setCustomError] = useState<string | null>(null);
+  const [channelToDelete, setChannelToDelete] = useState<CustomChannel | null>(
+    null
+  );
+  const [channelDeleteBusy, setChannelDeleteBusy] = useState(false);
+  // Render-phase held copy so the dialog text survives the exit animation.
+  const [heldChannelToDelete, setHeldChannelToDelete] =
+    useState(channelToDelete);
+  if (channelToDelete && channelToDelete !== heldChannelToDelete) {
+    setHeldChannelToDelete(channelToDelete);
+  }
+  const channelDeleteInfo = channelToDelete ?? heldChannelToDelete;
+  const titleId = useId();
+  // Mounted only while open, so the chrome (focus trap, Escape, focus return)
+  // is active for the component's whole lifetime.
+  const { dialogRef } = useDialogChrome<HTMLDivElement>({
+    open: true,
+    onClose,
+  });
 
   useEffect(() => {
     let active = true;
@@ -494,13 +658,6 @@ function CreateDialog({
     ].some((text) => text.toLowerCase().includes(searchTerm));
 
   const deleteCustomChannel = async (channel: CustomChannel) => {
-    if (
-      !window.confirm(
-        `Delete the custom channel "${channel.name}" from this account?`
-      )
-    ) {
-      return;
-    }
     setCustomError(null);
     const res = await fetch(`/api/channels/custom/${channel.id}`, {
       method: "DELETE",
@@ -520,6 +677,18 @@ function CreateDialog({
       next.delete(channel.key);
       return next;
     });
+  };
+
+  const onConfirmChannelDelete = async () => {
+    if (!channelToDelete) return;
+    setChannelDeleteBusy(true);
+    try {
+      // Failures surface via customError inside the form; close either way.
+      await deleteCustomChannel(channelToDelete);
+      setChannelToDelete(null);
+    } finally {
+      setChannelDeleteBusy(false);
+    }
   };
 
   const applyPreset = (p: Exclude<PresetKey, "custom">) => {
@@ -561,17 +730,21 @@ function CreateDialog({
 
   return (
     <div
-      role="dialog"
-      aria-modal="true"
       className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
         className="modal-surface flex max-h-[90vh] w-full max-w-2xl flex-col rounded-xl border border-zinc-200 bg-white shadow-[var(--shadow-lift)] dark:border-zinc-800 dark:bg-zinc-900"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="px-5 pt-5">
-          <h2 className="text-lg font-semibold">New project</h2>
+          <h2 id={titleId} className="text-lg font-semibold">
+            New project
+          </h2>
           <p className="mt-1 text-sm text-zinc-500">
             A project gathers every top-level channel in one place. Channels
             like Website and Meta each hold their own placements and size slots
@@ -871,7 +1044,7 @@ function CreateDialog({
                                 aria-label={`Delete custom channel ${c.name}`}
                                 onClick={(e) => {
                                   e.preventDefault();
-                                  void deleteCustomChannel(c);
+                                  setChannelToDelete(c);
                                 }}
                                 className="absolute top-1.5 right-1.5 rounded px-1 text-xs text-zinc-300 opacity-0 transition-opacity group-hover/custom:opacity-100 hover:text-red-600 dark:text-zinc-600 dark:hover:text-red-400"
                               >
@@ -968,6 +1141,21 @@ function CreateDialog({
             }}
           />
         )}
+
+        <ConfirmDialog
+          open={channelToDelete !== null}
+          title="Delete this custom channel?"
+          message={
+            channelDeleteInfo
+              ? `Delete the custom channel "${channelDeleteInfo.name}" from this account?`
+              : undefined
+          }
+          confirmLabel="Delete"
+          tone="danger"
+          busy={channelDeleteBusy}
+          onConfirm={() => void onConfirmChannelDelete()}
+          onCancel={() => setChannelToDelete(null)}
+        />
       </div>
     </div>
   );
@@ -987,6 +1175,40 @@ const EMPTY_FORMAT: DraftFormat = {
   unit: "px",
 };
 
+// Proportional rectangle (longest side capped at 40px) so e.g. 24×36 vs
+// 36×24 reads at a glance while typing. Pure CSS sizing.
+function AspectPreview({ width, height }: { width: string; height: string }) {
+  const w = Number(width);
+  const h = Number(height);
+  const valid =
+    width.trim() !== "" &&
+    height.trim() !== "" &&
+    Number.isFinite(w) &&
+    Number.isFinite(h) &&
+    w > 0 &&
+    h > 0;
+  const MAX = 40;
+  const scale = valid ? MAX / Math.max(w, h) : 0;
+  return (
+    <span
+      aria-hidden
+      className="flex h-10 w-10 shrink-0 items-center justify-center"
+    >
+      {valid ? (
+        <span
+          className="block rounded-[2px] border border-zinc-400 bg-zinc-200/70 transition-[width,height] duration-150 dark:border-zinc-500 dark:bg-zinc-700/60"
+          style={{
+            width: Math.max(2, Math.round(w * scale)),
+            height: Math.max(2, Math.round(h * scale)),
+          }}
+        />
+      ) : (
+        <span className="block h-4 w-4 rounded-[2px] border border-dashed border-zinc-300 dark:border-zinc-700" />
+      )}
+    </span>
+  );
+}
+
 function CustomChannelDialog({
   onClose,
   onCreated,
@@ -1000,6 +1222,11 @@ function CustomChannelDialog({
   const [formats, setFormats] = useState<DraftFormat[]>([{ ...EMPTY_FORMAT }]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const titleId = useId();
+  const { dialogRef } = useDialogChrome<HTMLDivElement>({
+    open: true,
+    onClose,
+  });
 
   const setFormat = (index: number, patch: Partial<DraftFormat>) => {
     setFormats((prev) =>
@@ -1061,17 +1288,21 @@ function CustomChannelDialog({
 
   return (
     <div
-      role="dialog"
-      aria-modal="true"
       className="modal-backdrop fixed inset-0 z-[60] flex items-center justify-center bg-black/50 px-4 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
         className="modal-surface flex max-h-[85vh] w-full max-w-lg flex-col rounded-xl border border-zinc-200 bg-white shadow-[var(--shadow-lift)] dark:border-zinc-800 dark:bg-zinc-900"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="px-5 pt-5">
-          <h2 className="text-lg font-semibold">Add custom channel</h2>
+          <h2 id={titleId} className="text-lg font-semibold">
+            Add custom channel
+          </h2>
           <p className="mt-1 text-sm text-zinc-500">
             Define a channel once and it stays on this account, selectable for
             every campaign. Each size you add becomes an upload slot on the
@@ -1192,6 +1423,7 @@ function CustomChannelDialog({
                       </option>
                     ))}
                   </select>
+                  <AspectPreview width={f.width} height={f.height} />
                   <button
                     type="button"
                     aria-label="Remove size"
