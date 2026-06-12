@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { CHANNEL_KEYS } from "@/lib/channels";
+import { isCustomPlatformKey } from "@/lib/customChannels";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { signedMediaUrls } from "@/lib/storage";
 
@@ -11,7 +12,10 @@ export async function GET(request: NextRequest) {
   if (!projectId) {
     return Response.json({ error: "projectId required" }, { status: 400 });
   }
-  if (!platform || !VALID_PLATFORMS.has(platform)) {
+  if (
+    !platform ||
+    (!VALID_PLATFORMS.has(platform) && !isCustomPlatformKey(platform))
+  ) {
     return Response.json({ error: "invalid platform" }, { status: 400 });
   }
 
@@ -19,7 +23,7 @@ export async function GET(request: NextRequest) {
   const { data, error } = await supabase
     .from("media")
     .select(
-      "id, creative_id, version_num, ratio, storage_path, poster_storage_path, original_name, kind, copy, uploaded_at"
+      "id, creative_id, version_num, ratio, storage_path, poster_storage_path, original_name, kind, copy, uploaded_at, width, height"
     )
     .eq("project_id", projectId)
     .eq("platform", platform)
@@ -60,6 +64,8 @@ export async function GET(request: NextRequest) {
       ratio: row.ratio,
       copy: (row.copy as Record<string, unknown> | null) ?? null,
       uploadedAt: new Date(row.uploaded_at).getTime(),
+      width: row.width ?? null,
+      height: row.height ?? null,
     });
   }
 

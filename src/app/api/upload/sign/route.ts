@@ -1,5 +1,7 @@
 import { NextRequest } from "next/server";
 import { CHANNEL_KEYS, isPlatformSlotKey } from "@/lib/channels";
+import { isCustomPlatformKey } from "@/lib/customChannels";
+import { isCustomChannelSlot } from "@/lib/customChannels.server";
 import { isUuid } from "@/lib/ids";
 import type { PlatformKey } from "@/lib/utm";
 import { expectedSignageRatio } from "@/lib/signage";
@@ -56,13 +58,25 @@ export async function POST(request: NextRequest) {
   if (typeof projectId !== "string" || !isUuid(projectId)) {
     return Response.json({ error: "projectId required" }, { status: 400 });
   }
-  if (typeof platform !== "string" || !VALID_PLATFORMS.has(platform)) {
+  const isCustomPlatform =
+    typeof platform === "string" && isCustomPlatformKey(platform);
+  if (
+    typeof platform !== "string" ||
+    (!VALID_PLATFORMS.has(platform) && !isCustomPlatform)
+  ) {
     return Response.json({ error: "invalid platform" }, { status: 400 });
   }
   if (typeof ratio !== "string" || !SLOT_PATTERN.test(ratio)) {
     return Response.json({ error: "invalid slot key" }, { status: 400 });
   }
-  if (
+  if (isCustomPlatform) {
+    if (!(await isCustomChannelSlot(supabase, platform, ratio))) {
+      return Response.json(
+        { error: `ratio '${ratio}' is not a format of this custom channel` },
+        { status: 400 }
+      );
+    }
+  } else if (
     platform !== "signage" &&
     !isPlatformSlotKey(platform as PlatformKey, ratio)
   ) {

@@ -10,8 +10,12 @@
   --border-strong: rgba(0, 0, 0, 0.18);
   --accent: #2563eb;
   --accent-soft: rgba(37, 99, 235, 0.14);
-  --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.06);
-  --shadow-lift: 0 2px 6px rgba(0, 0, 0, 0.06), 0 20px 40px rgba(0, 0, 0, 0.12);
+  --shadow-soft:
+    0 1px 1px rgba(0, 0, 0, 0.03), 0 2px 8px rgba(0, 0, 0, 0.04),
+    0 12px 32px rgba(0, 0, 0, 0.05);
+  --shadow-lift:
+    0 2px 4px rgba(0, 0, 0, 0.05), 0 12px 24px rgba(0, 0, 0, 0.08),
+    0 32px 64px rgba(0, 0, 0, 0.1);
   --shadow-inset: inset 0 0 0 1px rgba(0, 0, 0, 0.05);
   --shadow-segmented:
     0 1px 1px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.08);
@@ -53,8 +57,12 @@
   --border-strong: rgba(255, 255, 255, 0.22);
   --accent: #60a5fa;
   --accent-soft: rgba(96, 165, 250, 0.18);
-  --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.5);
-  --shadow-lift: 0 2px 6px rgba(0, 0, 0, 0.5), 0 20px 40px rgba(0, 0, 0, 0.6);
+  --shadow-soft:
+    0 1px 1px rgba(0, 0, 0, 0.35), 0 2px 8px rgba(0, 0, 0, 0.4),
+    0 12px 32px rgba(0, 0, 0, 0.45);
+  --shadow-lift:
+    0 2px 4px rgba(0, 0, 0, 0.45), 0 12px 24px rgba(0, 0, 0, 0.5),
+    0 32px 64px rgba(0, 0, 0, 0.55);
   --shadow-inset: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
   --shadow-segmented:
     0 1px 1px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.6);
@@ -155,7 +163,22 @@ html {
 }
 
 body {
-  background: var(--background);
+  background-color: var(--background);
+  /* Ambient atmosphere — two soft accent glows that follow the active theme.
+   * Fixed attachment keeps them anchored while content scrolls past. */
+  background-image:
+    radial-gradient(
+      1100px 520px at 85% -120px,
+      var(--accent-soft),
+      transparent 65%
+    ),
+    radial-gradient(
+      900px 600px at -160px 35%,
+      color-mix(in oklab, var(--accent) 5%, transparent),
+      transparent 60%
+    );
+  background-attachment: fixed, fixed;
+  background-repeat: no-repeat;
   color: var(--foreground);
   font-family:
     var(--font-sans),
@@ -767,4 +790,184 @@ body {
     background-color var(--dur-base) var(--ease-apple),
     border-color var(--dur-base) var(--ease-apple),
     box-shadow var(--dur-base) var(--ease-apple);
+}
+
+/* ==========================================================================
+ * World-class polish layer — atmosphere, typography, choreography.
+ * ========================================================================== */
+
+/* Film grain over everything — barely-there texture that kills the "flat
+ * vector" feel. Pointer-events none so it never intercepts input. */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  pointer-events: none;
+  opacity: 0.022;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+}
+[data-color-scheme="dark"] body::after {
+  opacity: 0.05;
+}
+
+/* Page roots paint nothing — the body's ambient gradient shows through. */
+.page-shell {
+  position: relative;
+  background: transparent;
+}
+
+::selection {
+  background: var(--accent-soft);
+}
+
+h1,
+h2,
+h3 {
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+}
+
+/* Gradient ink for page titles — foreground fading toward the theme accent. */
+.ink-gradient {
+  background-image: linear-gradient(
+    115deg,
+    var(--foreground) 0%,
+    var(--foreground) 55%,
+    color-mix(in oklab, var(--foreground) 45%, var(--accent)) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Thin, quiet scrollbars. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 999px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* -------- Entrance choreography -------- */
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.995);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.rise-in {
+  animation: rise-in 520ms var(--ease-apple) both;
+}
+
+/* Stagger direct children — sections and cards arrive in sequence. Delays
+ * cap at the 12th child; later children share the final beat. */
+.stagger > * {
+  animation: rise-in 460ms var(--ease-apple) both;
+}
+.stagger > *:nth-child(1) {
+  animation-delay: 0ms;
+}
+.stagger > *:nth-child(2) {
+  animation-delay: 40ms;
+}
+.stagger > *:nth-child(3) {
+  animation-delay: 80ms;
+}
+.stagger > *:nth-child(4) {
+  animation-delay: 120ms;
+}
+.stagger > *:nth-child(5) {
+  animation-delay: 160ms;
+}
+.stagger > *:nth-child(6) {
+  animation-delay: 200ms;
+}
+.stagger > *:nth-child(7) {
+  animation-delay: 235ms;
+}
+.stagger > *:nth-child(8) {
+  animation-delay: 270ms;
+}
+.stagger > *:nth-child(9) {
+  animation-delay: 300ms;
+}
+.stagger > *:nth-child(10) {
+  animation-delay: 330ms;
+}
+.stagger > *:nth-child(11) {
+  animation-delay: 355ms;
+}
+.stagger > *:nth-child(n + 12) {
+  animation-delay: 380ms;
+}
+
+/* Gentle float for empty-state icons — a slow breathing motion. */
+@keyframes float-gentle {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+.float-gentle {
+  animation: float-gentle 4.5s ease-in-out infinite;
+}
+
+/* -------- Dropzone -------- */
+
+.dropzone {
+  transition:
+    border-color var(--dur-fast) var(--ease-apple),
+    background-color var(--dur-fast) var(--ease-apple),
+    transform var(--dur-base) var(--ease-apple);
+}
+.dropzone[data-drag="true"] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  transform: scale(1.012);
+  animation: drop-pulse 1.3s ease-in-out infinite;
+}
+@keyframes drop-pulse {
+  50% {
+    box-shadow: 0 0 0 6px var(--accent-soft);
+  }
+}
+
+/* -------- Toast entrance -------- */
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-12px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.toast-pop {
+  animation: toast-in 380ms var(--ease-spring) both;
+}
+
+/* Accent hairline on lifted cards — declared after the Tailwind layer so it
+ * wins over per-component hover:border-* utilities. */
+.apple-lift:hover {
+  border-color: color-mix(in oklab, var(--accent) 35%, var(--border-strong));
 }

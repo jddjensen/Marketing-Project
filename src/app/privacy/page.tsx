@@ -11,7 +11,7 @@ const LAST_UPDATED = "May 22, 2026";
 
 export default function PrivacyPolicyPage() {
   return (
-    <div className="min-h-screen bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
+    <div className="page-shell min-h-screen text-zinc-900 dark:text-zinc-100">
       <header className="apple-header sticky top-0 z-40">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-6">
           <Link

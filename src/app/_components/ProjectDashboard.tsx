@@ -8,7 +8,6 @@ import { PerformanceDashboardPanel } from "./PerformanceDashboardPanel";
 import { aspectClassForAsset, formatAssetLabel } from "@/lib/channelAssets";
 import {
   CHANNELS,
-  CHANNEL_BY_KEY,
   CHANNEL_CATEGORY_LABELS,
   CHANNEL_CATEGORY_ORDER,
   CHANNEL_LABELS,
@@ -16,7 +15,11 @@ import {
   type ChannelMeta,
 } from "@/lib/channels";
 import type { CampaignBrief } from "@/lib/campaignBrief";
-import type { PlatformKey } from "@/lib/utm";
+import {
+  CUSTOM_CHANNEL_KIND_LABELS,
+  isCustomPlatformKey,
+  type CustomChannel,
+} from "@/lib/customChannels";
 
 function aspectClass(ratio: string): string {
   return aspectClassForAsset(ratio);
@@ -26,7 +29,7 @@ type MediaItem = {
   id: string;
   creativeId: string;
   versionNum: number;
-  platform: PlatformKey;
+  platform: string;
   ratio: string;
   url: string | null;
   posterUrl: string | null;
@@ -43,10 +46,11 @@ export function ProjectDashboard({
   projectId: string;
   initialCampaignBrief: CampaignBrief;
 }) {
-  const [enabled, setEnabled] = useState<PlatformKey[] | null>(null);
+  const [enabled, setEnabled] = useState<string[] | null>(null);
+  const [customChannels, setCustomChannels] = useState<CustomChannel[]>([]);
   const [media, setMedia] = useState<MediaItem[] | null>(null);
   const [adding, setAdding] = useState(false);
-  const [menuKey, setMenuKey] = useState<PlatformKey | null>(null);
+  const [menuKey, setMenuKey] = useState<string | null>(null);
   const [groupBy, setGroupBy] = useState<"platform" | "ratio">("platform");
 
   const fetchPlatforms = useCallback(async () => {
@@ -54,7 +58,7 @@ export function ProjectDashboard({
       cache: "no-store",
     });
     const body = (await res.json()) as {
-      platforms?: Array<{ platform: PlatformKey; addedAt: number }>;
+      platforms?: Array<{ platform: string; addedAt: number }>;
     };
     setEnabled((body.platforms ?? []).map((p) => p.platform));
   }, [projectId]);
@@ -67,10 +71,19 @@ export function ProjectDashboard({
         cache: "no-store",
       });
       const body = (await res.json()) as {
-        platforms?: Array<{ platform: PlatformKey; addedAt: number }>;
+        platforms?: Array<{ platform: string; addedAt: number }>;
       };
       if (!active) return;
       setEnabled((body.platforms ?? []).map((p) => p.platform));
+    }
+
+    async function loadCustomChannels() {
+      const res = await fetch("/api/channels/custom", { cache: "no-store" });
+      const body = (await res.json().catch(() => null)) as {
+        channels?: CustomChannel[];
+      } | null;
+      if (!active) return;
+      setCustomChannels(body?.channels ?? []);
     }
 
     async function loadMedia() {
@@ -84,6 +97,7 @@ export function ProjectDashboard({
 
     void loadPlatforms();
     void loadMedia();
+    void loadCustomChannels();
 
     return () => {
       active = false;
@@ -91,7 +105,7 @@ export function ProjectDashboard({
   }, [projectId]);
 
   const addPlatform = useCallback(
-    async (key: PlatformKey) => {
+    async (key: string) => {
       await fetch(`/api/projects/${projectId}/platforms`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -104,7 +118,7 @@ export function ProjectDashboard({
   );
 
   const removePlatform = useCallback(
-    async (key: PlatformKey) => {
+    async (key: string) => {
       await fetch(
         `/api/projects/${projectId}/platforms?platform=${encodeURIComponent(key)}`,
         { method: "DELETE" }
@@ -120,14 +134,31 @@ export function ProjectDashboard({
     return CHANNELS.filter((p) => set.has(p.key));
   }, [enabled]);
 
+  const enabledCustom = useMemo(() => {
+    if (!enabled) return [];
+    const set = new Set(enabled);
+    return customChannels.filter((c) => set.has(c.key));
+  }, [enabled, customChannels]);
+
   const availableToAdd = useMemo(() => {
     if (!enabled) return [];
     const set = new Set(enabled);
     return CHANNELS.filter((p) => !set.has(p.key));
   }, [enabled]);
 
+  const availableCustom = useMemo(() => {
+    if (!enabled) return [];
+    const set = new Set(enabled);
+    return customChannels.filter((c) => !set.has(c.key));
+  }, [enabled, customChannels]);
+
+  const customLabels = useMemo(
+    () => new Map(customChannels.map((c) => [c.key, c.name])),
+    [customChannels]
+  );
+
   return (
-    <main className="mx-auto max-w-7xl space-y-10 px-6 py-10">
+    <main className="stagger mx-auto max-w-7xl space-y-10 px-6 py-10">
       <CampaignBriefPanel
         projectId={projectId}
         initialBrief={initialCampaignBrief}
@@ -139,35 +170,53 @@ export function ProjectDashboard({
           <h2 className="text-sm font-medium tracking-wide text-zinc-500 uppercase">
             Channels
           </h2>
-          {availableToAdd.length > 0 && enabledMeta.length > 0 && (
-            <button
-              type="button"
-              onClick={() => setAdding(true)}
-              className="rounded-md border border-zinc-200 px-2 py-1 text-xs text-zinc-500 hover:text-zinc-900 dark:border-zinc-800 dark:hover:text-zinc-100"
-            >
-              + Add channel
-            </button>
-          )}
+          {(availableToAdd.length > 0 || availableCustom.length > 0) &&
+            (enabledMeta.length > 0 || enabledCustom.length > 0) && (
+              <button
+                type="button"
+                onClick={() => setAdding(true)}
+                className="rounded-md border border-zinc-200 px-2 py-1 text-xs text-zinc-500 hover:text-zinc-900 dark:border-zinc-800 dark:hover:text-zinc-100"
+              >
+                + Add channel
+              </button>
+            )}
         </div>
 
         {enabled === null ? (
           <div className="text-sm text-zinc-500">Loading…</div>
-        ) : enabledMeta.length === 0 ? (
+        ) : enabledMeta.length === 0 && enabledCustom.length === 0 ? (
           <EmptyPlatforms onAdd={() => setAdding(true)} />
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {enabledMeta.map((p) => (
               <PlatformCard
                 key={p.key}
-                platform={p}
-                projectId={projectId}
+                name={p.name}
+                desc={p.desc}
+                href={`/projects/${projectId}/${p.key}`}
                 menuOpen={menuKey === p.key}
                 onOpenMenu={() => setMenuKey(menuKey === p.key ? null : p.key)}
                 onCloseMenu={() => setMenuKey(null)}
                 onRemove={() => removePlatform(p.key)}
               />
             ))}
-            {availableToAdd.length > 0 && (
+            {enabledCustom.map((c) => (
+              <PlatformCard
+                key={c.key}
+                name={c.name}
+                desc={
+                  c.description ??
+                  `Custom ${CUSTOM_CHANNEL_KIND_LABELS[c.kind].toLowerCase()} channel`
+                }
+                badge={CUSTOM_CHANNEL_KIND_LABELS[c.kind]}
+                href={`/projects/${projectId}/channels/${c.id}`}
+                menuOpen={menuKey === c.key}
+                onOpenMenu={() => setMenuKey(menuKey === c.key ? null : c.key)}
+                onCloseMenu={() => setMenuKey(null)}
+                onRemove={() => removePlatform(c.key)}
+              />
+            ))}
+            {(availableToAdd.length > 0 || availableCustom.length > 0) && (
               <button
                 type="button"
                 onClick={() => setAdding(true)}
@@ -185,6 +234,7 @@ export function ProjectDashboard({
         projectId={projectId}
         media={media}
         enabled={enabled ?? []}
+        customLabels={customLabels}
         groupBy={groupBy}
         onGroupByChange={setGroupBy}
       />
@@ -194,6 +244,7 @@ export function ProjectDashboard({
       {adding && (
         <AddPlatformDialog
           options={availableToAdd}
+          customOptions={availableCustom}
           onClose={() => setAdding(false)}
           onAdd={addPlatform}
         />
@@ -203,15 +254,19 @@ export function ProjectDashboard({
 }
 
 function PlatformCard({
-  platform,
-  projectId,
+  name,
+  desc,
+  badge,
+  href,
   menuOpen,
   onOpenMenu,
   onCloseMenu,
   onRemove,
 }: {
-  platform: ChannelMeta;
-  projectId: string;
+  name: string;
+  desc: string;
+  badge?: string;
+  href: string;
   menuOpen: boolean;
   onOpenMenu: () => void;
   onCloseMenu: () => void;
@@ -227,12 +282,19 @@ function PlatformCard({
   return (
     <div className="group relative">
       <Link
-        href={`/projects/${projectId}/${platform.key}`}
+        href={href}
         transitionTypes={["nav-forward"]}
         className="apple-lift block rounded-xl border border-zinc-200 bg-white p-5 shadow-[var(--shadow-soft)] hover:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-600"
       >
-        <div className="font-semibold">{platform.name}</div>
-        <div className="mt-1 text-sm text-zinc-500">{platform.desc}</div>
+        <div className="flex items-center gap-2">
+          <span className="font-semibold">{name}</span>
+          {badge && (
+            <span className="rounded-full border border-zinc-200 px-1.5 py-0.5 text-[10px] text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
+              {badge}
+            </span>
+          )}
+        </div>
+        <div className="mt-1 text-sm text-zinc-500">{desc}</div>
       </Link>
       <button
         type="button"
@@ -291,12 +353,14 @@ function EmptyPlatforms({ onAdd }: { onAdd: () => void }) {
 
 function AddPlatformDialog({
   options,
+  customOptions,
   onClose,
   onAdd,
 }: {
   options: ChannelMeta[];
+  customOptions: CustomChannel[];
   onClose: () => void;
-  onAdd: (key: PlatformKey) => void;
+  onAdd: (key: string) => void;
 }) {
   return (
     <div
@@ -346,6 +410,38 @@ function AddPlatformDialog({
               </div>
             );
           })}
+          {customOptions.length > 0 && (
+            <div>
+              <div className="mb-1.5 text-[11px] font-semibold tracking-wide text-zinc-400 uppercase">
+                Your Custom Channels
+              </div>
+              <div className="space-y-2">
+                {customOptions.map((c) => (
+                  <button
+                    key={c.key}
+                    type="button"
+                    onClick={() => onAdd(c.key)}
+                    className="flex w-full items-start gap-3 rounded-lg border border-zinc-200 p-3 text-left hover:border-zinc-400 dark:border-zinc-800 dark:hover:border-zinc-600"
+                  >
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">{c.name}</span>
+                        <span className="rounded-full border border-zinc-200 px-1.5 py-0.5 text-[10px] text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
+                          {CUSTOM_CHANNEL_KIND_LABELS[c.kind]}
+                        </span>
+                      </div>
+                      {c.description && (
+                        <div className="mt-0.5 text-xs text-zinc-500">
+                          {c.description}
+                        </div>
+                      )}
+                    </div>
+                    <span className="text-xs text-zinc-400">Add</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
         <div className="flex shrink-0 items-center justify-end border-t border-zinc-200 px-5 py-3 dark:border-zinc-800">
           <button
@@ -365,12 +461,14 @@ function CampaignMedia({
   projectId,
   media,
   enabled,
+  customLabels,
   groupBy,
   onGroupByChange,
 }: {
   projectId: string;
   media: MediaItem[] | null;
-  enabled: PlatformKey[];
+  enabled: string[];
+  customLabels: Map<string, string>;
   groupBy: "platform" | "ratio";
   onGroupByChange: (v: "platform" | "ratio") => void;
 }) {
@@ -386,16 +484,26 @@ function CampaignMedia({
       map.set(key, arr);
     }
     if (groupBy === "platform") {
-      return CHANNEL_ORDER.filter((k) => map.has(k)).map((k) => ({
-        key: k,
+      const builtIn = CHANNEL_ORDER.filter((k) => map.has(k)).map((k) => ({
+        key: k as string,
         label: CHANNEL_LABELS[k],
         items: map.get(k)!,
       }));
+      const builtInSet = new Set<string>(CHANNEL_ORDER);
+      const custom = Array.from(map.keys())
+        .filter((k) => !builtInSet.has(k))
+        .sort()
+        .map((k) => ({
+          key: k,
+          label: customLabels.get(k) ?? "Custom channel",
+          items: map.get(k)!,
+        }));
+      return [...builtIn, ...custom];
     }
     return Array.from(map.entries())
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([k, items]) => ({ key: k, label: formatAssetLabel(k), items }));
-  }, [media, enabled, groupBy]);
+  }, [media, enabled, customLabels, groupBy]);
 
   const totalVisible = groups.reduce((sum, g) => sum + g.items.length, 0);
 
@@ -483,9 +591,8 @@ function CreativeTile({
 }) {
   const aspect = aspectClass(item.ratio);
   const channelLabel =
-    CHANNEL_LABELS[item.platform] ??
-    CHANNEL_BY_KEY[item.platform]?.name ??
-    item.platform;
+    (CHANNEL_LABELS as Partial<Record<string, string>>)[item.platform] ??
+    (isCustomPlatformKey(item.platform) ? "Custom channel" : item.platform);
   const secondary =
     groupBy === "platform" ? formatAssetLabel(item.ratio) : channelLabel;
   return (

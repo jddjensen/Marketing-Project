@@ -4,7 +4,7 @@ export default function RootLoading() {
       role="status"
       aria-live="polite"
       aria-busy="true"
-      className="flex min-h-screen items-center justify-center bg-zinc-50 text-zinc-500 dark:bg-zinc-950 dark:text-zinc-400"
+      className="page-shell flex min-h-screen items-center justify-center text-zinc-500 dark:text-zinc-400"
     >
       <span className="sr-only">Loading</span>
       <span

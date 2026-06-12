@@ -1,15 +1,24 @@
 // Extracts a single JPEG frame from the front of a video file in the browser
-// so we can show it as a poster image on dashboards. Returns null if the
-// browser can't decode the file (e.g. unsupported codec).
+// so we can show it as a poster image on dashboards, along with the video's
+// intrinsic dimensions. Poster is null if the browser can't decode the file
+// (e.g. unsupported codec).
 
 const TARGET_TIME_SECONDS = 0.5;
 const JPEG_QUALITY = 0.85;
 // Cap the long edge of the poster — we don't need full-resolution thumbnails.
 const MAX_DIMENSION = 1280;
 
-export async function extractVideoPoster(file: File): Promise<Blob | null> {
-  if (typeof window === "undefined") return null;
-  if (!file.type.startsWith("video/")) return null;
+export type VideoMeta = {
+  poster: Blob | null;
+  width: number | null;
+  height: number | null;
+};
+
+const EMPTY_META: VideoMeta = { poster: null, width: null, height: null };
+
+export async function extractVideoPoster(file: File): Promise<VideoMeta> {
+  if (typeof window === "undefined") return EMPTY_META;
+  if (!file.type.startsWith("video/")) return EMPTY_META;
 
   const objectUrl = URL.createObjectURL(file);
   const video = document.createElement("video");
@@ -42,7 +51,7 @@ export async function extractVideoPoster(file: File): Promise<Blob | null> {
 
     const sourceWidth = video.videoWidth;
     const sourceHeight = video.videoHeight;
-    if (!sourceWidth || !sourceHeight) return null;
+    if (!sourceWidth || !sourceHeight) return EMPTY_META;
 
     const scale = Math.min(
       1,
@@ -55,14 +64,15 @@ export async function extractVideoPoster(file: File): Promise<Blob | null> {
     canvas.width = width;
     canvas.height = height;
     const ctx = canvas.getContext("2d");
-    if (!ctx) return null;
+    if (!ctx) return { poster: null, width: sourceWidth, height: sourceHeight };
     ctx.drawImage(video, 0, 0, width, height);
 
-    return await new Promise<Blob | null>((resolve) => {
+    const poster = await new Promise<Blob | null>((resolve) => {
       canvas.toBlob((blob) => resolve(blob), "image/jpeg", JPEG_QUALITY);
     });
+    return { poster, width: sourceWidth, height: sourceHeight };
   } catch {
-    return null;
+    return EMPTY_META;
   } finally {
     URL.revokeObjectURL(objectUrl);
     video.removeAttribute("src");

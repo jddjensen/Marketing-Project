@@ -1,5 +1,9 @@
 import { NextRequest } from "next/server";
 import { CHANNEL_KEYS } from "@/lib/channels";
+import {
+  customChannelIdFromKey,
+  isCustomPlatformKey,
+} from "@/lib/customChannels";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 type ProjectRow = {
@@ -47,7 +51,6 @@ export async function GET(request: NextRequest) {
 }
 
 const VALID_PLATFORMS = CHANNEL_KEYS;
-type ValidPlatform = (typeof VALID_PLATFORMS)[number];
 
 export async function POST(request: NextRequest) {
   const body = (await request.json().catch(() => null)) as {
@@ -82,17 +85,46 @@ export async function POST(request: NextRequest) {
   const description = descriptionRaw;
 
   const validSet = new Set<string>(VALID_PLATFORMS);
-  let platforms: ValidPlatform[];
+  let platforms: string[];
+  let customCandidates: string[] = [];
   if (Array.isArray(body.platforms)) {
     const filtered = body.platforms.filter(
-      (p): p is ValidPlatform => typeof p === "string" && validSet.has(p)
+      (p): p is string => typeof p === "string" && validSet.has(p)
     );
     platforms = Array.from(new Set(filtered));
+    customCandidates = Array.from(
+      new Set(
+        body.platforms.filter(
+          (p): p is string => typeof p === "string" && isCustomPlatformKey(p)
+        )
+      )
+    );
   } else {
     platforms = [...VALID_PLATFORMS];
   }
 
   const supabase = await createSupabaseServerClient();
+
+  // Custom channel keys are only accepted when the referenced channel exists.
+  if (customCandidates.length > 0) {
+    const ids = customCandidates.map((key) => customChannelIdFromKey(key)!);
+    const { data: existing, error: customError } = await supabase
+      .from("custom_channels")
+      .select("id")
+      .in("id", ids);
+    if (customError) {
+      return Response.json(
+        { error: "failed to validate custom channels" },
+        { status: 500 }
+      );
+    }
+    const existingIds = new Set((existing ?? []).map((row) => row.id));
+    platforms = platforms.concat(
+      customCandidates.filter((key) =>
+        existingIds.has(customChannelIdFromKey(key)!)
+      )
+    );
+  }
   const {
     data: { user },
   } = await supabase.auth.getUser();

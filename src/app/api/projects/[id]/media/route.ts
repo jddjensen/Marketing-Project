@@ -14,7 +14,7 @@ export async function GET(
   const { data, error } = await supabase
     .from("media")
     .select(
-      "id, creative_id, version_num, platform, ratio, storage_path, poster_storage_path, original_name, kind, copy, uploaded_at"
+      "id, creative_id, version_num, platform, ratio, storage_path, poster_storage_path, original_name, kind, copy, uploaded_at, width, height"
     )
     .eq("project_id", id)
     .eq("is_current", true)
@@ -51,6 +51,8 @@ export async function GET(
         kind: row.kind,
         copy: (row.copy as Record<string, unknown> | null) ?? null,
         uploadedAt: new Date(row.uploaded_at).getTime(),
+        width: row.width ?? null,
+        height: row.height ?? null,
       };
     })
     .filter((row): row is NonNullable<typeof row> => row !== null);

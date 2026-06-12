@@ -15,6 +15,7 @@ import { TextCreativeDialog } from "./TextCreativeDialog";
 import { ProjectChannelNav } from "./ProjectChannelNav";
 import { uploadWithProgress } from "@/lib/uploadWithProgress";
 import { uploadVideoDirect } from "@/lib/directUpload";
+import { checkSlotFit, slotTargetText } from "@/lib/slotFit";
 import { extractVideoPoster } from "@/lib/videoThumbnail";
 import { platformSupportsTextOnly } from "@/lib/platformCopy";
 import {
@@ -31,9 +32,16 @@ type RatioConfig = {
   aspect: string;
   hint: string;
   recommended?: boolean;
+  // Numeric width/height ratio for runtime-defined slots (custom channels),
+  // where a build-time Tailwind aspect-[...] class can't exist.
+  ratio?: number;
+  // Recommended export size, shown in the dropzone and checked after upload.
+  size?: { width: number; height: number; unit?: string };
 };
 
 type MediaItem = {
+  width?: number | null;
+  height?: number | null;
   id: string;
   creativeId: string;
   versionNum: number;
@@ -210,10 +218,12 @@ export function PlatformMediaBoard({
         if (isVideo) {
           // Direct-to-storage flow — bypasses the Next.js function so files
           // up to 2 GB go straight from browser to Supabase Storage.
-          const poster = await extractVideoPoster(file);
+          const videoMeta = await extractVideoPoster(file);
           await uploadVideoDirect({
             file,
-            poster,
+            poster: videoMeta.poster,
+            width: videoMeta.width,
+            height: videoMeta.height,
             projectId,
             platform: platform as PlatformKey,
             ratio,
@@ -308,7 +318,7 @@ export function PlatformMediaBoard({
   );
 
   return (
-    <div className="min-h-screen bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
+    <div className="page-shell min-h-screen text-zinc-900 dark:text-zinc-100">
       <header className="apple-header sticky top-0 z-40">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
           <div>
@@ -319,7 +329,9 @@ export function PlatformMediaBoard({
             >
               ← {projectName}
             </Link>
-            <h1 className="mt-1 text-2xl font-semibold">{title}</h1>
+            <h1 className="ink-gradient mt-1 text-2xl font-semibold">
+              {title}
+            </h1>
             <p className="mt-1 text-sm text-zinc-500">{subtitle}</p>
           </div>
           <div className="flex items-center gap-3">
@@ -356,7 +368,7 @@ export function PlatformMediaBoard({
       )}
 
       <main className="mx-auto max-w-7xl space-y-6 px-6 py-8">
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="stagger grid grid-cols-1 gap-6 lg:grid-cols-3">
           {ratios.map((r) => (
             <RatioColumn
               key={r.key}
@@ -497,11 +509,8 @@ function RatioColumn({
       </div>
 
       <div
-        className={`m-4 rounded-lg border-2 border-dashed transition-colors ${
-          dragOver
-            ? "border-blue-500 bg-blue-50 dark:bg-blue-950/30"
-            : "border-zinc-300 dark:border-zinc-700"
-        }`}
+        data-drag={dragOver ? "true" : "false"}
+        className="dropzone m-4 rounded-lg border-2 border-dashed border-zinc-300 dark:border-zinc-700"
         onDragOver={(e) => {
           e.preventDefault();
           setDragOver(true);
@@ -517,9 +526,16 @@ function RatioColumn({
           type="button"
           onClick={() => inputRef.current?.click()}
           disabled={uploading}
-          className="w-full py-5 text-sm text-zinc-600 hover:text-zinc-900 disabled:opacity-60 dark:text-zinc-300 dark:hover:text-zinc-100"
+          className="w-full py-4 text-sm text-zinc-600 hover:text-zinc-900 disabled:opacity-60 dark:text-zinc-300 dark:hover:text-zinc-100"
         >
-          {uploading ? "Uploading…" : "Drop file or click to upload"}
+          <span className="block">
+            {uploading ? "Uploading…" : "Drop file or click to upload"}
+          </span>
+          {slotTargetText(config) && (
+            <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-zinc-500 tabular-nums dark:bg-zinc-800 dark:text-zinc-400">
+              Target {slotTargetText(config)}
+            </span>
+          )}
         </button>
         <input
           ref={inputRef}
@@ -551,7 +567,12 @@ function RatioColumn({
           <div className="space-y-3" aria-busy="true">
             {Array.from({ length: 2 }).map((_, i) => (
               <div key={i} className="space-y-2">
-                <div className={`skeleton ${config.aspect} w-full`} />
+                <div
+                  className={`skeleton ${config.aspect} w-full`}
+                  style={
+                    config.ratio ? { aspectRatio: config.ratio } : undefined
+                  }
+                />
                 <div className="skeleton h-3 w-1/2" />
               </div>
             ))}
@@ -565,7 +586,9 @@ function RatioColumn({
             <MediaTile
               key={item.id}
               item={item}
+              slot={config}
               aspect={config.aspect}
+              aspectRatio={config.ratio}
               trackingEnabled={trackingEnabled}
               tracking={tracking[item.creativeId]}
               landingPages={landingPages}
@@ -594,7 +617,9 @@ function RatioColumn({
 
 function MediaTile({
   item,
+  slot,
   aspect,
+  aspectRatio,
   trackingEnabled,
   tracking,
   landingPages,
@@ -607,7 +632,9 @@ function MediaTile({
   onMutated,
 }: {
   item: MediaItem;
+  slot: RatioConfig;
   aspect: string;
+  aspectRatio?: number;
   trackingEnabled: boolean;
   tracking: TrackingItem | undefined;
   landingPages: LandingPage[] | null;
@@ -626,6 +653,7 @@ function MediaTile({
     <figure className="group flex flex-col gap-2">
       <div
         className={`${aspect} relative w-full overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800`}
+        style={aspectRatio ? { aspectRatio } : undefined}
       >
         {item.kind === "image" && item.url ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -669,6 +697,8 @@ function MediaTile({
       >
         {item.name ?? "Text-only creative"}
       </figcaption>
+
+      {item.kind !== "text" && <FitBadge slot={slot} item={item} />}
 
       <div className="flex items-center gap-2 text-[11px]">
         {item.kind !== "text" && (
@@ -957,6 +987,41 @@ function TrackingControls({
           Remove
         </button>
       </div>
+    </div>
+  );
+}
+
+function FitBadge({ slot, item }: { slot: RatioConfig; item: MediaItem }) {
+  const width = item.width ?? null;
+  const height = item.height ?? null;
+  if (!width || !height) return null;
+  const fit = checkSlotFit(slot, width, height);
+  return (
+    <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+      <span className="text-zinc-400 tabular-nums dark:text-zinc-500">
+        {width} × {height}
+      </span>
+      {fit.state === "match" && (
+        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-1.5 py-0.5 font-medium text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+          ✓ Fits {slot.label}
+        </span>
+      )}
+      {fit.state === "ratio-mismatch" && (
+        <span
+          className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-1.5 py-0.5 font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+          title={`This file's shape doesn't match the ${fit.expected} slot — it may be cropped or letterboxed when published.`}
+        >
+          ⚠ Doesn&apos;t match {fit.expected}
+        </span>
+      )}
+      {fit.state === "undersized" && (
+        <span
+          className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-1.5 py-0.5 font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+          title={`Below the recommended export size of ${fit.expected} — it may look soft when published.`}
+        >
+          ⚠ Below {fit.expected}
+        </span>
+      )}
     </div>
   );
 }

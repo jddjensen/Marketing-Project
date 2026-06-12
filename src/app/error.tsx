@@ -17,7 +17,7 @@ export default function RootError({
   }, [error]);
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-zinc-50 px-6 py-16 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
+    <main className="page-shell flex min-h-screen items-center justify-center px-6 py-16 text-zinc-900 dark:text-zinc-100">
       <div className="w-full max-w-md text-center">
         <p className="text-xs font-medium tracking-widest text-zinc-400 uppercase">
           Something went wrong

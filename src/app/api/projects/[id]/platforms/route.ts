@@ -1,5 +1,9 @@
 import { NextRequest } from "next/server";
 import { CHANNEL_KEYS } from "@/lib/channels";
+import {
+  customChannelIdFromKey,
+  isCustomPlatformKey,
+} from "@/lib/customChannels";
 import { isUuid } from "@/lib/ids";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -44,12 +48,28 @@ export async function POST(
   if (
     !body ||
     typeof body.platform !== "string" ||
-    !VALID_PLATFORMS.has(body.platform)
+    (!VALID_PLATFORMS.has(body.platform) && !isCustomPlatformKey(body.platform))
   ) {
     return Response.json({ error: "invalid platform" }, { status: 400 });
   }
 
   const supabase = await createSupabaseServerClient();
+
+  if (isCustomPlatformKey(body.platform)) {
+    const { data: channel, error: customError } = await supabase
+      .from("custom_channels")
+      .select("id")
+      .eq("id", customChannelIdFromKey(body.platform)!)
+      .maybeSingle();
+    if (customError)
+      return Response.json(
+        { error: "failed to validate custom channel" },
+        { status: 500 }
+      );
+    if (!channel)
+      return Response.json({ error: "invalid platform" }, { status: 400 });
+  }
+
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -72,7 +92,10 @@ export async function DELETE(
   if (!isUuid(id))
     return Response.json({ error: "not found" }, { status: 404 });
   const platform = request.nextUrl.searchParams.get("platform");
-  if (!platform || !VALID_PLATFORMS.has(platform)) {
+  if (
+    !platform ||
+    (!VALID_PLATFORMS.has(platform) && !isCustomPlatformKey(platform))
+  ) {
     return Response.json({ error: "invalid platform" }, { status: 400 });
   }
 

@@ -124,14 +124,14 @@ export function AuthForm({ mode }: { mode: Mode }) {
   // Demo bypass: hide the form entirely while the auto-login is running.
   if (demoBypass && !error) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-50 px-6 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
+      <div className="page-shell flex min-h-screen items-center justify-center px-6 text-zinc-900 dark:text-zinc-100">
         <div className="text-sm text-zinc-500">Signing you in…</div>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 px-6 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
+    <div className="page-shell flex min-h-screen items-center justify-center px-6 text-zinc-900 dark:text-zinc-100">
       {toast && (
         <Toast tone="error" message={toast} onDismiss={() => setToast(null)} />
       )}
@@ -223,7 +223,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
 
 function ConfirmEmailSent({ email }: { email: string }) {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 px-6 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
+    <div className="page-shell flex min-h-screen items-center justify-center px-6 text-zinc-900 dark:text-zinc-100">
       <div className="w-full max-w-md">
         <div className="modal-surface rounded-xl border border-zinc-200 bg-white p-8 text-center shadow-[var(--shadow-soft)] dark:border-zinc-800 dark:bg-zinc-900">
           <div

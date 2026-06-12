@@ -26,7 +26,7 @@ export function Toast({
   return (
     <div
       role={tone === "error" ? "alert" : "status"}
-      className={`fixed top-4 right-4 z-50 flex max-w-sm items-start gap-3 rounded-lg border px-4 py-3 text-sm shadow-[var(--shadow-lift)] ${TONE_CLASSES[tone]} ${className}`}
+      className={`toast-pop fixed top-4 right-4 z-50 flex max-w-sm items-start gap-3 rounded-lg border px-4 py-3 text-sm shadow-[var(--shadow-lift)] ${TONE_CLASSES[tone]} ${className}`}
     >
       <div className="min-w-0 flex-1">{message}</div>
       {onDismiss && (

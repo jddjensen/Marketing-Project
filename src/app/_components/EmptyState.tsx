@@ -37,7 +37,7 @@ export function EmptyState({
     >
       {icon && (
         <div
-          className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-(--accent-soft) text-(--accent)"
+          className="float-gentle mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-(--accent-soft) text-(--accent)"
           aria-hidden="true"
         >
           {icon}

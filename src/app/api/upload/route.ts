@@ -2,6 +2,8 @@ import { NextRequest } from "next/server";
 import { fileTypeFromBuffer } from "file-type";
 import sharp from "sharp";
 import { CHANNEL_KEYS, isPlatformSlotKey } from "@/lib/channels";
+import { isCustomPlatformKey } from "@/lib/customChannels";
+import { isCustomChannelSlot } from "@/lib/customChannels.server";
 import { isUuid } from "@/lib/ids";
 import type { PlatformKey } from "@/lib/utm";
 import { validateCopy } from "@/lib/platformCopy";
@@ -72,16 +74,29 @@ export async function POST(request: NextRequest) {
   if (typeof projectId !== "string" || !isUuid(projectId)) {
     return Response.json({ error: "projectId required" }, { status: 400 });
   }
-  if (typeof platform !== "string" || !VALID_PLATFORMS.has(platform)) {
+  const isCustomPlatform =
+    typeof platform === "string" && isCustomPlatformKey(platform);
+  if (
+    typeof platform !== "string" ||
+    (!VALID_PLATFORMS.has(platform) && !isCustomPlatform)
+  ) {
     return Response.json({ error: "invalid platform" }, { status: 400 });
   }
   if (typeof ratio !== "string" || !SLOT_PATTERN.test(ratio)) {
     return Response.json({ error: "invalid slot key" }, { status: 400 });
   }
   // Signage ratios are validated below against the resolved format dimensions;
-  // every other channel must hit one of its declared slots so we can't end up
-  // with media filed under a ratio no UI renders.
-  if (
+  // custom channel slots are the channel's dimension formats (validated by
+  // uuid); every other channel must hit one of its declared slots so we can't
+  // end up with media filed under a ratio no UI renders.
+  if (isCustomPlatform) {
+    if (!(await isCustomChannelSlot(supabase, platform, ratio))) {
+      return Response.json(
+        { error: `ratio '${ratio}' is not a format of this custom channel` },
+        { status: 400 }
+      );
+    }
+  } else if (
     platform !== "signage" &&
     !isPlatformSlotKey(platform as PlatformKey, ratio)
   ) {
@@ -254,24 +269,45 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Re-encode supported images to strip EXIF/metadata and normalize orientation.
+  // Re-encode supported images to strip EXIF/metadata and normalize
+  // orientation, capturing post-rotation dimensions for the slot-fit UI.
+  let mediaWidth: number | null = null;
+  let mediaHeight: number | null = null;
   if (processedBytes && REENCODE_MIME.has(file.type)) {
     try {
       const pipeline = sharp(processedBytes, { failOn: "error" }).rotate();
+      let result: { data: Buffer; info: sharp.OutputInfo };
       if (file.type === "image/jpeg") {
-        processedBytes = await pipeline
+        result = await pipeline
           .jpeg({ quality: 90, mozjpeg: true })
-          .toBuffer();
+          .toBuffer({ resolveWithObject: true });
       } else if (file.type === "image/png") {
-        processedBytes = await pipeline.png({ compressionLevel: 9 }).toBuffer();
-      } else if (file.type === "image/webp") {
-        processedBytes = await pipeline.webp({ quality: 90 }).toBuffer();
+        result = await pipeline
+          .png({ compressionLevel: 9 })
+          .toBuffer({ resolveWithObject: true });
+      } else {
+        result = await pipeline
+          .webp({ quality: 90 })
+          .toBuffer({ resolveWithObject: true });
       }
+      processedBytes = result.data;
+      mediaWidth = result.info.width ?? null;
+      mediaHeight = result.info.height ?? null;
     } catch {
       return Response.json(
         { error: "image could not be processed" },
         { status: 400 }
       );
+    }
+  } else if (processedBytes && claimed.kind === "image") {
+    // GIFs skip re-encoding (to preserve animation) but we can still read
+    // their dimensions from the header.
+    try {
+      const meta = await sharp(processedBytes).metadata();
+      mediaWidth = meta.width ?? null;
+      mediaHeight = meta.height ?? null;
+    } catch {
+      // Dimensions stay unknown; upload proceeds.
     }
   }
 
@@ -327,6 +363,8 @@ export async function POST(request: NextRequest) {
     copy,
     version_num: versionNum,
     is_current: true,
+    width: mediaWidth,
+    height: mediaHeight,
   };
   if (creativeId) insertRow.creative_id = creativeId;
 

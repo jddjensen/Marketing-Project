@@ -5,12 +5,23 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   CHANNELS,
+  CHANNEL_CATEGORY_DESCRIPTIONS,
   CHANNEL_CATEGORY_LABELS,
   CHANNEL_CATEGORY_ORDER,
   NON_PHYSICAL_CHANNEL_KEYS,
   PHYSICAL_CHANNEL_KEYS,
+  type ChannelMeta,
 } from "@/lib/channels";
 import { apiErrorMessage } from "@/lib/api";
+import {
+  CUSTOM_CHANNEL_KINDS,
+  CUSTOM_CHANNEL_KIND_LABELS,
+  CUSTOM_FORMAT_UNITS,
+  formatDimensionLabel,
+  type CustomChannel,
+  type CustomChannelKind,
+  type CustomFormatUnit,
+} from "@/lib/customChannels";
 import type { PlatformKey } from "@/lib/utm";
 import { EmptyState as SharedEmptyState } from "./EmptyState";
 import { ErrorMessage } from "./ErrorMessage";
@@ -31,8 +42,9 @@ const DIGITAL_KEYS: PlatformKey[] = [...NON_PHYSICAL_CHANNEL_KEYS];
 const PHYSICAL_KEYS: PlatformKey[] = [...PHYSICAL_CHANNEL_KEYS];
 
 type PresetKey = "all" | "digital" | "physical" | "custom";
+type CategoryKey = (typeof CHANNEL_CATEGORY_ORDER)[number];
 
-function detectPreset(selected: Set<PlatformKey>): PresetKey {
+function detectPreset(selected: Set<string>): PresetKey {
   const sameSet = (keys: PlatformKey[]) =>
     keys.length === selected.size && keys.every((k) => selected.has(k));
   if (sameSet(ALL_KEYS)) return "all";
@@ -123,7 +135,7 @@ export function ProjectsGrid() {
     async (input: {
       name: string;
       description: string | null;
-      platforms: PlatformKey[];
+      platforms: string[];
     }) => {
       setBusy(true);
       setError(null);
@@ -260,7 +272,7 @@ export function ProjectsGrid() {
         <ProjectsEmptyState onCreate={() => setCreating(true)} />
       ) : (
         <>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="stagger grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {active.map((p) => (
               <ProjectCard
                 key={p.id}
@@ -432,14 +444,83 @@ function CreateDialog({
   onSubmit: (input: {
     name: string;
     description: string | null;
-    platforms: PlatformKey[];
+    platforms: string[];
   }) => void;
 }) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [selected, setSelected] = useState<Set<PlatformKey>>(() => new Set());
+  const [selected, setSelected] = useState<Set<string>>(() => new Set());
+  const [query, setQuery] = useState("");
+  const [collapsed, setCollapsed] = useState<Set<CategoryKey>>(() => new Set());
+  const [customChannels, setCustomChannels] = useState<CustomChannel[] | null>(
+    null
+  );
+  const [customCollapsed, setCustomCollapsed] = useState(false);
+  const [customDialogOpen, setCustomDialogOpen] = useState(false);
+  const [customError, setCustomError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      const res = await fetch("/api/channels/custom", { cache: "no-store" });
+      const body = (await res.json().catch(() => null)) as {
+        channels?: CustomChannel[];
+      } | null;
+      if (!active) return;
+      setCustomChannels(body?.channels ?? []);
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const preset = detectPreset(selected);
+  const searchTerm = query.trim().toLowerCase();
+  const searching = searchTerm.length > 0;
+
+  const matchesSearch = (c: ChannelMeta) =>
+    !searching ||
+    [c.name, c.desc, ...c.inventoryItems].some((text) =>
+      text.toLowerCase().includes(searchTerm)
+    );
+
+  const matchesCustomSearch = (c: CustomChannel) =>
+    !searching ||
+    [
+      c.name,
+      c.description ?? "",
+      CUSTOM_CHANNEL_KIND_LABELS[c.kind],
+      ...c.formats.flatMap((f) => [f.label, formatDimensionLabel(f)]),
+    ].some((text) => text.toLowerCase().includes(searchTerm));
+
+  const deleteCustomChannel = async (channel: CustomChannel) => {
+    if (
+      !window.confirm(
+        `Delete the custom channel "${channel.name}" from this account?`
+      )
+    ) {
+      return;
+    }
+    setCustomError(null);
+    const res = await fetch(`/api/channels/custom/${channel.id}`, {
+      method: "DELETE",
+    });
+    if (!res.ok) {
+      const body = (await res.json().catch(() => null)) as {
+        error?: unknown;
+      } | null;
+      setCustomError(apiErrorMessage(body, "Failed to delete custom channel."));
+      return;
+    }
+    setCustomChannels((prev) =>
+      (prev ?? []).filter((c) => c.id !== channel.id)
+    );
+    setSelected((prev) => {
+      const next = new Set(prev);
+      next.delete(channel.key);
+      return next;
+    });
+  };
 
   const applyPreset = (p: Exclude<PresetKey, "custom">) => {
     if (p === "all") setSelected(new Set(ALL_KEYS));
@@ -447,11 +528,31 @@ function CreateDialog({
     else setSelected(new Set(PHYSICAL_KEYS));
   };
 
-  const toggle = (key: PlatformKey) => {
+  const toggle = (key: string) => {
     setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key);
       else next.add(key);
+      return next;
+    });
+  };
+
+  const setMany = (keys: string[], on: boolean) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      for (const key of keys) {
+        if (on) next.add(key);
+        else next.delete(key);
+      }
+      return next;
+    });
+  };
+
+  const toggleCollapsed = (group: CategoryKey) => {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(group)) next.delete(group);
+      else next.add(group);
       return next;
     });
   };
@@ -466,7 +567,7 @@ function CreateDialog({
       onClick={onClose}
     >
       <div
-        className="modal-surface flex max-h-[90vh] w-full max-w-xl flex-col rounded-xl border border-zinc-200 bg-white shadow-[var(--shadow-lift)] dark:border-zinc-800 dark:bg-zinc-900"
+        className="modal-surface flex max-h-[90vh] w-full max-w-2xl flex-col rounded-xl border border-zinc-200 bg-white shadow-[var(--shadow-lift)] dark:border-zinc-800 dark:bg-zinc-900"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="px-5 pt-5">
@@ -557,48 +658,268 @@ function CreateDialog({
               )}
             </div>
 
-            <div className="mt-3 space-y-4">
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search channels or placements"
+              aria-label="Search channels"
+              className="input-tactile mt-3 w-full text-sm"
+            />
+
+            <div className="mt-3 space-y-3">
               {CHANNEL_CATEGORY_ORDER.map((group) => {
                 const items = CHANNELS.filter((c) => c.category === group);
-                if (items.length === 0) return null;
+                const visible = items.filter(matchesSearch);
+                if (items.length === 0 || (searching && visible.length === 0))
+                  return null;
+                const selectedCount = items.filter((c) =>
+                  selected.has(c.key)
+                ).length;
+                const isCollapsed = !searching && collapsed.has(group);
+                const allVisibleSelected = visible.every((c) =>
+                  selected.has(c.key)
+                );
                 return (
-                  <div key={group}>
-                    <div className="mb-1.5 text-[11px] font-semibold tracking-wide text-zinc-400 uppercase">
-                      {CHANNEL_CATEGORY_LABELS[group]}
+                  <div
+                    key={group}
+                    className="rounded-lg border border-zinc-200 dark:border-zinc-800"
+                  >
+                    <div className="flex items-center gap-2 px-3 py-2">
+                      <button
+                        type="button"
+                        onClick={() => toggleCollapsed(group)}
+                        aria-expanded={!isCollapsed}
+                        title={CHANNEL_CATEGORY_DESCRIPTIONS[group]}
+                        className="flex flex-1 items-center gap-2 text-left"
+                      >
+                        <span
+                          aria-hidden
+                          className={`text-[10px] text-zinc-400 transition-transform ${
+                            isCollapsed ? "" : "rotate-90"
+                          }`}
+                        >
+                          ▶
+                        </span>
+                        <span className="text-[11px] font-semibold tracking-wide text-zinc-500 uppercase">
+                          {CHANNEL_CATEGORY_LABELS[group]}
+                        </span>
+                        <span className="text-[11px] text-zinc-400">
+                          {selectedCount}/{items.length}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setMany(
+                            visible.map((c) => c.key),
+                            !allVisibleSelected
+                          )
+                        }
+                        className="text-[11px] text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+                      >
+                        {allVisibleSelected ? "Clear" : "Select all"}
+                      </button>
                     </div>
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                      {items.map((c) => {
-                        const checked = selected.has(c.key);
-                        return (
-                          <label
-                            key={c.key}
-                            className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${
-                              checked
-                                ? "border-zinc-900 bg-zinc-50 dark:border-zinc-100 dark:bg-zinc-800/60"
-                                : "border-zinc-200 hover:border-zinc-400 dark:border-zinc-800 dark:hover:border-zinc-600"
-                            }`}
-                          >
-                            <input
-                              type="checkbox"
-                              className="check-tactile mt-0.5"
-                              checked={checked}
-                              onChange={() => toggle(c.key)}
-                            />
-                            <div className="min-w-0 flex-1">
-                              <div className="text-sm font-medium">
-                                {c.name}
+                    {!isCollapsed && (
+                      <div className="grid grid-cols-1 gap-2 border-t border-zinc-100 p-3 sm:grid-cols-2 dark:border-zinc-800/60">
+                        {visible.map((c) => {
+                          const checked = selected.has(c.key);
+                          return (
+                            <label
+                              key={c.key}
+                              className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${
+                                checked
+                                  ? "border-zinc-900 bg-zinc-50 dark:border-zinc-100 dark:bg-zinc-800/60"
+                                  : "border-zinc-200 hover:border-zinc-400 dark:border-zinc-800 dark:hover:border-zinc-600"
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                className="check-tactile mt-0.5"
+                                checked={checked}
+                                onChange={() => toggle(c.key)}
+                              />
+                              <div className="min-w-0 flex-1">
+                                <div className="text-sm font-medium">
+                                  {c.name}
+                                </div>
+                                <div className="mt-0.5 text-xs text-zinc-500">
+                                  {c.desc}
+                                </div>
+                                <div className="mt-1.5 flex flex-wrap gap-1">
+                                  {c.inventoryItems.slice(0, 4).map((item) => (
+                                    <span
+                                      key={item}
+                                      className="rounded-full bg-zinc-100 px-1.5 py-0.5 text-[10px] text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
+                                    >
+                                      {item}
+                                    </span>
+                                  ))}
+                                  {c.inventoryItems.length > 4 && (
+                                    <span className="px-1 py-0.5 text-[10px] text-zinc-400">
+                                      +{c.inventoryItems.length - 4} more
+                                    </span>
+                                  )}
+                                </div>
                               </div>
-                              <div className="mt-0.5 text-xs text-zinc-500">
-                                {c.desc}
-                              </div>
-                            </div>
-                          </label>
-                        );
-                      })}
-                    </div>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 );
               })}
+              {(() => {
+                const allCustom = customChannels ?? [];
+                const visibleCustom = allCustom.filter(matchesCustomSearch);
+                if (searching && visibleCustom.length === 0) return null;
+                const selectedCount = allCustom.filter((c) =>
+                  selected.has(c.key)
+                ).length;
+                const isCollapsed = !searching && customCollapsed;
+                const allVisibleSelected =
+                  visibleCustom.length > 0 &&
+                  visibleCustom.every((c) => selected.has(c.key));
+                return (
+                  <div className="rounded-lg border border-zinc-200 dark:border-zinc-800">
+                    <div className="flex items-center gap-2 px-3 py-2">
+                      <button
+                        type="button"
+                        onClick={() => setCustomCollapsed((v) => !v)}
+                        aria-expanded={!isCollapsed}
+                        title="Channels you've defined for this account, with their own dimension formats."
+                        className="flex flex-1 items-center gap-2 text-left"
+                      >
+                        <span
+                          aria-hidden
+                          className={`text-[10px] text-zinc-400 transition-transform ${
+                            isCollapsed ? "" : "rotate-90"
+                          }`}
+                        >
+                          ▶
+                        </span>
+                        <span className="text-[11px] font-semibold tracking-wide text-zinc-500 uppercase">
+                          Your Custom Channels
+                        </span>
+                        <span className="text-[11px] text-zinc-400">
+                          {selectedCount}/{allCustom.length}
+                        </span>
+                      </button>
+                      {visibleCustom.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setMany(
+                              visibleCustom.map((c) => c.key),
+                              !allVisibleSelected
+                            )
+                          }
+                          className="text-[11px] text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+                        >
+                          {allVisibleSelected ? "Clear" : "Select all"}
+                        </button>
+                      )}
+                    </div>
+                    {!isCollapsed && (
+                      <div className="grid grid-cols-1 gap-2 border-t border-zinc-100 p-3 sm:grid-cols-2 dark:border-zinc-800/60">
+                        {visibleCustom.map((c) => {
+                          const checked = selected.has(c.key);
+                          return (
+                            <label
+                              key={c.key}
+                              className={`group/custom relative flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${
+                                checked
+                                  ? "border-zinc-900 bg-zinc-50 dark:border-zinc-100 dark:bg-zinc-800/60"
+                                  : "border-zinc-200 hover:border-zinc-400 dark:border-zinc-800 dark:hover:border-zinc-600"
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                className="check-tactile mt-0.5"
+                                checked={checked}
+                                onChange={() => toggle(c.key)}
+                              />
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-medium">
+                                    {c.name}
+                                  </span>
+                                  <span className="rounded-full border border-zinc-200 px-1.5 py-0.5 text-[10px] text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
+                                    {CUSTOM_CHANNEL_KIND_LABELS[c.kind]}
+                                  </span>
+                                </div>
+                                {c.description && (
+                                  <div className="mt-0.5 text-xs text-zinc-500">
+                                    {c.description}
+                                  </div>
+                                )}
+                                <div className="mt-1.5 flex flex-wrap gap-1">
+                                  {c.formats.map((f) => (
+                                    <span
+                                      key={f.id}
+                                      className="rounded-full bg-zinc-100 px-1.5 py-0.5 text-[10px] text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
+                                    >
+                                      {f.label} · {formatDimensionLabel(f)}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                aria-label={`Delete custom channel ${c.name}`}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  void deleteCustomChannel(c);
+                                }}
+                                className="absolute top-1.5 right-1.5 rounded px-1 text-xs text-zinc-300 opacity-0 transition-opacity group-hover/custom:opacity-100 hover:text-red-600 dark:text-zinc-600 dark:hover:text-red-400"
+                              >
+                                ✕
+                              </button>
+                            </label>
+                          );
+                        })}
+                        {!searching && (
+                          <button
+                            type="button"
+                            onClick={() => setCustomDialogOpen(true)}
+                            className="flex min-h-[72px] flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-zinc-300 p-3 text-zinc-500 hover:border-zinc-400 hover:text-zinc-900 dark:border-zinc-700 dark:hover:border-zinc-500 dark:hover:text-zinc-100"
+                          >
+                            <span className="text-lg leading-none">+</span>
+                            <span className="text-xs font-medium">
+                              Add custom channel
+                            </span>
+                            <span className="text-[10px] text-zinc-400">
+                              Don&apos;t see your channel? Define it once, reuse
+                              it everywhere.
+                            </span>
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+              {customError && (
+                <p className="text-xs text-red-600 dark:text-red-400">
+                  {customError}
+                </p>
+              )}
+              {searching &&
+                !CHANNELS.some(matchesSearch) &&
+                !(customChannels ?? []).some(matchesCustomSearch) && (
+                  <p className="rounded-lg border border-dashed border-zinc-200 px-3 py-4 text-center text-xs text-zinc-500 dark:border-zinc-800">
+                    No channels match “{query.trim()}”.{" "}
+                    <button
+                      type="button"
+                      onClick={() => setQuery("")}
+                      className="underline hover:text-zinc-900 dark:hover:text-zinc-100"
+                    >
+                      Clear search
+                    </button>
+                  </p>
+                )}
             </div>
           </div>
 
@@ -635,6 +956,283 @@ function CreateDialog({
               {busy ? "Creating…" : "Create project"}
             </button>
           </div>
+        </div>
+
+        {customDialogOpen && (
+          <CustomChannelDialog
+            onClose={() => setCustomDialogOpen(false)}
+            onCreated={(channel) => {
+              setCustomChannels((prev) => [...(prev ?? []), channel]);
+              setSelected((prev) => new Set(prev).add(channel.key));
+              setCustomDialogOpen(false);
+            }}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+type DraftFormat = {
+  label: string;
+  width: string;
+  height: string;
+  unit: CustomFormatUnit;
+};
+
+const EMPTY_FORMAT: DraftFormat = {
+  label: "",
+  width: "",
+  height: "",
+  unit: "px",
+};
+
+function CustomChannelDialog({
+  onClose,
+  onCreated,
+}: {
+  onClose: () => void;
+  onCreated: (channel: CustomChannel) => void;
+}) {
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [kind, setKind] = useState<CustomChannelKind>("digital-ad");
+  const [formats, setFormats] = useState<DraftFormat[]>([{ ...EMPTY_FORMAT }]);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const setFormat = (index: number, patch: Partial<DraftFormat>) => {
+    setFormats((prev) =>
+      prev.map((f, i) => (i === index ? { ...f, ...patch } : f))
+    );
+  };
+
+  const parsedFormats = formats.map((f) => ({
+    label: f.label.trim(),
+    width: Number(f.width),
+    height: Number(f.height),
+    unit: f.unit,
+  }));
+  const formatsValid =
+    parsedFormats.length > 0 &&
+    parsedFormats.every(
+      (f) =>
+        f.label.length > 0 &&
+        Number.isFinite(f.width) &&
+        Number.isFinite(f.height) &&
+        f.width > 0 &&
+        f.height > 0
+    );
+  const canSubmit = !busy && name.trim().length > 0 && formatsValid;
+
+  const submit = async () => {
+    if (!canSubmit) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/channels/custom", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: name.trim(),
+          description: description.trim() || null,
+          kind,
+          formats: parsedFormats,
+        }),
+      });
+      const body = (await res.json().catch(() => null)) as {
+        channel?: CustomChannel;
+        error?: unknown;
+      } | null;
+      if (!res.ok || !body?.channel) {
+        throw new Error(
+          apiErrorMessage(body, "Failed to create custom channel.")
+        );
+      }
+      onCreated(body.channel);
+    } catch (e) {
+      setError(
+        e instanceof Error ? e.message : "Failed to create custom channel."
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      className="modal-backdrop fixed inset-0 z-[60] flex items-center justify-center bg-black/50 px-4 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="modal-surface flex max-h-[85vh] w-full max-w-lg flex-col rounded-xl border border-zinc-200 bg-white shadow-[var(--shadow-lift)] dark:border-zinc-800 dark:bg-zinc-900"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="px-5 pt-5">
+          <h2 className="text-lg font-semibold">Add custom channel</h2>
+          <p className="mt-1 text-sm text-zinc-500">
+            Define a channel once and it stays on this account, selectable for
+            every campaign. Each size you add becomes an upload slot on the
+            channel board.
+          </p>
+        </div>
+
+        <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4">
+          <div>
+            <label className="text-xs font-medium tracking-wide text-zinc-500 uppercase">
+              Name
+            </label>
+            <input
+              autoFocus
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Parking Garage Banner"
+              maxLength={80}
+              className="input-tactile mt-1 w-full"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-medium tracking-wide text-zinc-500 uppercase">
+              Type
+            </label>
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              {CUSTOM_CHANNEL_KINDS.map((k) => (
+                <button
+                  key={k.key}
+                  type="button"
+                  onClick={() => setKind(k.key)}
+                  className={`rounded-full border px-3 py-1 text-xs transition-colors ${
+                    kind === k.key
+                      ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900"
+                      : "border-zinc-200 text-zinc-600 hover:border-zinc-400 dark:border-zinc-700 dark:text-zinc-300 dark:hover:border-zinc-500"
+                  }`}
+                >
+                  {k.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-medium tracking-wide text-zinc-500 uppercase">
+              Description{" "}
+              <span className="text-zinc-400 normal-case">(optional)</span>
+            </label>
+            <input
+              type="text"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Vinyl banner at the parking garage entrance"
+              maxLength={240}
+              className="input-tactile mt-1 w-full"
+            />
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-medium tracking-wide text-zinc-500 uppercase">
+                Sizes
+              </label>
+              <button
+                type="button"
+                onClick={() =>
+                  setFormats((prev) => [...prev, { ...EMPTY_FORMAT }])
+                }
+                className="text-[11px] text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+              >
+                + Add size
+              </button>
+            </div>
+            <div className="mt-1.5 space-y-2">
+              {formats.map((f, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={f.label}
+                    onChange={(e) => setFormat(i, { label: e.target.value })}
+                    placeholder={i === 0 ? "Standard" : "Label"}
+                    maxLength={120}
+                    aria-label="Size label"
+                    className="input-tactile min-w-0 flex-1 text-sm"
+                  />
+                  <input
+                    type="number"
+                    value={f.width}
+                    onChange={(e) => setFormat(i, { width: e.target.value })}
+                    placeholder="W"
+                    min={0}
+                    aria-label="Width"
+                    className="input-tactile w-20 text-sm"
+                  />
+                  <span className="text-xs text-zinc-400">×</span>
+                  <input
+                    type="number"
+                    value={f.height}
+                    onChange={(e) => setFormat(i, { height: e.target.value })}
+                    placeholder="H"
+                    min={0}
+                    aria-label="Height"
+                    className="input-tactile w-20 text-sm"
+                  />
+                  <select
+                    value={f.unit}
+                    onChange={(e) =>
+                      setFormat(i, { unit: e.target.value as CustomFormatUnit })
+                    }
+                    aria-label="Unit"
+                    className="select-tactile text-sm"
+                  >
+                    {CUSTOM_FORMAT_UNITS.map((u) => (
+                      <option key={u} value={u}>
+                        {u}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    aria-label="Remove size"
+                    disabled={formats.length === 1}
+                    onClick={() =>
+                      setFormats((prev) => prev.filter((_, j) => j !== i))
+                    }
+                    className="px-1 text-sm text-zinc-400 hover:text-red-600 disabled:opacity-30 dark:hover:text-red-400"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+            <p className="mt-1.5 text-[11px] text-zinc-400">
+              e.g. a digital ad at 300 × 250 px, or a printed poster at 24 × 36
+              in.
+            </p>
+          </div>
+
+          {error && (
+            <ErrorMessage title="Channel was not created" message={error} />
+          )}
+        </div>
+
+        <div className="flex items-center justify-end gap-2 border-t border-zinc-200 px-5 py-3 dark:border-zinc-800">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-3 py-2 text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={!canSubmit}
+            onClick={() => void submit()}
+            className="apple-tap rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900"
+          >
+            {busy ? "Creating…" : "Create channel"}
+          </button>
         </div>
       </div>
     </div>

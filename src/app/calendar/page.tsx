@@ -80,7 +80,7 @@ export default async function CalendarPage() {
   const entries = await loadInitialEntries();
 
   return (
-    <div className="min-h-screen bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
+    <div className="page-shell min-h-screen text-zinc-900 dark:text-zinc-100">
       <header className="apple-header sticky top-0 z-40">
         <div className="mx-auto flex max-w-7xl items-start justify-between gap-4 px-6 py-6">
           <div className="flex items-center gap-4">
@@ -92,7 +92,7 @@ export default async function CalendarPage() {
               ← Projects
             </Link>
             <div>
-              <h1 className="text-2xl font-semibold">Calendar</h1>
+              <h1 className="ink-gradient text-2xl font-semibold">Calendar</h1>
               <p className="mt-1 text-sm text-zinc-500">
                 Master marketing calendar across launches, seasons, events,
                 exhibits, and channels.

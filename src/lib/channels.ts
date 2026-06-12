@@ -6,6 +6,9 @@ type ChannelSlot = {
   aspect: string;
   hint: string;
   recommended?: boolean;
+  // Recommended export size in pixels, shown before upload and checked
+  // against uploaded media. Omitted where a channel has no canonical size.
+  size?: { width: number; height: number };
 };
 
 type ChannelCategoryKey =
@@ -222,33 +225,38 @@ export const CHANNELS: ChannelMeta[] = [
         key: "4x5",
         label: "4:5 Feed",
         aspect: "aspect-[4/5]",
-        hint: "Facebook / Instagram Feed — 1080×1350",
+        hint: "Facebook / Instagram Feed",
+        size: { width: 1080, height: 1350 },
         recommended: true,
       },
       {
         key: "9x16",
         label: "9:16 Stories / Reels",
         aspect: "aspect-[9/16]",
-        hint: "Stories, Reels, full-screen vertical — 1080×1920",
+        hint: "Stories, Reels, full-screen vertical",
+        size: { width: 1080, height: 1920 },
         recommended: true,
       },
       {
         key: "1x1",
         label: "1:1 Square",
         aspect: "aspect-square",
-        hint: "Carousel, Explore, fallback — 1080×1080",
+        hint: "Carousel, Explore, fallback",
+        size: { width: 1080, height: 1080 },
       },
       {
         key: "1.91x1",
         label: "1.91:1 Landscape",
         aspect: "aspect-[1.91/1]",
-        hint: "Link preview / landscape fallback — 1200×628",
+        hint: "Link preview / landscape fallback",
+        size: { width: 1200, height: 628 },
       },
       {
         key: "16x9",
         label: "16:9 Horizontal",
         aspect: "aspect-video",
-        hint: "In-stream video — 1920×1080",
+        hint: "In-stream video",
+        size: { width: 1920, height: 1080 },
       },
     ],
   },
@@ -268,20 +276,23 @@ export const CHANNELS: ChannelMeta[] = [
         key: "9x16",
         label: "9:16 Vertical",
         aspect: "aspect-[9/16]",
-        hint: "In-Feed, TopView, Spark Ads — 1080×1920 export / 540×960 min",
+        hint: "In-Feed, TopView, Spark Ads · 540×960 min",
+        size: { width: 1080, height: 1920 },
         recommended: true,
       },
       {
         key: "1x1",
         label: "1:1 Square",
         aspect: "aspect-square",
-        hint: "Supported — 640×640 min",
+        hint: "Supported · minimum size",
+        size: { width: 640, height: 640 },
       },
       {
         key: "16x9",
         label: "16:9 Horizontal",
         aspect: "aspect-video",
-        hint: "Supported — 960×540 min",
+        hint: "Supported · minimum size",
+        size: { width: 960, height: 540 },
       },
     ],
   },
@@ -307,32 +318,37 @@ export const CHANNELS: ChannelMeta[] = [
         key: "16x9",
         label: "16:9 Horizontal",
         aspect: "aspect-video",
-        hint: "In-Stream, Bumper, Masthead — 1920×1080",
+        hint: "In-Stream, Bumper, Masthead",
+        size: { width: 1920, height: 1080 },
         recommended: true,
       },
       {
         key: "9x16",
         label: "9:16 Vertical (YouTube Shorts)",
         aspect: "aspect-[9/16]",
-        hint: "YouTube Shorts only — 1080×1920",
+        hint: "YouTube Shorts only",
+        size: { width: 1080, height: 1920 },
       },
       {
         key: "1x1",
         label: "1:1 Square",
         aspect: "aspect-square",
-        hint: "In-Feed / Discovery — 1080×1080",
+        hint: "In-Feed / Discovery",
+        size: { width: 1080, height: 1080 },
       },
       {
         key: "youtube-thumbnail",
         label: "Thumbnail",
         aspect: "aspect-video",
-        hint: "Video thumbnail — 3840×2160 preferred, 16:9",
+        hint: "Video thumbnail · 16:9",
+        size: { width: 3840, height: 2160 },
       },
       {
         key: "companion-banner",
         label: "Companion Banner",
         aspect: "aspect-[5/1]",
-        hint: "Desktop companion banner — 300×60",
+        hint: "Desktop companion banner",
+        size: { width: 300, height: 60 },
       },
     ],
   },
@@ -357,21 +373,24 @@ export const CHANNELS: ChannelMeta[] = [
         key: "1x1",
         label: "1:1 Square Image",
         aspect: "aspect-square",
-        hint: "Google Ads image asset — 1200×1200",
+        hint: "Google Ads image asset",
+        size: { width: 1200, height: 1200 },
         recommended: true,
       },
       {
         key: "1.91x1",
         label: "1.91:1 Landscape Image",
         aspect: "aspect-[1.91/1]",
-        hint: "Google Ads image asset — 1200×628",
+        hint: "Google Ads image asset",
+        size: { width: 1200, height: 628 },
         recommended: true,
       },
       {
         key: "logo-1x1",
         label: "1:1 Business Logo",
         aspect: "aspect-square",
-        hint: "Business logo — 1200×1200",
+        hint: "Business logo",
+        size: { width: 1200, height: 1200 },
         recommended: true,
       },
     ],
@@ -525,20 +544,23 @@ export const CHANNELS: ChannelMeta[] = [
         key: "8.5x11",
         label: "8.5 × 11 Letter",
         aspect: "aspect-[8.5/11]",
-        hint: "Standard flyer — 2550×3300 at 300 DPI",
+        hint: "Standard flyer · 300 DPI",
+        size: { width: 2550, height: 3300 },
         recommended: true,
       },
       {
         key: "5.5x8.5",
         label: "5.5 × 8.5 Half-Sheet",
         aspect: "aspect-[5.5/8.5]",
-        hint: "Quarter-page handout / leave-behind — 1650×2550 at 300 DPI",
+        hint: "Quarter-page handout · 300 DPI",
+        size: { width: 1650, height: 2550 },
       },
       {
         key: "11x17",
         label: "11 × 17 Tabloid",
         aspect: "aspect-[11/17]",
-        hint: "Large-format flyer — 3300×5100 at 300 DPI",
+        hint: "Large-format flyer · 300 DPI",
+        size: { width: 3300, height: 5100 },
       },
     ],
   },
@@ -558,6 +580,20 @@ export const CHANNEL_BY_KEY = Object.fromEntries(
 // covered here because its ratios are derived from the project's signage
 // format dimensions at runtime — callers validate signage ratios separately
 // (see expectedSignageRatio in @/lib/signage).
+// Parse the numeric width/height ratio out of a slot's Tailwind aspect class
+// (e.g. "aspect-[4/5]" -> 0.8) so uploads can be checked against the slot.
+export function aspectRatioFromClass(aspect: string): number | null {
+  if (aspect === "aspect-video") return 16 / 9;
+  if (aspect === "aspect-square") return 1;
+  const match = /^aspect-\[(\d+(?:\.\d+)?)\/(\d+(?:\.\d+)?)\]$/.exec(aspect);
+  if (!match) return null;
+  const w = Number(match[1]);
+  const h = Number(match[2]);
+  if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0)
+    return null;
+  return w / h;
+}
+
 export function isPlatformSlotKey(
   platform: PlatformKey,
   ratio: string

@@ -248,10 +248,12 @@ export function SignageBoard({
         );
       };
       if (file.type.startsWith("video/")) {
-        const poster = await extractVideoPoster(file);
+        const videoMeta = await extractVideoPoster(file);
         await uploadVideoDirect({
           file,
-          poster,
+          poster: videoMeta.poster,
+          width: videoMeta.width,
+          height: videoMeta.height,
           projectId,
           platform: "signage",
           ratio,
@@ -376,7 +378,7 @@ export function SignageBoard({
   }, []);
 
   return (
-    <div className="min-h-screen bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
+    <div className="page-shell min-h-screen text-zinc-900 dark:text-zinc-100">
       <header className="apple-header sticky top-0 z-40">
         <div className="mx-auto flex max-w-7xl items-start justify-between gap-4 px-6 py-5">
           <div>
@@ -387,7 +389,7 @@ export function SignageBoard({
             >
               ← {projectName}
             </Link>
-            <h1 className="mt-1 text-2xl font-semibold">
+            <h1 className="ink-gradient mt-1 text-2xl font-semibold">
               Physical Signage — Campaign Media
             </h1>
             <p className="mt-1 text-sm text-zinc-500">
@@ -449,7 +451,7 @@ export function SignageBoard({
 
         {data === null ? (
           <div
-            className="grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3"
+            className="stagger grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3"
             aria-busy="true"
           >
             {Array.from({ length: 3 }).map((_, i) => (
@@ -466,7 +468,7 @@ export function SignageBoard({
         ) : data.formats.length === 0 ? (
           <EmptyState onAdd={() => setAddingFormat(true)} />
         ) : (
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
+          <div className="stagger grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
             {data.formats.map((format) => (
               <FormatColumn
                 key={format.id}
@@ -608,11 +610,8 @@ function FormatColumn({
       </div>
 
       <div
-        className={`m-4 rounded-lg border-2 border-dashed transition-colors ${
-          dragOver
-            ? "border-blue-500 bg-blue-50 dark:bg-blue-950/30"
-            : "border-zinc-300 dark:border-zinc-700"
-        }`}
+        data-drag={dragOver ? "true" : "false"}
+        className="dropzone m-4 rounded-lg border-2 border-dashed border-zinc-300 dark:border-zinc-700"
         onDragOver={(e) => {
           e.preventDefault();
           setDragOver(true);

@@ -13,7 +13,7 @@ export default async function ProjectPage({
   const project = await loadProject(id);
 
   return (
-    <div className="min-h-screen bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
+    <div className="page-shell min-h-screen text-zinc-900 dark:text-zinc-100">
       <header className="apple-header sticky top-0 z-40">
         <div className="mx-auto flex max-w-7xl items-start justify-between gap-4 px-6 py-6">
           <div>
@@ -24,7 +24,9 @@ export default async function ProjectPage({
             >
               ← Projects
             </Link>
-            <h1 className="mt-1 text-2xl font-semibold">{project.name}</h1>
+            <h1 className="ink-gradient mt-1 text-2xl font-semibold">
+              {project.name}
+            </h1>
             {project.description && (
               <p className="mt-1 text-sm text-zinc-500">
                 {project.description}

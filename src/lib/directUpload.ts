@@ -30,6 +30,8 @@ type SignResponse = {
 export async function uploadVideoDirect(input: {
   file: File;
   poster: Blob | null;
+  width?: number | null;
+  height?: number | null;
   projectId: string;
   platform: PlatformKey;
   ratio: string;
@@ -43,6 +45,8 @@ export async function uploadVideoDirect(input: {
   const {
     file,
     poster,
+    width,
+    height,
     projectId,
     platform,
     ratio,
@@ -131,6 +135,8 @@ export async function uploadVideoDirect(input: {
         replaceCreativeId: replaceCreativeId ?? null,
         deletePrevious: deletePrevious ?? false,
         copy: copy ?? null,
+        width: width ?? null,
+        height: height ?? null,
       }),
       signal,
     });

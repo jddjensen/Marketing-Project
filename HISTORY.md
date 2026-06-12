@@ -8,7 +8,7 @@ at the bottom.
 The project is a multi-channel marketing campaign workspace on Next.js 16,
 React 19, Supabase (Postgres + Auth + Storage), and Tailwind CSS v4. See
 [README.md](README.md) and [docs/architecture.md](docs/architecture.md) for the
-current-state picture; this file is the *how we got here*.
+current-state picture; this file is the _how we got here_.
 
 ---
 
@@ -64,7 +64,7 @@ Large quality sweep, all on one day:
 
 - **Video service migration** (Mux or Cloudflare Stream) is intentionally NOT
   done — [docs/video-service-migration.md](docs/video-service-migration.md) is
-  a runbook for *when* trigger conditions are met (egress, customer-facing
+  a runbook for _when_ trigger conditions are met (egress, customer-facing
   video, >1 GB uploads). Don't migrate preemptively.
 
 ---
