@@ -73,6 +73,16 @@ Large quality sweep, all on one day:
 
 Newest entries at the top. One entry per working session.
 
+### 2026-06-16 — Local dev stack spin-up
+
+- Started Docker Desktop, recovered a half-stopped local Supabase stack with a
+  clean stop/start, and verified migrations through `0025_media_thumbnails.sql`.
+- Added the documented local-only demo auth user (`admin@example.com`) so the
+  built-in local Supabase auto-login works.
+- Started the Next.js dev server detached via
+  `com.codex.marketing-platform.next`; verified `http://localhost:3000/`
+  reaches the authenticated dashboard with no browser smoke-test errors.
+
 ### 2026-06-16 — Media perceived-perf: thumbnails, ThumbHash, lazy-load, dedup
 
 - Mined Immich/Jellyfin/anytype for applicable patterns (none usable as a
