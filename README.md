@@ -2,7 +2,7 @@
 
 A multi-channel marketing campaign workspace built on **Next.js 16**, **React 19**, **Supabase** (Postgres + Auth + Storage), and **Tailwind CSS v4**.
 
-Each project bundles its creative assets, channel-specific media slots, UTM-tagged tracking links, QR codes, signage formats, a campaign brief, and a unified performance dashboard backed by Google Analytics 4.
+Each project bundles its creative assets, channel-specific media slots, UTM-tagged tracking links, QR codes, signage formats, a campaign brief, optional Postiz social scheduling, and a unified performance dashboard backed by Google Analytics 4 with optional Plausible UTM reporting.
 
 ## Prerequisites
 
@@ -88,7 +88,9 @@ src/
 │   ├── uploadWithProgress.ts
 │   ├── channels.ts, channelAssets.ts, signage.ts
 │   ├── campaignBrief.ts, projects.ts, utm.ts
-│   └── googleAnalytics.ts  # GA4 service-account auth + queries
+│   ├── googleAnalytics.ts    # GA4 OAuth/service-account auth + queries
+│   ├── plausibleAnalytics.ts # Plausible Stats API UTM reports
+│   └── postiz.ts             # Thin Postiz Public API bridge
 └── proxy.ts                # Auth gate (Next 16 middleware replacement)
 supabase/
 ├── config.toml
@@ -120,11 +122,12 @@ The shared workspace is intentional — see the comment at the top of [`supabase
 
 Core tables:
 
-- `projects` — campaigns; holds the brief, GA4 property ID, archived state
+- `projects` — campaigns; holds the brief, GA4 property ID, Plausible site ID, archived state
 - `project_platforms` — which channels are enabled per project
 - `media` — uploaded creative assets (with `signage_format_id` for signage)
 - `signage_formats` (per project) and `signage_blueprints` (per user)
 - `project_tracking_links`, `_scans`, `_clicks` — UTM-tagged URLs + analytics
+- `social_posts` — optional Postiz submission receipts; Postiz remains the publishing source of truth
 - `tracking`, `search_terms` — legacy / Google-Ads search-term aggregation
 
 ## Deployment notes
@@ -132,6 +135,9 @@ Core tables:
 - The `creatives` bucket must be private in production. Migration `0014_secure_creatives_bucket.sql` enforces this.
 - `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are required at runtime. They're optional at build time — pages that fetch from Supabase are marked `dynamic`.
 - For Google Analytics account login: set `GOOGLE_OAUTH_CLIENT_ID` and `GOOGLE_OAUTH_CLIENT_SECRET`, and add `/api/google-analytics/oauth/callback` as an authorized redirect URI in Google Cloud. Service-account GA4 access remains available as a fallback. See [`.env.local.example`](.env.local.example).
+- For Plausible UTM reporting: set `PLAUSIBLE_API_KEY` server-side, optionally override `PLAUSIBLE_API_BASE_URL` for self-hosted Plausible, then save the project's Plausible site ID/domain in the Landing pages analytics card. Plausible reports visits/pageviews by standard UTM values; GA4 remains the source for conversions/revenue when connected.
+- To track usage of this internal app with Plausible, set `PLAUSIBLE_SCRIPT_SRC` to the site-specific Plausible script URL. The app only loads the browser script when that env var is present.
+- For Postiz social scheduling: set `POSTIZ_API_KEY` and, if not using Postiz Cloud, `POSTIZ_API_BASE_URL`. The app does not store social OAuth tokens or copy Postiz source code; it lists connected Postiz channels, uploads the selected creative to Postiz, schedules the post through the Public API, and stores the returned receipt in `social_posts`.
 
 ## Conventions
 

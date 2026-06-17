@@ -79,6 +79,48 @@ type LandingPage = {
   platform: PlatformKey | null;
 };
 
+type SocialIntegration = {
+  id: string;
+  name: string;
+  identifier: string;
+  picture?: string | null;
+  disabled?: boolean;
+  profile?: string | null;
+};
+
+type SocialPost = {
+  id: string;
+  creativeId: string;
+  versionId: string | null;
+  trackingLinkId: string | null;
+  platform: string;
+  postizPostId: string | null;
+  integrationId: string;
+  integrationIdentifier: string;
+  integrationName: string;
+  state: string;
+  publishAt: string | null;
+  content: string;
+  error: string | null;
+  createdAt: number;
+};
+
+type SocialPublishingState = {
+  configured: boolean;
+  baseUrl: string;
+  integrations: SocialIntegration[];
+  posts: SocialPost[];
+  postizError: string | null;
+};
+
+type ScheduleSocialPostInput = {
+  creativeId: string;
+  versionId: string;
+  integrationId: string;
+  publishAt: string;
+  trackingLinkId?: string | null;
+};
+
 type UploadOptions = {
   replaceCreativeId?: string;
   deletePrevious?: boolean;
@@ -143,6 +185,8 @@ export function PlatformMediaBoard({
   const [error, setError] = useState<string | null>(null);
   const [tracking, setTracking] = useState<Record<string, TrackingItem>>({});
   const [landingPages, setLandingPages] = useState<LandingPage[] | null>(null);
+  const [socialPublishing, setSocialPublishing] =
+    useState<SocialPublishingState | null>(null);
   const [moodboardOpen, setMoodboardOpen] = useState(false);
   const [historyFor, setHistoryFor] = useState<string | null>(null);
   const [textDialog, setTextDialog] = useState<{
@@ -151,6 +195,7 @@ export function PlatformMediaBoard({
   } | null>(null);
   const platformKey = platform as PlatformKey;
   const showTextOption = platformSupportsTextOnly(platformKey);
+  const socialPublishingEnabled = isSocialPublishingPlatform(platform);
 
   const ratiosRef = useRef(ratios);
   useEffect(() => {
@@ -195,13 +240,61 @@ export function PlatformMediaBoard({
     );
   }, [projectId, trackingEnabled]);
 
+  const fetchSocialPublishing = useCallback(async () => {
+    if (!isSocialPublishingPlatform(platform)) {
+      setSocialPublishing(null);
+      return;
+    }
+    const res = await fetch(
+      `/api/projects/${projectId}/social-posts?platform=${encodeURIComponent(platform)}`,
+      { cache: "no-store" }
+    );
+    if (!res.ok) {
+      setSocialPublishing({
+        configured: false,
+        baseUrl: "",
+        integrations: [],
+        posts: [],
+        postizError: "failed to load Postiz publishing",
+      });
+      return;
+    }
+    const data = (await res.json()) as SocialPublishingState;
+    setSocialPublishing(data);
+  }, [platform, projectId]);
+
   useEffect(() => {
     async function loadBoard() {
-      await Promise.all([fetchMedia(), fetchTracking(), fetchLandingPages()]);
+      await Promise.all([
+        fetchMedia(),
+        fetchTracking(),
+        fetchLandingPages(),
+        fetchSocialPublishing(),
+      ]);
     }
 
     void loadBoard();
-  }, [fetchLandingPages, fetchMedia, fetchTracking]);
+  }, [fetchLandingPages, fetchMedia, fetchSocialPublishing, fetchTracking]);
+
+  const scheduleSocialPost = useCallback(
+    async (input: ScheduleSocialPostInput) => {
+      const res = await fetch(`/api/projects/${projectId}/social-posts`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+      });
+      const body = (await res.json().catch(() => null)) as {
+        item?: SocialPost;
+        error?: string;
+      } | null;
+      if (!res.ok) {
+        throw new Error(body?.error ?? "failed to schedule post");
+      }
+      await fetchSocialPublishing();
+      return body?.item ?? null;
+    },
+    [fetchSocialPublishing, projectId]
+  );
 
   const patchQueueItem = useCallback(
     (id: number, patch: Partial<QueueItem>) => {
@@ -536,6 +629,9 @@ export function PlatformMediaBoard({
       )}
 
       <main className="mx-auto max-w-7xl space-y-6 px-6 py-8">
+        {socialPublishingEnabled && (
+          <SocialPublishingNotice state={socialPublishing} />
+        )}
         <div className="stagger grid grid-cols-1 gap-6 lg:grid-cols-3">
           {ratios.map((r) => (
             <RatioColumn
@@ -569,6 +665,12 @@ export function PlatformMediaBoard({
               onRemoveTracking={removeTracking}
               projectId={projectId}
               platform={platformKey}
+              socialPublishing={
+                socialPublishingEnabled ? socialPublishing : null
+              }
+              onScheduleSocialPost={
+                socialPublishingEnabled ? scheduleSocialPost : null
+              }
               showTextOption={showTextOption}
               onOpenHistory={(creativeId) => setHistoryFor(creativeId)}
               onOpenTextDialog={(ratio, ratioLabel) =>
@@ -717,6 +819,8 @@ function RatioColumn({
   onRemoveTracking,
   projectId,
   platform,
+  socialPublishing,
+  onScheduleSocialPost,
   showTextOption,
   onOpenHistory,
   onOpenTextDialog,
@@ -741,6 +845,10 @@ function RatioColumn({
   onRemoveTracking: (mediaKey: string) => Promise<void>;
   projectId: string;
   platform: PlatformKey;
+  socialPublishing: SocialPublishingState | null;
+  onScheduleSocialPost:
+    | ((input: ScheduleSocialPostInput) => Promise<SocialPost | null>)
+    | null;
   showTextOption: boolean;
   onOpenHistory: (creativeId: string) => void;
   onOpenTextDialog: (ratio: Ratio, ratioLabel: string) => void;
@@ -885,6 +993,8 @@ function RatioColumn({
               onRemoveTracking={onRemoveTracking}
               projectId={projectId}
               platform={platform}
+              socialPublishing={socialPublishing}
+              onScheduleSocialPost={onScheduleSocialPost}
               onReplace={(file, deletePrevious) =>
                 onUploadReplace(
                   config.key,
@@ -916,6 +1026,8 @@ function MediaTile({
   onRemoveTracking,
   projectId,
   platform,
+  socialPublishing,
+  onScheduleSocialPost,
   onReplace,
   onOpenHistory,
   onMutated,
@@ -931,6 +1043,10 @@ function MediaTile({
   onRemoveTracking: (creativeId: string) => Promise<void>;
   projectId: string;
   platform: PlatformKey;
+  socialPublishing: SocialPublishingState | null;
+  onScheduleSocialPost:
+    | ((input: ScheduleSocialPostInput) => Promise<SocialPost | null>)
+    | null;
   onReplace: (file: File, deletePrevious: boolean) => void;
   onOpenHistory: (creativeId: string) => void;
   onMutated: () => void;
@@ -1052,6 +1168,14 @@ function MediaTile({
           platform={platform}
         />
       )}
+      {onScheduleSocialPost && (
+        <SocialPublishingControls
+          item={item}
+          state={socialPublishing}
+          trackingLinkId={tracking?.id ?? null}
+          onSchedule={onScheduleSocialPost}
+        />
+      )}
     </figure>
   );
 }
@@ -1070,6 +1194,193 @@ function firstCopySnippet(copy: Record<string, unknown>): string {
     }
   }
   return "(no copy yet)";
+}
+
+function isSocialPublishingPlatform(platform: string): boolean {
+  return platform === "meta" || platform === "tiktok" || platform === "youtube";
+}
+
+function SocialPublishingNotice({
+  state,
+}: {
+  state: SocialPublishingState | null;
+}) {
+  if (state === null) {
+    return (
+      <div className="rounded-md border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900">
+        Checking Postiz publishing…
+      </div>
+    );
+  }
+
+  if (!state.configured) {
+    return (
+      <div className="rounded-md border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900">
+        Postiz scheduling is inactive. Add{" "}
+        <code className="rounded bg-zinc-100 px-1 py-0.5 dark:bg-zinc-800">
+          POSTIZ_API_KEY
+        </code>{" "}
+        to enable direct scheduling from this board.
+      </div>
+    );
+  }
+
+  if (state.postizError) {
+    return (
+      <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+        {state.postizError}
+      </div>
+    );
+  }
+
+  if (state.integrations.length === 0) {
+    return (
+      <div className="rounded-md border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900">
+        No matching Postiz channels are connected for this board.
+      </div>
+    );
+  }
+
+  return null;
+}
+
+function SocialPublishingControls({
+  item,
+  state,
+  trackingLinkId,
+  onSchedule,
+}: {
+  item: MediaItem;
+  state: SocialPublishingState | null;
+  trackingLinkId: string | null;
+  onSchedule: (input: ScheduleSocialPostInput) => Promise<SocialPost | null>;
+}) {
+  const firstIntegrationId = state?.integrations[0]?.id ?? "";
+  const [integrationId, setIntegrationId] = useState(firstIntegrationId);
+  const [trackedFirstIntegrationId, setTrackedFirstIntegrationId] =
+    useState(firstIntegrationId);
+  const [publishAt, setPublishAt] = useState(() => defaultPublishAt());
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [submitted, setSubmitted] = useState<SocialPost | null>(null);
+
+  if (trackedFirstIntegrationId !== firstIntegrationId) {
+    setTrackedFirstIntegrationId(firstIntegrationId);
+    setIntegrationId((current) => current || firstIntegrationId);
+  }
+
+  if (
+    !state ||
+    !state.configured ||
+    state.postizError ||
+    state.integrations.length === 0
+  ) {
+    return null;
+  }
+
+  const posts = state.posts.filter(
+    (post) => post.creativeId === item.creativeId
+  );
+  const latest = submitted ?? posts[0] ?? null;
+
+  const submit = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await onSchedule({
+        creativeId: item.creativeId,
+        versionId: item.id,
+        integrationId,
+        publishAt: new Date(publishAt).toISOString(),
+        trackingLinkId,
+      });
+      if (result) setSubmitted(result);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "failed to schedule post");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="space-y-2 rounded-lg border border-zinc-200 p-2.5 text-xs dark:border-zinc-800">
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-[11px] font-medium tracking-wide text-zinc-500 uppercase">
+          Postiz
+        </div>
+        {latest && (
+          <div className="truncate text-[11px] text-zinc-500">
+            {latest.state} · {latest.integrationName}
+          </div>
+        )}
+      </div>
+      {latest?.publishAt && (
+        <div className="text-[11px] text-zinc-500">
+          {formatLocalDateTime(latest.publishAt)}
+        </div>
+      )}
+      <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+        <select
+          value={integrationId}
+          onChange={(event) => setIntegrationId(event.target.value)}
+          className="select-tactile text-xs"
+          aria-label="Postiz channel"
+        >
+          {state.integrations.map((integration) => (
+            <option key={integration.id} value={integration.id}>
+              {integration.name}
+              {integration.profile ? ` (${integration.profile})` : ""}
+            </option>
+          ))}
+        </select>
+        <input
+          type="datetime-local"
+          value={publishAt}
+          onChange={(event) => setPublishAt(event.target.value)}
+          className="input-tactile min-w-44 text-xs"
+          aria-label="Publish date"
+        />
+      </div>
+      <div className="flex items-center justify-end gap-2">
+        {trackingLinkId && (
+          <span className="mr-auto text-[11px] text-zinc-500">
+            Tracking link included
+          </span>
+        )}
+        <button
+          type="button"
+          onClick={submit}
+          disabled={busy || !integrationId || !publishAt}
+          className="apple-tap rounded-md bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900"
+        >
+          {busy ? "Scheduling…" : "Schedule"}
+        </button>
+      </div>
+      {error && (
+        <div className="text-[11px] text-red-600 dark:text-red-400">
+          {error}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function defaultPublishAt(): string {
+  return toDateTimeLocal(new Date(Date.now() + 60 * 60 * 1000));
+}
+
+function toDateTimeLocal(date: Date): string {
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 16);
+}
+
+function formatLocalDateTime(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
 }
 
 // Channels whose creatives end up on paper or pixels-in-the-world, where the

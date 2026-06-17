@@ -16,6 +16,16 @@ For tactical details — file paths, env vars, deploy notes — see [`README.md`
                             ┌─────┴─────┐
                             │  GA4 API  │   (server-to-server,
                             └───────────┘    OAuth or service account)
+                                  ▲
+                                  │
+                            ┌─────┴─────┐
+                            │ Plausible │   (optional Stats API
+                            └───────────┘    UTM reporting)
+                                  ▲
+                                  │
+                            ┌─────┴─────┐
+                            │  Postiz   │   (optional social publishing
+                            └───────────┘    via Public API)
 ```
 
 Everything user-facing is one Next.js app. The same process serves:
@@ -89,14 +99,32 @@ Upload pipeline ([`api/upload/route.ts`](../src/app/api/upload/route.ts)):
 3. Images re-encoded through `sharp` to strip EXIF and apply orientation.
 4. 500 MB per-file cap, project must exist and not be archived.
 
-### Performance & GA4 — [`src/lib/googleAnalytics.ts`](../src/lib/googleAnalytics.ts)
+### Performance, GA4 & Plausible
+
+GA4 lives in [`src/lib/googleAnalytics.ts`](../src/lib/googleAnalytics.ts).
 
 Two auth paths, in priority order:
 
 1. **OAuth** — per-user, set up in `settings/`. Stored in `google_analytics_oauth`.
 2. **Service account** — fallback, configured via env vars.
 
+Plausible lives in [`src/lib/plausibleAnalytics.ts`](../src/lib/plausibleAnalytics.ts). It is optional and uses a server-side `PLAUSIBLE_API_KEY` plus each project's `plausible_site_id`. The dashboard uses Plausible as a fallback source for UTM-attributed visits/pageviews when GA4 is not ready. GA4 remains the richer source for conversions, transactions, and revenue.
+
 Per-project queries are aggregated into the unified performance dashboard (`projects/[id]/`'s performance widget).
+
+### Social publishing via Postiz
+
+Postiz lives behind [`src/lib/postiz.ts`](../src/lib/postiz.ts) and the
+project route [`api/projects/[id]/social-posts`](../src/app/api/projects/%5Bid%5D/social-posts/route.ts).
+It is intentionally a thin external bridge:
+
+- No Postiz source code or SDK is vendored into this repo.
+- `POSTIZ_API_KEY` stays server-side; social OAuth tokens remain in Postiz.
+- The app lists connected Postiz channels, uploads the selected creative by
+  signed URL, schedules the post, and stores only the returned receipt in
+  `social_posts`.
+- Postiz remains responsible for provider rules, account connections, retries,
+  and final publishing state.
 
 ## Data model
 
@@ -106,19 +134,20 @@ See the comment at the top of [`supabase/migrations/0001_init.sql`](../supabase/
 
 Core tables (≈20 migrations applied in order; see [`supabase/migrations/`](../supabase/migrations/)):
 
-| Table                    | Purpose                                                           |
-| ------------------------ | ----------------------------------------------------------------- |
-| `projects`               | Campaigns: name, description, GA4 property, brief, archived state |
-| `project_platforms`      | Which channels are enabled per project                            |
-| `media`                  | Uploaded creatives (with version history, soft-delete, restore)   |
-| `signage_formats`        | Per-project signage specs                                         |
-| `signage_blueprints`     | Per-user reusable signage templates                               |
-| `project_tracking_links` | UTM-tagged URLs                                                   |
-| `project_link_clicks`    | Per-click analytics rows                                          |
-| `project_link_scans`     | QR-scan analytics rows                                            |
-| `tracking`               | Legacy click stream                                               |
-| `search_terms`           | Google-Ads search-term aggregation                                |
-| `google_analytics_oauth` | Per-user GA4 OAuth tokens                                         |
+| Table                    | Purpose                                                                           |
+| ------------------------ | --------------------------------------------------------------------------------- |
+| `projects`               | Campaigns: name, description, GA4 property, Plausible site, brief, archived state |
+| `project_platforms`      | Which channels are enabled per project                                            |
+| `media`                  | Uploaded creatives (with version history, soft-delete, restore)                   |
+| `signage_formats`        | Per-project signage specs                                                         |
+| `signage_blueprints`     | Per-user reusable signage templates                                               |
+| `project_tracking_links` | UTM-tagged URLs                                                                   |
+| `project_link_clicks`    | Per-click analytics rows                                                          |
+| `project_link_scans`     | QR-scan analytics rows                                                            |
+| `social_posts`           | Optional Postiz submission receipts                                               |
+| `tracking`               | Legacy click stream                                                               |
+| `search_terms`           | Google-Ads search-term aggregation                                                |
+| `google_analytics_oauth` | Per-user GA4 OAuth tokens                                                         |
 
 ## Cross-cutting concerns
 

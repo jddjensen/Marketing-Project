@@ -24,6 +24,13 @@ type AnalyticsSettings = {
   authMode: "oauth" | "service_account" | null;
 };
 
+type PlausibleSettings = {
+  siteId: string | null;
+  status: "ready" | "site_missing" | "api_key_missing";
+  apiConfigured: boolean;
+  apiBaseUrl: string;
+};
+
 type ChannelBucketKey = PlatformKey | "all-channels";
 
 type ChannelRow = {
@@ -42,6 +49,8 @@ type ChannelRow = {
 
 type PerformanceResponse = {
   analytics: AnalyticsSettings;
+  plausible: PlausibleSettings;
+  webAnalyticsSource: "ga4" | "plausible" | null;
   trackedLinkCount: number;
   totals: {
     clicks: number;
@@ -113,12 +122,25 @@ function formatTrendDate(value: string) {
   });
 }
 
-function statusTone(settings: AnalyticsSettings) {
-  if (settings.status === "ready") {
+function statusTone(
+  settings: AnalyticsSettings,
+  plausible: PlausibleSettings,
+  webAnalyticsSource: PerformanceResponse["webAnalyticsSource"]
+) {
+  if (webAnalyticsSource === "ga4") {
     return {
       className:
         "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200",
       label: "GA4, tracked clicks, and QR scans are all feeding this view.",
+    };
+  }
+
+  if (webAnalyticsSource === "plausible") {
+    return {
+      className:
+        "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200",
+      label:
+        "Plausible UTM visits, tracked clicks, and QR scans are feeding this view. Conversions and revenue still require GA4.",
     };
   }
 
@@ -127,8 +149,17 @@ function statusTone(settings: AnalyticsSettings) {
       className:
         "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200",
       label: settings.connected
-        ? "Tracked clicks and QR scans are live. Choose a GA4 property below to unlock sessions, conversions, and revenue."
-        : "Tracked clicks and QR scans are live. Add a GA4 property to unlock sessions, conversions, and revenue.",
+        ? "Tracked clicks and QR scans are live. Choose a GA4 property or configure Plausible below to unlock website sessions."
+        : "Tracked clicks and QR scans are live. Add a GA4 property or configure Plausible to unlock website sessions.",
+    };
+  }
+
+  if (plausible.status === "api_key_missing" && plausible.siteId) {
+    return {
+      className:
+        "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200",
+      label:
+        "Tracked clicks and QR scans are live. Add PLAUSIBLE_API_KEY on the server to use the saved Plausible site.",
     };
   }
 
@@ -174,6 +205,22 @@ function ga4StepDescription(settings: AnalyticsSettings) {
     return "Connect your Google Analytics account from the Google Analytics card under Landing pages.";
   }
   return "Google OAuth credentials must be configured by an admin before GA4 can connect. The Google Analytics card under Landing pages has details.";
+}
+
+function siteAnalyticsStepDescription(
+  settings: AnalyticsSettings,
+  plausible: PlausibleSettings
+) {
+  if (settings.status === "ready") {
+    return "GA4 sessions, conversions, and revenue will flow into this dashboard.";
+  }
+  if (plausible.status === "ready") {
+    return "Plausible visits and pageviews will flow into this dashboard from the UTM values this app generates.";
+  }
+  if (plausible.status === "api_key_missing" && plausible.siteId) {
+    return "The Plausible site is saved. Add PLAUSIBLE_API_KEY on the server to enable UTM reporting.";
+  }
+  return ga4StepDescription(settings);
 }
 
 const ACTION_LINK_CLASS =
@@ -290,9 +337,19 @@ export function PerformanceDashboardPanel({
   const firstChannel =
     channels.find((row) => row.channel !== "all-channels") ?? null;
   const landingPagesDone = (landingPageCount ?? 0) > 0;
-  const ga4Done = data?.analytics.status === "ready";
+  const siteAnalyticsDone =
+    data?.analytics.status === "ready" || data?.plausible.status === "ready";
 
-  const tone = data && !needsSetup ? statusTone(data.analytics) : null;
+  const tone =
+    data && !needsSetup
+      ? statusTone(data.analytics, data.plausible, data.webAnalyticsSource)
+      : null;
+  const webAnalyticsLabel =
+    data?.webAnalyticsSource === "plausible"
+      ? "Plausible visits"
+      : "GA sessions";
+  const webAnalyticsShortName =
+    data?.webAnalyticsSource === "plausible" ? "Plausible" : "GA4";
   const trendMax = Math.max(
     ...(data?.trend.map((point) => point.sessions) ?? [0]),
     1
@@ -343,8 +400,8 @@ export function PerformanceDashboardPanel({
           </h3>
           <p className="mt-1 max-w-2xl text-sm text-zinc-500">
             Nothing has been measured for this campaign yet. Three steps connect
-            the pipes — clicks and scans start counting immediately, and GA4
-            fills in sessions, conversions, and revenue.
+            the pipes — clicks and scans start counting immediately, and site
+            analytics fill in sessions and outcomes when connected.
           </p>
           <ol className="mt-4 space-y-2">
             <SetupStep
@@ -370,16 +427,19 @@ export function PerformanceDashboardPanel({
             />
             <SetupStep
               index={2}
-              done={ga4Done}
-              title="Connect GA4"
-              description={ga4StepDescription(data.analytics)}
+              done={siteAnalyticsDone}
+              title="Connect site analytics"
+              description={siteAnalyticsStepDescription(
+                data.analytics,
+                data.plausible
+              )}
               action={
                 <a
                   href="#landing-pages"
                   onClick={scrollToLandingPages}
                   className={ACTION_LINK_CLASS}
                 >
-                  Open GA4 settings <span aria-hidden="true">↓</span>
+                  Open analytics settings <span aria-hidden="true">↓</span>
                 </a>
               }
             />
@@ -433,7 +493,7 @@ export function PerformanceDashboardPanel({
               value={formatInteger(data.totals.scans)}
             />
             <SummaryCard
-              label="GA sessions"
+              label={webAnalyticsLabel}
               value={formatInteger(data.totals.sessions)}
             />
             <SummaryCard
@@ -562,8 +622,8 @@ export function PerformanceDashboardPanel({
                 14-Day Sessions Trend
               </div>
               <div className="mt-1 text-[11px] text-zinc-500">
-                GA4-attributed activity across every mt_link_id attached to this
-                project.
+                {webAnalyticsShortName}-attributed activity across this
+                project&apos;s tracked UTM links.
               </div>
 
               {data.trend.length ? (
@@ -614,9 +674,10 @@ export function PerformanceDashboardPanel({
                 </>
               ) : (
                 <div className="grid h-40 place-items-center text-center text-sm text-zinc-500">
-                  No GA4-attributed sessions yet. Tracked clicks and scans can
-                  start collecting immediately, and GA4 metrics will populate
-                  once linked traffic lands on the tagged site.
+                  No {webAnalyticsShortName}-attributed sessions yet. Tracked
+                  clicks and scans can start collecting immediately, and site
+                  analytics will populate once linked traffic lands on the
+                  tagged site.
                 </div>
               )}
             </div>
@@ -624,9 +685,10 @@ export function PerformanceDashboardPanel({
 
           <div className="rounded-lg border border-dashed border-zinc-300 px-3 py-2 text-xs text-zinc-500 dark:border-zinc-700">
             Clicks count only when someone uses the tracked redirect link from
-            this app. Scans count from QR visits. GA sessions, conversions,
-            ticket sales, and revenue depend on the project&apos;s GA4 property
-            and the destination site being tagged correctly.
+            this app. Scans count from QR visits. Sessions can come from GA4 or
+            Plausible. Conversions, ticket sales, and revenue depend on the
+            project&apos;s GA4 property and the destination site being tagged
+            correctly.
           </div>
         </>
       )}

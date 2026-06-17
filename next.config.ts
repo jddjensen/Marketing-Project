@@ -7,8 +7,7 @@ const isProd = process.env.NODE_ENV === "production";
 // supabase.co space. Falls back to wildcard hosts if the env var isn't set
 // (e.g. lint/typecheck builds). The browser client and signed-URL uploads
 // both hit this origin, so connect-src + img-src + media-src must allow it.
-function supabaseOrigin(): string | null {
-  const raw = process.env.NEXT_PUBLIC_SUPABASE_URL;
+function originFromUrl(raw: string | undefined): string | null {
   if (!raw) return null;
   try {
     return new URL(raw).origin;
@@ -17,10 +16,13 @@ function supabaseOrigin(): string | null {
   }
 }
 
-const supabaseHost = supabaseOrigin();
+const supabaseHost = originFromUrl(process.env.NEXT_PUBLIC_SUPABASE_URL);
 const supabaseConnect = supabaseHost
   ? [supabaseHost, supabaseHost.replace(/^https:\/\//, "wss://")]
   : ["https://*.supabase.co", "wss://*.supabase.co"];
+const plausibleScriptOrigin = originFromUrl(process.env.PLAUSIBLE_SCRIPT_SRC);
+const plausibleApiOrigin =
+  originFromUrl(process.env.PLAUSIBLE_API_ENDPOINT) ?? plausibleScriptOrigin;
 
 // Sentry browser SDK posts to its ingest endpoint. We list both the global
 // and the US region; if the project is on a different region the matching
@@ -43,7 +45,12 @@ const cspDirectives: Array<[string, string[]]> = [
   ["default-src", ["'self'"]],
   [
     "script-src",
-    ["'self'", "'unsafe-inline'", ...(isProd ? [] : ["'unsafe-eval'"])],
+    [
+      "'self'",
+      "'unsafe-inline'",
+      ...(plausibleScriptOrigin ? [plausibleScriptOrigin] : []),
+      ...(isProd ? [] : ["'unsafe-eval'"]),
+    ],
   ],
   ["style-src", ["'self'", "'unsafe-inline'"]],
   // Uploaded creative thumbnails / Supabase signed URLs / inline data URIs
@@ -75,6 +82,7 @@ const cspDirectives: Array<[string, string[]]> = [
       "'self'",
       ...supabaseConnect,
       ...sentryConnect,
+      ...(plausibleApiOrigin ? [plausibleApiOrigin] : []),
       ...(isProd ? [] : ["ws:", "wss:"]),
     ],
   ],

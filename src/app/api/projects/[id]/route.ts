@@ -13,6 +13,7 @@ type ProjectRow = {
   archived_at: string | null;
   tracking_links_location: string | null;
   ga4_property_id: string | null;
+  plausible_site_id: string | null;
   brief_objective: string | null;
   brief_audience: string | null;
   brief_offer: string | null;
@@ -41,12 +42,13 @@ function serialize(p: ProjectRow) {
     trackingLinksLocation:
       (p.tracking_links_location as TrackingLinksLocation) ?? "both",
     ga4PropertyId: p.ga4_property_id,
+    plausibleSiteId: p.plausible_site_id,
     campaignBrief: serializeCampaignBrief(p),
   };
 }
 
 const PROJECT_COLS =
-  "id, name, description, created_at, updated_at, archived_at, tracking_links_location, ga4_property_id, brief_objective, brief_audience, brief_offer, brief_cta, brief_kpi_targets, brief_launch_start_date, brief_launch_end_date, brief_owner, brief_budget, brief_success_definition, brief_event, brief_exhibit";
+  "id, name, description, created_at, updated_at, archived_at, tracking_links_location, ga4_property_id, plausible_site_id, brief_objective, brief_audience, brief_offer, brief_cta, brief_kpi_targets, brief_launch_start_date, brief_launch_end_date, brief_owner, brief_budget, brief_success_definition, brief_event, brief_exhibit";
 
 function normalizeOptionalText(
   value: unknown,
@@ -152,6 +154,7 @@ export async function PATCH(
     archive?: unknown;
     trackingLinksLocation?: unknown;
     ga4PropertyId?: unknown;
+    plausibleSiteId?: unknown;
     campaignBrief?: {
       objective?: unknown;
       audience?: unknown;
@@ -217,6 +220,24 @@ export async function PATCH(
       );
     }
     patch.ga4_property_id = ga4PropertyId;
+  }
+  if (body.plausibleSiteId === null || body.plausibleSiteId === "") {
+    patch.plausible_site_id = null;
+  } else if (typeof body.plausibleSiteId === "string") {
+    const plausibleSiteId = body.plausibleSiteId.trim();
+    if (plausibleSiteId.length === 0 || plausibleSiteId.length > 255) {
+      return Response.json(
+        { error: "plausibleSiteId must be 1-255 chars" },
+        { status: 400 }
+      );
+    }
+    if (/^https?:\/\//i.test(plausibleSiteId)) {
+      return Response.json(
+        { error: "plausibleSiteId should be the Plausible site ID/domain" },
+        { status: 400 }
+      );
+    }
+    patch.plausible_site_id = plausibleSiteId;
   }
   if (body.campaignBrief !== undefined) {
     if (body.campaignBrief === null || typeof body.campaignBrief !== "object") {

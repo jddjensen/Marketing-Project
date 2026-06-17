@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { CHANNEL_KEYS } from "@/lib/channels";
 import { buildGoogleAnalyticsProjectSettings } from "@/lib/googleAnalytics";
 import { isUuid } from "@/lib/ids";
+import { buildPlausibleProjectSettings } from "@/lib/plausibleAnalytics";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const VALID_PLATFORMS = CHANNEL_KEYS;
@@ -65,7 +66,7 @@ export async function GET(
         .order("created_at", { ascending: true }),
       supabase
         .from("projects")
-        .select("ga4_property_id")
+        .select("ga4_property_id, plausible_site_id")
         .eq("id", id)
         .maybeSingle(),
     ]);
@@ -93,6 +94,9 @@ export async function GET(
   return Response.json({
     links: (data ?? []).map((r) => serialize(r as LinkRow)),
     analytics,
+    plausible: buildPlausibleProjectSettings(
+      project?.plausible_site_id ?? null
+    ),
   });
 }
 

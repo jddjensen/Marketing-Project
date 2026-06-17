@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { ViewTransition } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
+import PlausibleProvider from "next-plausible";
 import "./globals.css";
 import { AppearanceProvider } from "./_components/AppearanceProvider";
 import { CommandPalette } from "./_components/CommandPalette";
@@ -65,11 +66,39 @@ const appearanceBootScript = `(function(){try{var t=localStorage.getItem(${JSON.
   COLOR_MODE_STORAGE_KEY
 )})||"auto";var resolved=m==="auto"?(window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"):m;document.documentElement.setAttribute("data-color-scheme",resolved);}catch(e){}})();`;
 
+const plausibleScriptSrc = process.env.PLAUSIBLE_SCRIPT_SRC?.trim() || null;
+const plausibleApiEndpoint =
+  process.env.PLAUSIBLE_API_ENDPOINT?.trim() || undefined;
+const plausibleCaptureOnLocalhost =
+  process.env.PLAUSIBLE_CAPTURE_LOCALHOST === "true" ||
+  process.env.PLAUSIBLE_CAPTURE_LOCALHOST === "1";
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const app = (
+    <AppearanceProvider>
+      <ViewTransition
+        default="route-fade"
+        enter={{
+          "nav-forward": "nav-forward",
+          "nav-back": "nav-back",
+          default: "route-fade",
+        }}
+        exit={{
+          "nav-forward": "nav-forward",
+          "nav-back": "nav-back",
+          default: "route-fade",
+        }}
+      >
+        {children}
+      </ViewTransition>
+      <CommandPalette />
+    </AppearanceProvider>
+  );
+
   return (
     <html
       lang="en"
@@ -85,24 +114,20 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: appearanceBootScript }} />
       </head>
       <body className="flex min-h-full flex-col">
-        <AppearanceProvider>
-          <ViewTransition
-            default="route-fade"
-            enter={{
-              "nav-forward": "nav-forward",
-              "nav-back": "nav-back",
-              default: "route-fade",
-            }}
-            exit={{
-              "nav-forward": "nav-forward",
-              "nav-back": "nav-back",
-              default: "route-fade",
+        {plausibleScriptSrc ? (
+          <PlausibleProvider
+            src={plausibleScriptSrc}
+            enabled
+            init={{
+              captureOnLocalhost: plausibleCaptureOnLocalhost || undefined,
+              endpoint: plausibleApiEndpoint,
             }}
           >
-            {children}
-          </ViewTransition>
-          <CommandPalette />
-        </AppearanceProvider>
+            {app}
+          </PlausibleProvider>
+        ) : (
+          app
+        )}
       </body>
     </html>
   );

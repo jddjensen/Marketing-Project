@@ -7,7 +7,7 @@ export const metadata: Metadata = {
     "How the Marketing Platform collects, stores, and uses information.",
 };
 
-const LAST_UPDATED = "May 22, 2026";
+const LAST_UPDATED = "June 17, 2026";
 
 export default function PrivacyPolicyPage() {
   return (
@@ -76,6 +76,18 @@ export default function PrivacyPolicyPage() {
               behalf. You can disconnect at any time from Settings.
             </li>
             <li>
+              <strong>Plausible Analytics settings.</strong> If Plausible is
+              configured, the platform stores the project&apos;s Plausible site
+              ID so it can read aggregated UTM reports. The server-side
+              Plausible API key is configured outside the database.
+            </li>
+            <li>
+              <strong>Postiz publishing receipts.</strong> If Postiz publishing
+              is configured, the platform stores the selected Postiz channel,
+              scheduled publish time, submitted copy, and returned Postiz post
+              identifier. Social account OAuth tokens stay in Postiz.
+            </li>
+            <li>
               <strong>Error telemetry (optional).</strong> When configured,
               errors are reported to Sentry to help us fix bugs. Reports include
               stack traces and the URL where the error occurred. They do not
@@ -88,11 +100,14 @@ export default function PrivacyPolicyPage() {
           <ul className="list-disc space-y-2 pl-5">
             <li>We do not sell or rent your data to third parties.</li>
             <li>
-              We do not run advertising trackers or third-party analytics on
-              this app.
+              We do not run advertising trackers. Third-party analytics only run
+              when the deployment explicitly configures optional Plausible
+              tracking for this internal app.
             </li>
             <li>
               We do not share campaign content with anyone outside your team.
+              Optional integrations such as GA4, Plausible, Sentry, and Postiz
+              receive data only when this deployment explicitly configures them.
             </li>
           </ul>
         </Section>

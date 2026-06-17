@@ -8,17 +8,30 @@ import {
   isGoogleAnalyticsError,
   type GoogleAnalyticsProjectLinkMetrics,
 } from "@/lib/googleAnalytics";
+import {
+  buildPlausibleProjectSettings,
+  getPlausibleProjectPerformance,
+  isPlausibleAnalyticsError,
+  type PlausibleLinkUtmValues,
+} from "@/lib/plausibleAnalytics";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import type { PlatformKey } from "@/lib/utm";
+import { PLATFORM_DEFAULTS, slugify, type PlatformKey } from "@/lib/utm";
 
 type LinkRow = {
   id: string;
   platform: PlatformKey | null;
+  utm_source: string | null;
+  utm_medium: string | null;
+  utm_campaign: string | null;
+  utm_term: string | null;
+  utm_content: string | null;
   created_at: string;
 };
 
 type ProjectRow = {
   ga4_property_id: string | null;
+  plausible_site_id: string | null;
+  name: string;
   brief_budget: string | number | null;
 };
 
@@ -46,6 +59,21 @@ function emptyGaMetrics(): GoogleAnalyticsProjectLinkMetrics {
     keyEvents: 0,
     transactions: 0,
     purchaseRevenue: 0,
+  };
+}
+
+function linkUtmValues(
+  link: LinkRow,
+  projectName: string
+): PlausibleLinkUtmValues {
+  const defaults = link.platform ? PLATFORM_DEFAULTS[link.platform] : null;
+  return {
+    id: link.id,
+    utmSource: link.utm_source ?? defaults?.source ?? "",
+    utmMedium: link.utm_medium ?? defaults?.medium ?? "",
+    utmCampaign: link.utm_campaign ?? (projectName ? slugify(projectName) : ""),
+    utmContent: link.utm_content ?? "",
+    utmTerm: link.utm_term ?? "",
   };
 }
 
@@ -88,13 +116,15 @@ export async function GET(
   ] = await Promise.all([
     supabase
       .from("project_tracking_links")
-      .select("id, platform, created_at")
+      .select(
+        "id, platform, utm_source, utm_medium, utm_campaign, utm_term, utm_content, created_at"
+      )
       .eq("project_id", id)
       .not("platform", "is", null)
       .order("created_at", { ascending: true }),
     supabase
       .from("projects")
-      .select("ga4_property_id, brief_budget")
+      .select("name, ga4_property_id, plausible_site_id, brief_budget")
       .eq("id", id)
       .maybeSingle(),
     supabase.from("project_platforms").select("platform").eq("project_id", id),
@@ -115,10 +145,14 @@ export async function GET(
   const budget = parseBudget(
     (project as ProjectRow | null)?.brief_budget ?? null
   );
+  const projectRow = project as ProjectRow | null;
   const analytics = await buildGoogleAnalyticsProjectSettings(
     supabase,
-    (project as ProjectRow | null)?.ga4_property_id ?? null,
+    projectRow?.ga4_property_id ?? null,
     user?.id ?? null
+  );
+  const plausible = buildPlausibleProjectSettings(
+    projectRow?.plausible_site_id ?? null
   );
 
   let clickCounts = new Map<string, number>();
@@ -147,9 +181,10 @@ export async function GET(
     scanCounts = countByLink((scanRows ?? []) as CountRow[]);
   }
 
-  let gaSummary: Awaited<
+  let webSummary: Awaited<
     ReturnType<typeof getGoogleAnalyticsProjectPerformance>
   > | null = null;
+  let webAnalyticsSource: "ga4" | "plausible" | null = null;
 
   if (
     analytics.status === "ready" &&
@@ -161,13 +196,14 @@ export async function GET(
         analytics.authMode === "oauth" && user?.id
           ? await getUserGoogleAnalyticsAccessToken(supabase, user.id)
           : null;
-      gaSummary = await getGoogleAnalyticsProjectPerformance({
+      webSummary = await getGoogleAnalyticsProjectPerformance({
         propertyId: analytics.ga4PropertyId,
         linkIds,
         createdAt: new Date(linkRows[0].created_at).getTime(),
         refresh,
         accessToken,
       });
+      webAnalyticsSource = "ga4";
     } catch (error) {
       if (isGoogleAnalyticsError(error)) {
         return Response.json(
@@ -177,6 +213,36 @@ export async function GET(
       }
       return Response.json(
         { error: "Failed to load Google Analytics data", analytics },
+        { status: 500 }
+      );
+    }
+  }
+
+  if (
+    !webSummary &&
+    plausible.status === "ready" &&
+    plausible.siteId &&
+    linkRows.length > 0
+  ) {
+    try {
+      webSummary = await getPlausibleProjectPerformance({
+        siteId: plausible.siteId,
+        linkValues: linkRows.map((link) =>
+          linkUtmValues(link, projectRow?.name ?? "")
+        ),
+        createdAt: new Date(linkRows[0].created_at).getTime(),
+        refresh,
+      });
+      webAnalyticsSource = "plausible";
+    } catch (error) {
+      if (isPlausibleAnalyticsError(error)) {
+        return Response.json(
+          { error: error.message, analytics, plausible },
+          { status: error.status }
+        );
+      }
+      return Response.json(
+        { error: "Failed to load Plausible data", analytics, plausible },
         { status: 500 }
       );
     }
@@ -218,7 +284,7 @@ export async function GET(
 
     const clicks = clickCounts.get(link.id) ?? 0;
     const scans = scanCounts.get(link.id) ?? 0;
-    const ga = gaSummary?.byLink[link.id] ?? emptyGaMetrics();
+    const ga = webSummary?.byLink[link.id] ?? emptyGaMetrics();
 
     bucket.linkCount += 1;
     bucket.clicks += clicks;
@@ -235,10 +301,10 @@ export async function GET(
   const totals = {
     clicks: totalClicks,
     scans: totalScans,
-    sessions: gaSummary?.totals.sessions ?? 0,
-    conversions: gaSummary?.totals.keyEvents ?? 0,
-    revenue: gaSummary?.totals.purchaseRevenue ?? 0,
-    ticketSales: gaSummary?.totals.transactions ?? 0,
+    sessions: webSummary?.totals.sessions ?? 0,
+    conversions: webSummary?.totals.keyEvents ?? 0,
+    revenue: webSummary?.totals.purchaseRevenue ?? 0,
+    ticketSales: webSummary?.totals.transactions ?? 0,
     budget,
   };
 
@@ -263,6 +329,8 @@ export async function GET(
 
   return Response.json({
     analytics,
+    plausible,
+    webAnalyticsSource,
     trackedLinkCount: linkRows.length,
     totals: {
       ...totals,
@@ -274,7 +342,7 @@ export async function GET(
       roas: budget !== null && budget > 0 ? totals.revenue / budget : null,
     },
     channels: channelRows,
-    trend: gaSummary?.trend ?? [],
-    lastSyncedAt: gaSummary?.lastSyncedAt ?? Date.now(),
+    trend: webSummary?.trend ?? [],
+    lastSyncedAt: webSummary?.lastSyncedAt ?? Date.now(),
   });
 }

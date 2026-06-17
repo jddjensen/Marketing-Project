@@ -73,6 +73,29 @@ Large quality sweep, all on one day:
 
 Newest entries at the top. One entry per working session.
 
+### 2026-06-17 — Thin Postiz social publishing bridge
+
+- Added optional Postiz scheduling without vendoring Postiz code or storing
+  social OAuth tokens: server-only Public API helper, `social_posts` receipt
+  migration, and `/api/projects/[id]/social-posts`.
+- Meta, TikTok, and YouTube creative tiles can submit the current creative and
+  saved copy to a connected Postiz channel; Postiz remains responsible for
+  account connections, provider rules, retries, and final publishing state.
+- Updated env/docs/privacy to document the external-service boundary and the
+  low-maintenance design decision.
+
+### 2026-06-16 — Plausible UTM reporting integration
+
+- Added optional Plausible wiring: `next-plausible` browser provider gated by
+  `PLAUSIBLE_SCRIPT_SRC`, CSP allow-list support, and server-side Plausible
+  Stats API querying via `src/lib/plausibleAnalytics.ts`.
+- Added `projects.plausible_site_id` migration (`0023_plausible_analytics.sql`)
+  and a Landing pages Plausible settings card. Unified Performance now uses
+  GA4 first, then Plausible UTM visits/pageviews as a fallback when configured.
+- Updated env/docs/privacy/architecture to distinguish Plausible campaign
+  reporting from optional internal-app tracking. Browser plugin was unavailable,
+  so verification used build/tests plus HTTP smoke checks.
+
 ### 2026-06-12 — 15-item UX batch: navigation, uploads, dashboard, dialog consistency
 
 - **Fixed local-dev broken thumbnails** (`next.config.ts`): CSP `img-src`/`media-src`
