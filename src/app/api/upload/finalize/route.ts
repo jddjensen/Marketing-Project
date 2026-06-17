@@ -8,6 +8,8 @@ import { validateCopy } from "@/lib/platformCopy";
 import { expectedSignageRatio } from "@/lib/signage";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { CREATIVES_BUCKET, signedMediaUrl } from "@/lib/storage";
+import { z } from "zod";
+import { apiError, parseJsonBody } from "@/lib/apiError";
 
 const VALID_PLATFORMS = new Set<string>(CHANNEL_KEYS);
 // Loose shape gate; the per-platform slot check below catches "valid-looking
@@ -19,6 +21,32 @@ const VIDEO_MIME_KIND = new Map<string, "video">([
   ["video/mp4", "video"],
   ["video/webm", "video"],
 ]);
+
+// Coarse body shape. Cross-field/runtime rules (uuid, platform/ratio/signage
+// resolution, storage-path containment) stay below — they can't be expressed
+// statically. width/height stay `unknown` and pass through `toDimension`,
+// which is advisory: bad values become null rather than rejecting the upload.
+const finalizeBodySchema = z.object({
+  projectId: z.string(),
+  platform: z.string(),
+  ratio: z.string(),
+  storagePath: z.string().min(1, "is required"),
+  posterStoragePath: z.string().nullable().optional(),
+  fileName: z.string().min(1, "is required"),
+  fileSize: z
+    .number()
+    .finite()
+    .positive("must be a positive number")
+    .max(MAX_BYTES, "file too large (max 2GB)"),
+  mimeType: z.string().min(1, "is required"),
+  signageFormatId: z.string().nullable().optional(),
+  replaceCreativeId: z.string().nullable().optional(),
+  deletePrevious: z.union([z.boolean(), z.string()]).nullable().optional(),
+  copy: z.unknown().optional(),
+  width: z.unknown().optional(),
+  height: z.unknown().optional(),
+  thumbhash: z.string().max(80).nullable().optional(),
+});
 
 // After the client has uploaded the video (and optional poster) directly to
 // Supabase Storage via signed URLs from /api/upload/sign, this endpoint
@@ -32,23 +60,9 @@ export async function POST(request: NextRequest) {
   } = await supabase.auth.getUser();
   if (!user) return Response.json({ error: "unauthorized" }, { status: 401 });
 
-  const body = (await request.json().catch(() => null)) as {
-    projectId?: unknown;
-    platform?: unknown;
-    ratio?: unknown;
-    storagePath?: unknown;
-    posterStoragePath?: unknown;
-    fileName?: unknown;
-    fileSize?: unknown;
-    mimeType?: unknown;
-    signageFormatId?: unknown;
-    replaceCreativeId?: unknown;
-    deletePrevious?: unknown;
-    copy?: unknown;
-    width?: unknown;
-    height?: unknown;
-  } | null;
-  if (!body) return Response.json({ error: "body required" }, { status: 400 });
+  const parsed = await parseJsonBody(request, finalizeBodySchema);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.data;
 
   const {
     projectId,
@@ -63,6 +77,7 @@ export async function POST(request: NextRequest) {
     replaceCreativeId,
     deletePrevious,
     copy,
+    thumbhash,
   } = body;
 
   // Client-reported intrinsic dimensions (the browser decoded the video to
@@ -74,19 +89,15 @@ export async function POST(request: NextRequest) {
   const mediaWidth = toDimension(body.width);
   const mediaHeight = toDimension(body.height);
 
-  if (typeof projectId !== "string" || !isUuid(projectId)) {
-    return Response.json({ error: "projectId required" }, { status: 400 });
+  if (!isUuid(projectId)) {
+    return apiError("projectId required", 400);
   }
-  const isCustomPlatform =
-    typeof platform === "string" && isCustomPlatformKey(platform);
-  if (
-    typeof platform !== "string" ||
-    (!VALID_PLATFORMS.has(platform) && !isCustomPlatform)
-  ) {
-    return Response.json({ error: "invalid platform" }, { status: 400 });
+  const isCustomPlatform = isCustomPlatformKey(platform);
+  if (!VALID_PLATFORMS.has(platform) && !isCustomPlatform) {
+    return apiError("invalid platform", 400);
   }
-  if (typeof ratio !== "string" || !SLOT_PATTERN.test(ratio)) {
-    return Response.json({ error: "invalid slot key" }, { status: 400 });
+  if (!SLOT_PATTERN.test(ratio)) {
+    return apiError("invalid slot key", 400);
   }
   if (isCustomPlatform) {
     if (!(await isCustomChannelSlot(supabase, platform, ratio))) {
@@ -106,32 +117,6 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
   }
-  if (typeof storagePath !== "string" || storagePath.length === 0) {
-    return Response.json({ error: "storagePath required" }, { status: 400 });
-  }
-  if (typeof fileName !== "string" || typeof mimeType !== "string") {
-    return Response.json(
-      { error: "fileName + mimeType required" },
-      { status: 400 }
-    );
-  }
-  if (
-    typeof fileSize !== "number" ||
-    !Number.isFinite(fileSize) ||
-    fileSize <= 0
-  ) {
-    return Response.json(
-      { error: "fileSize must be a positive number" },
-      { status: 400 }
-    );
-  }
-  if (fileSize > MAX_BYTES) {
-    return Response.json(
-      { error: "file too large (max 2GB)" },
-      { status: 400 }
-    );
-  }
-
   const kind = VIDEO_MIME_KIND.get(mimeType);
   if (!kind) {
     return Response.json(
@@ -297,6 +282,10 @@ export async function POST(request: NextRequest) {
     is_current: true,
     width: mediaWidth,
     height: mediaHeight,
+    // Videos have no server-generated thumbnail; the poster is the tile. We
+    // still store a ThumbHash (computed client-side from the poster frame) for
+    // the blurred placeholder.
+    thumbhash: thumbhash ?? null,
   };
   if (creativeId) insertRow.creative_id = creativeId;
 
@@ -401,7 +390,9 @@ export async function POST(request: NextRequest) {
     creativeId: inserted.creative_id,
     versionNum: inserted.version_num,
     url,
+    thumbUrl: null,
     posterUrl,
+    thumbhash: thumbhash ?? null,
     name: inserted.original_name,
     kind: inserted.kind,
     ratio: inserted.ratio,

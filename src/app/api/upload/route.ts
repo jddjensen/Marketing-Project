@@ -9,7 +9,12 @@ import type { PlatformKey } from "@/lib/utm";
 import { validateCopy } from "@/lib/platformCopy";
 import { expectedSignageRatio } from "@/lib/signage";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { CREATIVES_BUCKET, signedMediaUrl } from "@/lib/storage";
+import {
+  CREATIVES_BUCKET,
+  signedMediaUrl,
+  signedMediaUrls,
+} from "@/lib/storage";
+import { generateImageDerivatives, sha256Hex } from "@/lib/imageDerivatives";
 import crypto from "crypto";
 
 const VALID_PLATFORMS = new Set<string>(CHANNEL_KEYS);
@@ -251,9 +256,14 @@ export async function POST(request: NextRequest) {
   // first 4KB for videos (so we don't drag a 500MB file through Node memory).
   let processedBytes: Uint8Array | null = null;
   let sniffBytes: Uint8Array;
+  // sha256 of the original source bytes (images only) for soft duplicate
+  // detection. Captured before re-encode so it fingerprints what the user
+  // actually uploaded, not our re-encoded output.
+  let contentHash: string | null = null;
   if (isImage) {
     processedBytes = Buffer.from(await file.arrayBuffer());
     sniffBytes = processedBytes;
+    contentHash = sha256Hex(processedBytes);
   } else {
     sniffBytes = new Uint8Array(await file.slice(0, 4096).arrayBuffer());
   }
@@ -311,6 +321,14 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  // Best-effort grid thumbnail + ThumbHash placeholder for images. Generated
+  // from the bytes we're about to store (re-encoded original, or the GIF's
+  // first frame). Failure is non-fatal — we just serve the original.
+  const derivatives =
+    isImage && processedBytes
+      ? await generateImageDerivatives(processedBytes)
+      : null;
+
   const storedMime = file.type;
   const storedExt = claimed.ext;
   const safeName = `${Date.now()}-${crypto.randomBytes(6).toString("hex")}${storedExt}`;
@@ -332,6 +350,21 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: "upload failed" }, { status: 500 });
   }
 
+  // Upload the thumbnail rendition next to the original. Best-effort: if it
+  // fails, the row simply has no thumb_storage_path and grids fall back to the
+  // original.
+  let thumbStoragePath: string | null = null;
+  if (derivatives) {
+    const candidateThumbPath = `${storagePath}${derivatives.thumbExt}`;
+    const { error: thumbError } = await supabase.storage
+      .from(CREATIVES_BUCKET)
+      .upload(candidateThumbPath, derivatives.thumb, {
+        contentType: derivatives.thumbContentType,
+        upsert: false,
+      });
+    if (!thumbError) thumbStoragePath = candidateThumbPath;
+  }
+
   // Optional poster for videos.
   let posterStoragePath: string | null = null;
   if (claimed.kind === "video" && poster instanceof File && poster.size > 0) {
@@ -345,6 +378,32 @@ export async function POST(request: NextRequest) {
           upsert: false,
         });
       if (!posterError) posterStoragePath = candidatePath;
+    }
+  }
+
+  // Soft duplicate detection: surface (don't block) when a byte-identical file
+  // is already filed as a current creative in this project. Skipped on replace,
+  // where re-uploading the same bytes is expected.
+  let duplicateOf: {
+    id: string;
+    creativeId: string | null;
+    name: string | null;
+  } | null = null;
+  if (contentHash && !creativeId) {
+    const { data: dup } = await supabase
+      .from("media")
+      .select("id, creative_id, original_name")
+      .eq("project_id", projectId)
+      .eq("content_hash", contentHash)
+      .eq("is_current", true)
+      .limit(1)
+      .maybeSingle();
+    if (dup) {
+      duplicateOf = {
+        id: dup.id,
+        creativeId: dup.creative_id,
+        name: dup.original_name,
+      };
     }
   }
 
@@ -365,6 +424,9 @@ export async function POST(request: NextRequest) {
     is_current: true,
     width: mediaWidth,
     height: mediaHeight,
+    thumb_storage_path: thumbStoragePath,
+    thumbhash: derivatives?.thumbhash ?? null,
+    content_hash: contentHash,
   };
   if (creativeId) insertRow.creative_id = creativeId;
 
@@ -378,6 +440,7 @@ export async function POST(request: NextRequest) {
 
   if (insertError || !inserted) {
     const cleanup = [storagePath];
+    if (thumbStoragePath) cleanup.push(thumbStoragePath);
     if (posterStoragePath) cleanup.push(posterStoragePath);
     await supabase.storage.from(CREATIVES_BUCKET).remove(cleanup);
     return Response.json(
@@ -416,13 +479,20 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const url = await signedMediaUrl(supabase, storagePath);
+  const signed = await signedMediaUrls(
+    supabase,
+    thumbStoragePath ? [storagePath, thumbStoragePath] : [storagePath]
+  );
+  const url = signed.get(storagePath) ?? null;
   if (!url) {
     return Response.json(
       { error: "could not sign media url" },
       { status: 500 }
     );
   }
+  const thumbUrl = thumbStoragePath
+    ? (signed.get(thumbStoragePath) ?? null)
+    : null;
   const posterUrl = posterStoragePath
     ? await signedMediaUrl(supabase, posterStoragePath)
     : null;
@@ -432,11 +502,14 @@ export async function POST(request: NextRequest) {
     creativeId: inserted.creative_id,
     versionNum: inserted.version_num,
     url,
+    thumbUrl,
     posterUrl,
+    thumbhash: derivatives?.thumbhash ?? null,
     name: inserted.original_name,
     kind: inserted.kind,
     ratio: inserted.ratio,
     platform: inserted.platform,
     copy: (inserted.copy as Record<string, unknown> | null) ?? null,
+    duplicateOf,
   });
 }

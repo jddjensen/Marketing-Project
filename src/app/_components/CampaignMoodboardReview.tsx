@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { aspectClassForAsset, formatAssetLabel } from "@/lib/channelAssets";
 import { CHANNEL_LABELS } from "@/lib/channels";
 import type { PlatformKey } from "@/lib/utm";
+import { AssetThumb } from "./AssetThumb";
 
 type MoodboardItem = {
   id: string;
@@ -13,6 +14,7 @@ type MoodboardItem = {
   ratio: string;
   url: string | null;
   posterUrl: string | null;
+  thumbhash?: string | null;
   name: string | null;
   kind: "image" | "video" | "text";
   copy: Record<string, unknown> | null;
@@ -313,12 +315,13 @@ function MoodboardVisual({
     );
   }
 
-  // eslint-disable-next-line @next/next/no-img-element
   return (
-    <img
+    <AssetThumb
       src={visualUrl}
+      thumbhash={item.thumbhash}
       alt={item.name ?? ""}
-      className="h-full w-full object-contain"
+      fit="contain"
+      eager={priority}
     />
   );
 }

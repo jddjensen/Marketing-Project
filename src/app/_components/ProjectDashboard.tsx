@@ -10,6 +10,7 @@ import {
 } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { AssetThumb } from "./AssetThumb";
 import { CampaignBriefPanel } from "./CampaignBriefPanel";
 import { LandingPagesPanel } from "./LandingPagesPanel";
 import { PerformanceDashboardPanel } from "./PerformanceDashboardPanel";
@@ -44,7 +45,9 @@ type MediaItem = {
   platform: string;
   ratio: string;
   url: string | null;
+  thumbUrl?: string | null;
   posterUrl: string | null;
+  thumbhash?: string | null;
   name: string | null;
   kind: "image" | "video" | "text";
   copy: Record<string, unknown> | null;
@@ -765,23 +768,25 @@ function CreativeTile({
       title={`${channelLabel} · ${formatAssetLabel(item.ratio)} · ${item.name ?? "Text creative"}`}
     >
       <div
-        className={`${aspect} w-full overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100 group-hover:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:group-hover:border-zinc-600`}
+        className={`${aspect} relative w-full overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100 group-hover:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:group-hover:border-zinc-600`}
       >
         {item.kind === "image" && item.url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={item.url}
+          <AssetThumb
+            src={item.thumbUrl ?? item.url}
+            thumbhash={item.thumbhash}
+            width={item.width}
+            height={item.height}
             alt={item.name ?? ""}
-            className="h-full w-full object-cover"
           />
         ) : item.kind === "video" && item.posterUrl ? (
           // Use the poster as a static thumbnail to avoid downloading the
           // full video just to render a preview tile.
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <AssetThumb
             src={item.posterUrl}
+            thumbhash={item.thumbhash}
+            width={item.width}
+            height={item.height}
             alt={item.name ?? ""}
-            className="h-full w-full object-cover"
           />
         ) : item.kind === "video" && item.url ? (
           <video

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { AssetThumb } from "./AssetThumb";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { useDialogChrome } from "./useDialogChrome";
 
@@ -9,7 +10,9 @@ type Version = {
   versionNum: number;
   kind: "image" | "video" | "text";
   url: string | null;
+  thumbUrl?: string | null;
   posterUrl: string | null;
+  thumbhash?: string | null;
   name: string | null;
   copy: Record<string, unknown> | null;
   isCurrent: boolean;
@@ -191,18 +194,16 @@ export function VersionHistoryModal({
                   {v.kind === "text" ? (
                     "TEXT"
                   ) : v.posterUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                    <AssetThumb
                       src={v.posterUrl}
+                      thumbhash={v.thumbhash}
                       alt=""
-                      className="h-full w-full object-cover"
                     />
                   ) : v.kind === "image" && v.url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={v.url}
+                    <AssetThumb
+                      src={v.thumbUrl ?? v.url}
+                      thumbhash={v.thumbhash}
                       alt=""
-                      className="h-full w-full object-cover"
                     />
                   ) : (
                     v.kind.toUpperCase()

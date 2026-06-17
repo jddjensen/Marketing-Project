@@ -17,7 +17,7 @@ export async function GET(
   const { data, error } = await supabase
     .from("media")
     .select(
-      "id, creative_id, version_num, platform, ratio, kind, storage_path, poster_storage_path, original_name, copy, is_current, uploaded_at"
+      "id, creative_id, version_num, platform, ratio, kind, storage_path, thumb_storage_path, poster_storage_path, thumbhash, original_name, copy, is_current, uploaded_at"
     )
     .eq("project_id", projectId)
     .eq("creative_id", creativeId)
@@ -32,6 +32,7 @@ export async function GET(
   const allPaths: string[] = [];
   for (const row of data) {
     if (row.storage_path) allPaths.push(row.storage_path);
+    if (row.thumb_storage_path) allPaths.push(row.thumb_storage_path);
     if (row.poster_storage_path) allPaths.push(row.poster_storage_path);
   }
   const urlMap = await signedMediaUrls(supabase, allPaths);
@@ -44,9 +45,13 @@ export async function GET(
     ratio: row.ratio,
     kind: row.kind,
     url: row.storage_path ? (urlMap.get(row.storage_path) ?? null) : null,
+    thumbUrl: row.thumb_storage_path
+      ? (urlMap.get(row.thumb_storage_path) ?? null)
+      : null,
     posterUrl: row.poster_storage_path
       ? (urlMap.get(row.poster_storage_path) ?? null)
       : null,
+    thumbhash: row.thumbhash ?? null,
     name: row.original_name,
     copy: (row.copy as Record<string, unknown> | null) ?? null,
     isCurrent: row.is_current,

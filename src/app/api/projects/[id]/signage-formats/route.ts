@@ -50,7 +50,7 @@ export async function GET(
   const { data: media, error: mErr } = await supabase
     .from("media")
     .select(
-      "id, creative_id, version_num, ratio, storage_path, poster_storage_path, original_name, kind, copy, uploaded_at, signage_format_id"
+      "id, creative_id, version_num, ratio, storage_path, thumb_storage_path, poster_storage_path, thumbhash, original_name, kind, copy, uploaded_at, signage_format_id"
     )
     .eq("project_id", id)
     .eq("platform", "signage")
@@ -63,6 +63,7 @@ export async function GET(
   const allPaths: string[] = [];
   for (const r of mediaRows) {
     if (r.storage_path) allPaths.push(r.storage_path);
+    if (r.thumb_storage_path) allPaths.push(r.thumb_storage_path);
     if (r.poster_storage_path) allPaths.push(r.poster_storage_path);
   }
   const urlMap = await signedMediaUrls(supabase, allPaths);
@@ -73,6 +74,9 @@ export async function GET(
       ? (urlMap.get(row.storage_path) ?? null)
       : null;
     if (row.kind !== "text" && !url) continue;
+    const thumbUrl = row.thumb_storage_path
+      ? (urlMap.get(row.thumb_storage_path) ?? null)
+      : null;
     const posterUrl = row.poster_storage_path
       ? (urlMap.get(row.poster_storage_path) ?? null)
       : null;
@@ -83,7 +87,9 @@ export async function GET(
       creativeId: row.creative_id,
       versionNum: row.version_num,
       url,
+      thumbUrl,
       posterUrl,
+      thumbhash: row.thumbhash ?? null,
       storagePath: row.storage_path,
       name: row.original_name,
       kind: row.kind,

@@ -6,7 +6,9 @@ type DirectUploadResult = {
   creativeId: string;
   versionNum: number;
   url: string;
+  thumbUrl: string | null;
   posterUrl: string | null;
+  thumbhash: string | null;
   name: string;
   kind: "image" | "video" | "text";
   ratio: string;
@@ -30,6 +32,7 @@ type SignResponse = {
 export async function uploadVideoDirect(input: {
   file: File;
   poster: Blob | null;
+  thumbhash?: string | null;
   width?: number | null;
   height?: number | null;
   projectId: string;
@@ -45,6 +48,7 @@ export async function uploadVideoDirect(input: {
   const {
     file,
     poster,
+    thumbhash,
     width,
     height,
     projectId,
@@ -137,6 +141,7 @@ export async function uploadVideoDirect(input: {
         copy: copy ?? null,
         width: width ?? null,
         height: height ?? null,
+        thumbhash: thumbhash ?? null,
       }),
       signal,
     });

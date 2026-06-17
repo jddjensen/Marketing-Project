@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { UserMenu } from "./UserMenu";
+import { AssetThumb } from "./AssetThumb";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { HoverScrubVideo } from "./HoverScrubVideo";
 import { ProjectChannelNav } from "./ProjectChannelNav";
@@ -37,7 +38,9 @@ type MediaItem = {
   creativeId: string;
   versionNum: number;
   url: string | null;
+  thumbUrl?: string | null;
   posterUrl: string | null;
+  thumbhash?: string | null;
   name: string | null;
   kind: "image" | "video" | "text";
   ratio: string;
@@ -257,6 +260,7 @@ export function SignageBoard({
         await uploadVideoDirect({
           file,
           poster: videoMeta.poster,
+          thumbhash: videoMeta.thumbhash,
           width: videoMeta.width,
           height: videoMeta.height,
           projectId,
@@ -710,11 +714,10 @@ function SignageTile({
         className={`${aspect} relative w-full overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800`}
       >
         {item.kind === "image" && item.url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={item.url}
+          <AssetThumb
+            src={item.thumbUrl ?? item.url}
+            thumbhash={item.thumbhash}
             alt={item.name ?? ""}
-            className="h-full w-full object-cover"
           />
         ) : item.kind === "video" && item.url ? (
           <HoverScrubVideo

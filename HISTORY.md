@@ -73,6 +73,32 @@ Large quality sweep, all on one day:
 
 Newest entries at the top. One entry per working session.
 
+### 2026-06-16 — Media perceived-perf: thumbnails, ThumbHash, lazy-load, dedup
+
+- Mined Immich/Jellyfin/anytype for applicable patterns (none usable as a
+  dependency — wrong stack/license/domain); adopted the worthwhile ones natively.
+- **Thumbnails + ThumbHash placeholders.** `0025_media_thumbnails.sql` adds
+  `thumb_storage_path`, `thumbhash`, `content_hash` to `media`. New
+  `src/lib/imageDerivatives.ts` (sharp) generates a ≤320px WebP grid thumbnail
+  and a base64 ThumbHash during the existing image upload re-encode; videos get
+  a ThumbHash computed client-side from the poster frame
+  (`videoThumbnail.ts` → `directUpload` → `/api/upload/finalize`). New shared
+  `AssetThumb` component renders a blurred ThumbHash placeholder that cross-fades
+  to a lazily-loaded (`loading="lazy"`) image; adopted in PlatformMediaBoard,
+  SignageBoard, ProjectDashboard, CampaignMoodboardReview, VersionHistoryModal.
+  All four media-list endpoints now return `thumbUrl` + `thumbhash`.
+- **Soft duplicate detection.** Upload hashes the original bytes (sha256) and
+  surfaces a non-blocking "possible duplicate" hint in the upload queue when an
+  identical current creative already exists in the project (skipped on replace).
+- **API boundary hygiene.** Added `src/lib/apiError.ts` (shared `{ error }`
+  envelope + zod `parseJsonBody`) and `src/types/media.ts`; applied zod to the
+  `/api/upload/finalize` body as the first adoption (envelope shape unchanged).
+- `npm run backfill:thumbnails` (`scripts/backfill-thumbnails.mjs`, service-role)
+  backfills derivatives for pre-existing image rows; idempotent. Deferred: a
+  larger preview rendition tier and virtualized grids (not needed at this scale).
+- Verified: typecheck, lint, 27 unit tests (new `imageDerivatives.test.ts`),
+  production build all green.
+
 ### 2026-06-17 — Thin Postiz social publishing bridge
 
 - Added optional Postiz scheduling without vendoring Postiz code or storing

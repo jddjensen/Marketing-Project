@@ -10,6 +10,7 @@ import {
   type UploadQueueEntry,
 } from "./UploadProgressOverlay";
 import { CampaignMoodboardReview } from "./CampaignMoodboardReview";
+import { AssetThumb } from "./AssetThumb";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { CreativeCopyPanel } from "./CreativeCopyPanel";
 import { HoverScrubVideo } from "./HoverScrubVideo";
@@ -49,7 +50,9 @@ type MediaItem = {
   creativeId: string;
   versionNum: number;
   url: string | null;
+  thumbUrl?: string | null;
   posterUrl: string | null;
+  thumbhash?: string | null;
   name: string | null;
   kind: "image" | "video" | "text";
   ratio: Ratio;
@@ -138,6 +141,9 @@ type QueueItem = {
   bytesLoaded: number;
   bytesTotal: number;
   error?: string;
+  // Soft, non-blocking hint surfaced after a successful upload (e.g. the
+  // server detected a byte-identical creative already in this project).
+  note?: string;
 };
 
 // A drop can outpace the user's intent — the queue lets every file land and
@@ -366,6 +372,9 @@ export function PlatformMediaBoard({
           });
         };
 
+        // A soft "possible duplicate" hint the server may return for images.
+        let uploadNote: string | undefined;
+
         if (isVideo) {
           // Direct-to-storage flow — bypasses the Next.js function so files
           // up to 2 GB go straight from browser to Supabase Storage. Reuses
@@ -374,6 +383,7 @@ export function PlatformMediaBoard({
           await uploadVideoDirect({
             file: item.file,
             poster: meta.poster,
+            thumbhash: meta.thumbhash,
             width: meta.width,
             height: meta.height,
             projectId,
@@ -404,20 +414,29 @@ export function PlatformMediaBoard({
           ) {
             fd.append("copy", JSON.stringify(item.options.carryCopy));
           }
-          const res = await uploadWithProgress<{ error?: string }>(
-            "/api/upload",
-            fd,
-            {
-              signal: controller.signal,
-              onProgress,
-            }
-          );
+          const res = await uploadWithProgress<{
+            error?: string;
+            duplicateOf?: { name: string | null } | null;
+          }>("/api/upload", fd, {
+            signal: controller.signal,
+            onProgress,
+          });
           if (!res.ok) {
             throw new Error(res.body?.error ?? "upload failed");
           }
+          if (res.body?.duplicateOf) {
+            const dupName = res.body.duplicateOf.name;
+            uploadNote = dupName
+              ? `Possible duplicate of "${dupName}"`
+              : "Possible duplicate of an existing creative";
+          }
         }
 
-        patchQueueItem(item.id, { status: "done", percent: 100 });
+        patchQueueItem(item.id, {
+          status: "done",
+          percent: 100,
+          note: uploadNote,
+        });
         await fetchMedia();
       } catch (e) {
         if (e instanceof DOMException && e.name === "AbortError") {
@@ -576,6 +595,7 @@ export function PlatformMediaBoard({
     status: item.status,
     percent: item.percent,
     error: item.error,
+    note: item.note,
   }));
 
   return (
@@ -1061,11 +1081,12 @@ function MediaTile({
         style={aspectRatio ? { aspectRatio } : undefined}
       >
         {item.kind === "image" && item.url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={item.url}
+          <AssetThumb
+            src={item.thumbUrl ?? item.url}
+            thumbhash={item.thumbhash}
+            width={item.width}
+            height={item.height}
             alt={item.name ?? ""}
-            className="h-full w-full object-cover"
           />
         ) : item.kind === "video" && item.url ? (
           <HoverScrubVideo

@@ -28,6 +28,8 @@ export type UploadQueueEntry = {
   status: UploadQueueEntryStatus;
   percent: number;
   error?: string;
+  // Soft, non-blocking hint for a successful upload (e.g. possible duplicate).
+  note?: string;
 };
 
 const TERMINAL_STATUSES: ReadonlySet<UploadQueueEntryStatus> = new Set([
@@ -59,7 +61,7 @@ function entryStatusText(entry: UploadQueueEntry): string {
     case "uploading":
       return `${entry.percent}%`;
     case "done":
-      return "Done";
+      return entry.note ? "Possible dup" : "Done";
     case "skipped":
       return entry.error === "Cancelled" ? "Cancelled" : "Skipped";
     case "error":
@@ -209,7 +211,7 @@ export function UploadProgressOverlay({
               <li
                 key={entry.id}
                 className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs odd:bg-zinc-50 dark:odd:bg-zinc-950/50"
-                title={entry.error}
+                title={entry.note ?? entry.error}
               >
                 <span
                   className={`min-w-0 flex-1 truncate ${
@@ -229,7 +231,9 @@ export function UploadProgressOverlay({
                     entry.status === "error"
                       ? "text-red-600 dark:text-red-400"
                       : entry.status === "done"
-                        ? "text-emerald-600 dark:text-emerald-400"
+                        ? entry.note
+                          ? "text-amber-600 dark:text-amber-400"
+                          : "text-emerald-600 dark:text-emerald-400"
                         : "text-zinc-500"
                   }`}
                 >
